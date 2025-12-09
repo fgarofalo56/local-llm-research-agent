@@ -3,7 +3,7 @@
 # Prefer using: uv sync (or pip install -e .)
 
 # Agent Framework
-pydantic-ai>=0.2.0
+pydantic-ai[mcp]>=0.2.0
 pydantic>=2.0.0
 
 # Web UI
@@ -15,7 +15,6 @@ rich>=13.0.0
 
 # Configuration & Environment
 python-dotenv>=1.0.0
-pydantic-settings>=2.0.0
 
 # Logging
 structlog>=24.0.0

@@ -37,7 +37,7 @@ def ui():
     """Start the Streamlit web UI."""
     import subprocess
     import sys
-
+    
     console.print("[green]Starting Streamlit UI...[/]")
     try:
         subprocess.run(
@@ -54,42 +54,41 @@ def ui():
 @app.command()
 def check():
     """Check system requirements and configuration."""
-    from pathlib import Path
-
     import httpx
-
+    from pathlib import Path
+    
     console.print("\n[bold]System Check[/bold]\n")
-
+    
     # Check Ollama
     console.print("Checking Ollama...", end=" ")
     try:
         response = httpx.get("http://localhost:11434/api/tags", timeout=5)
         if response.status_code == 200:
-            console.print("[green]OK - Running[/]")
+            console.print("[green]✓ Running[/]")
             models = response.json().get("models", [])
             if models:
                 console.print(f"  Available models: {', '.join(m['name'] for m in models[:5])}")
         else:
-            console.print("[yellow]Warning - Running but unexpected response[/]")
+            console.print("[yellow]⚠ Running but unexpected response[/]")
     except Exception:
-        console.print("[red]ERROR - Not running[/]")
+        console.print("[red]✗ Not running[/]")
         console.print("  Install Ollama from https://ollama.com/")
-
+    
     # Check .env file
     console.print("Checking .env file...", end=" ")
     if Path(".env").exists():
-        console.print("[green]OK - Found[/]")
+        console.print("[green]✓ Found[/]")
     else:
-        console.print("[yellow]Warning - Not found[/]")
+        console.print("[yellow]⚠ Not found[/]")
         console.print("  Copy .env.example to .env and configure")
-
+    
     # Check MCP config
     console.print("Checking mcp_config.json...", end=" ")
     if Path("mcp_config.json").exists():
-        console.print("[green]OK - Found[/]")
+        console.print("[green]✓ Found[/]")
     else:
-        console.print("[yellow]Warning - Not found[/]")
-
+        console.print("[yellow]⚠ Not found[/]")
+    
     console.print()
 
 

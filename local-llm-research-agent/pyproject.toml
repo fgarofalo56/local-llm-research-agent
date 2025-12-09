@@ -29,7 +29,7 @@ classifiers = [
 
 dependencies = [
     # Agent Framework
-    "pydantic-ai>=0.2.0",
+    "pydantic-ai[mcp]>=0.2.0",
     "pydantic>=2.0.0",
     
     # Web UI
@@ -41,7 +41,6 @@ dependencies = [
     
     # Configuration & Environment
     "python-dotenv>=1.0.0",
-    "pydantic-settings>=2.0.0",
     
     # Logging
     "structlog>=24.0.0",
@@ -84,8 +83,6 @@ packages = ["src"]
 [tool.ruff]
 target-version = "py311"
 line-length = 100
-
-[tool.ruff.lint]
 select = [
     "E",   # pycodestyle errors
     "W",   # pycodestyle warnings
@@ -94,15 +91,15 @@ select = [
     "B",   # flake8-bugbear
     "C4",  # flake8-comprehensions
     "UP",  # pyupgrade
+    "ARG", # flake8-unused-arguments
     "SIM", # flake8-simplify
 ]
 ignore = [
     "E501",  # line too long (handled by formatter)
     "B008",  # do not perform function calls in argument defaults
-    "B904",  # raise from in exception handlers (typer.Exit doesn't support it)
 ]
 
-[tool.ruff.lint.isort]
+[tool.ruff.isort]
 known-first-party = ["src"]
 
 [tool.ruff.format]
@@ -164,8 +161,8 @@ exclude_lines = [
     "if TYPE_CHECKING:",
 ]
 
-[dependency-groups]
-dev = [
+[tool.uv]
+dev-dependencies = [
     "pytest>=8.0.0",
     "pytest-asyncio>=0.23.0",
     "pytest-cov>=4.0.0",

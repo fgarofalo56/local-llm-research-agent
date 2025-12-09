@@ -49,13 +49,15 @@ services:
       - llm-network
 
   # Optional: SQL Server tools container for running scripts
+  # Uses the same SQL Server image which includes sqlcmd tools
   mssql-tools:
-    image: mcr.microsoft.com/mssql-tools18
+    image: mcr.microsoft.com/mssql/server:2022-latest
     container_name: local-llm-mssql-tools
     depends_on:
       mssql:
         condition: service_healthy
     environment:
+      ACCEPT_EULA: "Y"
       MSSQL_SA_PASSWORD: "${MSSQL_SA_PASSWORD:-LocalLLM@2024!}"
     volumes:
       - ./init:/scripts:ro

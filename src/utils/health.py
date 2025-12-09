@@ -173,7 +173,7 @@ async def check_foundry_local_health() -> ComponentHealth:
     try:
         async with httpx.AsyncClient(timeout=5.0) as client:
             # Check Foundry Local API endpoint
-            response = await client.get(f"{settings.foundry_local_endpoint}/v1/models")
+            response = await client.get(f"{settings.foundry_endpoint}/v1/models")
             latency_ms = (time.monotonic() - start_time) * 1000
 
             if response.status_code == 200:
@@ -187,7 +187,7 @@ async def check_foundry_local_health() -> ComponentHealth:
                     message=f"Connected, {len(model_ids)} models available",
                     latency_ms=latency_ms,
                     details={
-                        "endpoint": settings.foundry_local_endpoint,
+                        "endpoint": settings.foundry_endpoint,
                         "models": model_ids[:5],
                     },
                 )
@@ -203,7 +203,7 @@ async def check_foundry_local_health() -> ComponentHealth:
         return ComponentHealth(
             name=name,
             status=HealthStatus.UNKNOWN,
-            message=f"Not running at {settings.foundry_local_endpoint}",
+            message=f"Not running at {settings.foundry_endpoint}",
         )
     except httpx.TimeoutException:
         return ComponentHealth(

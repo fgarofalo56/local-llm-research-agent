@@ -132,10 +132,17 @@ class Settings(BaseSettings):
         description="Maximum burst size (requests allowed before throttling)"
     )
 
+    # Docker/SA Password (for docker-compose compatibility)
+    mssql_sa_password: str = Field(
+        default="",
+        description="SQL Server SA password (used by docker-compose)"
+    )
+
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"
         case_sensitive = False
+        extra = "ignore"  # Ignore extra env vars not defined in Settings
 
     @property
     def ollama_api_url(self) -> str:

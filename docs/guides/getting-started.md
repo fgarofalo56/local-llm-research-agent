@@ -14,6 +14,7 @@
 - [Configuration](#-configuration)
 - [Running the Agent](#-running-the-agent)
 - [Your First Query](#-your-first-query)
+- [Using Features](#-using-features)
 - [Next Steps](#-next-steps)
 - [Troubleshooting](#-troubleshooting)
 
@@ -27,10 +28,21 @@ The Local LLM Research Agent enables natural language interaction with SQL Serve
 
 | Component | Description |
 |-----------|-------------|
-| 🦙 **Ollama** | Local LLM inference engine |
+| 🦙 **LLM Provider** | Ollama or Microsoft Foundry Local |
 | 🗃️ **SQL Server** | Docker container with sample data |
 | 🔌 **MSSQL MCP** | Model Context Protocol server |
 | 🤖 **Agent** | Pydantic AI orchestration |
+
+### Key Features
+
+| Feature | Status | Description |
+|---------|--------|-------------|
+| Natural Language Queries | ✅ | Ask questions in plain English |
+| Streaming Responses | ✅ | See answers as they're generated |
+| Response Caching | ✅ | Faster repeated queries |
+| Export (JSON/CSV/MD) | ✅ | Save conversations and data |
+| Session History | ✅ | Recall previous conversations |
+| Dual Providers | ✅ | Ollama or Foundry Local |
 
 ---
 
@@ -81,7 +93,11 @@ uv sync
 pip install -r requirements.txt
 ```
 
-### Step 3: Install Ollama
+### Step 3: Install an LLM Provider
+
+Choose **one** of the following:
+
+#### Option A: Ollama (Recommended)
 
 1. Download from [ollama.com](https://ollama.com/)
 2. Install and start the application
@@ -96,14 +112,22 @@ ollama pull llama3.1:8b
 ollama pull mistral:7b-instruct
 ```
 
-### Step 4: Verify Ollama
+#### Option B: Microsoft Foundry Local
 
 ```bash
-# Check Ollama is running
+# Install the SDK
+pip install foundry-local-sdk
+
+# The agent will auto-download models when needed
+```
+
+### Step 4: Verify Provider
+
+```bash
+# For Ollama
 curl http://localhost:11434/api/tags
 
-# Or on Windows
-Invoke-WebRequest http://localhost:11434/api/tags
+# For Foundry Local - check when starting the agent
 ```
 
 ---
@@ -209,9 +233,16 @@ cp .env.example .env
 Open `.env` and configure:
 
 ```bash
+# LLM Provider Selection
+LLM_PROVIDER=ollama  # or "foundry_local"
+
 # Ollama Configuration
 OLLAMA_HOST=http://localhost:11434
 OLLAMA_MODEL=qwen2.5:7b-instruct
+
+# Foundry Local Configuration (if using)
+FOUNDRY_ENDPOINT=http://127.0.0.1:55588
+FOUNDRY_MODEL=phi-4
 
 # SQL Server (Docker defaults)
 SQL_SERVER_HOST=localhost
@@ -228,6 +259,11 @@ MCP_MSSQL_PATH=/path/to/SQL-AI-samples/MssqlMcp/Node/dist/index.js
 
 # Optional: Read-only mode
 MCP_MSSQL_READONLY=false
+
+# Caching (optional)
+CACHE_ENABLED=true
+CACHE_MAX_SIZE=100
+CACHE_TTL_SECONDS=3600
 ```
 
 > ⚠️ **Important:** Update `MCP_MSSQL_PATH` to your actual path!
@@ -242,8 +278,17 @@ MCP_MSSQL_READONLY=false
 # Start CLI chat
 uv run python -m src.cli.chat
 
+# With streaming (show tokens as generated)
+uv run python -m src.cli.chat --stream
+
 # With read-only mode (safer)
 uv run python -m src.cli.chat --readonly
+
+# With Foundry Local provider
+uv run python -m src.cli.chat --provider foundry_local
+
+# Disable response caching
+uv run python -m src.cli.chat --no-cache
 
 # With debug output
 uv run python -m src.cli.chat --debug
@@ -256,6 +301,16 @@ uv run python -m src.cli.chat --debug
 uv run streamlit run src/ui/streamlit_app.py
 
 # Access at: http://localhost:8501
+```
+
+### Option 3: Single Query
+
+```bash
+# Run a single query and exit
+uv run python -m src.cli.chat query "What tables are in the database?"
+
+# With streaming
+uv run python -m src.cli.chat query "Show all researchers" --stream
 ```
 
 ---
@@ -278,7 +333,7 @@ Expected: Agent lists all tables (Departments, Researchers, Projects, etc.)
 How many researchers are there?
 ```
 
-Expected: Agent queries the database and returns count (23)
+Expected: Agent queries the database and returns count
 
 ### Analytical Query
 
@@ -286,7 +341,7 @@ Expected: Agent queries the database and returns count (23)
 Show me the top 5 highest paid researchers
 ```
 
-Expected: Agent returns names, titles, and salaries
+Expected: Agent returns names, titles, and salaries in a formatted table
 
 ### Complex Query
 
@@ -298,11 +353,93 @@ Expected: Agent joins tables and aggregates data
 
 ---
 
+## ✨ Using Features
+
+### Interactive Commands
+
+While in the CLI chat, use these commands:
+
+| Command | Description |
+|---------|-------------|
+| `help` | Show all commands |
+| `clear` | Clear conversation |
+| `status` | Show connection status |
+| `cache` | Show cache statistics |
+| `cache-clear` | Clear the response cache |
+| `export` | Export conversation (JSON/CSV/MD) |
+| `export json` | Export to JSON |
+| `export csv` | Export to CSV |
+| `export md` | Export to Markdown |
+| `history` | List saved sessions |
+| `history save` | Save current session |
+| `history load <id>` | Load a saved session |
+| `history delete <id>` | Delete a session |
+| `quit` | Exit the chat |
+
+### Streaming Mode
+
+Enable streaming to see responses as they're generated:
+
+```bash
+# CLI with streaming
+uv run python -m src.cli.chat --stream
+```
+
+In Streamlit, toggle "Streaming responses" in the sidebar.
+
+### Response Caching
+
+The agent caches responses to identical queries:
+
+```bash
+# View cache stats
+cache
+
+# Clear cache
+cache-clear
+
+# Disable caching
+uv run python -m src.cli.chat --no-cache
+```
+
+### Exporting Data
+
+Export your conversation or query results:
+
+```bash
+# In chat, type:
+export json   # Saves to chat_YYYYMMDD_HHMMSS.json
+export csv    # Saves to chat_YYYYMMDD_HHMMSS.csv
+export md     # Saves to chat_YYYYMMDD_HHMMSS.md
+```
+
+In Streamlit, use the Export buttons in the sidebar.
+
+### Session History
+
+Save and recall previous conversations:
+
+```bash
+# List saved sessions
+history
+
+# Save current session
+history save
+
+# Load a previous session
+history load abc12345
+
+# Delete a session
+history delete abc12345
+```
+
+---
+
 ## 🔜 Next Steps
 
 Now that you're set up:
 
-1. **Explore the data** - Try queries from [Testing the Agent](../../README.md#testing-the-agent)
+1. **Explore the data** - Try different queries on the ResearchAnalytics database
 2. **Read the MCP tools reference** - [MSSQL MCP Tools](../reference/mssql_mcp_tools.md)
 3. **Configure for production** - [Configuration Guide](configuration.md)
 4. **Troubleshoot issues** - [Troubleshooting Guide](troubleshooting.md)
@@ -316,9 +453,11 @@ Now that you're set up:
 | Issue | Solution |
 |-------|----------|
 | Ollama not connecting | Ensure Ollama is running: `curl http://localhost:11434` |
+| Foundry Local not found | Install SDK: `pip install foundry-local-sdk` |
 | Database connection refused | Check Docker container: `docker compose ps` |
 | MCP server not found | Verify `MCP_MSSQL_PATH` in `.env` |
 | Model not found | Pull model: `ollama pull qwen2.5:7b-instruct` |
+| Cache not working | Check `CACHE_ENABLED=true` in `.env` |
 
 ### Need More Help?
 

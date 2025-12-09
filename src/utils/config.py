@@ -20,6 +20,12 @@ load_dotenv(_env_path)
 class Settings(BaseSettings):
     """Application settings loaded from environment variables."""
 
+    # LLM Provider Selection
+    llm_provider: str = Field(
+        default="ollama",
+        description="LLM provider to use: 'ollama' or 'foundry_local'"
+    )
+
     # Ollama Configuration
     ollama_host: str = Field(
         default="http://localhost:11434",
@@ -28,6 +34,20 @@ class Settings(BaseSettings):
     ollama_model: str = Field(
         default="qwen2.5:7b-instruct",
         description="Ollama model for inference"
+    )
+
+    # Foundry Local Configuration
+    foundry_endpoint: str = Field(
+        default="http://127.0.0.1:55588",
+        description="Foundry Local API endpoint"
+    )
+    foundry_model: str = Field(
+        default="phi-4",
+        description="Foundry Local model alias"
+    )
+    foundry_auto_start: bool = Field(
+        default=False,
+        description="Auto-start Foundry Local using SDK"
     )
 
     # SQL Server Configuration
@@ -82,6 +102,34 @@ class Settings(BaseSettings):
     debug: bool = Field(
         default=False,
         description="Enable debug mode"
+    )
+
+    # Cache Configuration
+    cache_enabled: bool = Field(
+        default=True,
+        description="Enable response caching for repeated queries"
+    )
+    cache_max_size: int = Field(
+        default=100,
+        description="Maximum number of cached responses"
+    )
+    cache_ttl_seconds: int = Field(
+        default=3600,
+        description="Cache time-to-live in seconds (0 = no expiration)"
+    )
+
+    # Rate Limiting Configuration
+    rate_limit_enabled: bool = Field(
+        default=False,
+        description="Enable rate limiting for LLM API calls"
+    )
+    rate_limit_rpm: int = Field(
+        default=60,
+        description="Maximum requests per minute"
+    )
+    rate_limit_burst: int = Field(
+        default=10,
+        description="Maximum burst size (requests allowed before throttling)"
     )
 
     class Config:

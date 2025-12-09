@@ -1,11 +1,19 @@
 # Docker Compose for Local LLM Research Agent
-# SQL Server 2022 Developer Edition for local development/testing
+# SQL Server 2022 Developer Edition + Research Agent Application
 #
 # Usage:
-#   docker compose up -d          # Start SQL Server
-#   docker compose down           # Stop SQL Server
-#   docker compose down -v        # Stop and remove data volumes
-#   docker compose logs -f mssql  # View logs
+#   docker compose up -d              # Start SQL Server only
+#   docker compose up -d agent-ui     # Start agent web UI
+#   docker compose run agent-cli      # Run interactive CLI
+#   docker compose --profile init up  # Initialize database
+#   docker compose down               # Stop all services
+#   docker compose down -v            # Stop and remove data volumes
+#
+# Services:
+#   mssql       - SQL Server database (always starts)
+#   agent-ui    - Streamlit web interface (port 8501)
+#   agent-cli   - Interactive CLI chat (run manually)
+#   mssql-tools - Database initialization (profile: init)
 #
 # Connection:
 #   Server: localhost,1433
@@ -68,6 +76,83 @@ services:
       - llm-network
     profiles:
       - init  # Only runs with: docker compose --profile init up
+
+  # ==========================================================================
+  # Research Agent Services
+  # ==========================================================================
+
+  # Agent Web UI (Streamlit)
+  agent-ui:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    container_name: local-llm-agent-ui
+    depends_on:
+      mssql:
+        condition: service_healthy
+    environment:
+      # LLM Provider - connects to host Ollama instance
+      LLM_PROVIDER: "${LLM_PROVIDER:-ollama}"
+      OLLAMA_HOST: "${OLLAMA_HOST:-http://host.docker.internal:11434}"
+      OLLAMA_MODEL: "${OLLAMA_MODEL:-qwen2.5:7b-instruct}"
+      # SQL Server connection
+      SQL_SERVER_HOST: mssql
+      SQL_SERVER_PORT: "1433"
+      SQL_DATABASE_NAME: "${SQL_DATABASE_NAME:-ResearchAnalytics}"
+      SQL_USERNAME: sa
+      SQL_PASSWORD: "${MSSQL_SA_PASSWORD:-LocalLLM@2024!}"
+      SQL_TRUST_SERVER_CERTIFICATE: "true"
+      # MCP Configuration
+      MCP_MSSQL_PATH: /opt/mssql-mcp/dist/index.js
+      MCP_MSSQL_READONLY: "${MCP_MSSQL_READONLY:-false}"
+      # Application settings
+      LOG_LEVEL: "${LOG_LEVEL:-INFO}"
+      CACHE_ENABLED: "${CACHE_ENABLED:-true}"
+    ports:
+      - "${STREAMLIT_PORT:-8501}:8501"
+    command: ["streamlit", "run", "src/ui/streamlit_app.py", "--server.port=8501", "--server.address=0.0.0.0"]
+    restart: unless-stopped
+    networks:
+      - llm-network
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  # Agent CLI (run interactively)
+  agent-cli:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    container_name: local-llm-agent-cli
+    depends_on:
+      mssql:
+        condition: service_healthy
+    environment:
+      # LLM Provider - connects to host Ollama instance
+      LLM_PROVIDER: "${LLM_PROVIDER:-ollama}"
+      OLLAMA_HOST: "${OLLAMA_HOST:-http://host.docker.internal:11434}"
+      OLLAMA_MODEL: "${OLLAMA_MODEL:-qwen2.5:7b-instruct}"
+      # SQL Server connection
+      SQL_SERVER_HOST: mssql
+      SQL_SERVER_PORT: "1433"
+      SQL_DATABASE_NAME: "${SQL_DATABASE_NAME:-ResearchAnalytics}"
+      SQL_USERNAME: sa
+      SQL_PASSWORD: "${MSSQL_SA_PASSWORD:-LocalLLM@2024!}"
+      SQL_TRUST_SERVER_CERTIFICATE: "true"
+      # MCP Configuration
+      MCP_MSSQL_PATH: /opt/mssql-mcp/dist/index.js
+      MCP_MSSQL_READONLY: "${MCP_MSSQL_READONLY:-false}"
+      # Application settings
+      LOG_LEVEL: "${LOG_LEVEL:-INFO}"
+      CACHE_ENABLED: "${CACHE_ENABLED:-true}"
+    stdin_open: true
+    tty: true
+    command: ["python", "-m", "src.cli.chat"]
+    networks:
+      - llm-network
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    profiles:
+      - cli  # Only runs with: docker compose --profile cli run agent-cli
 
 volumes:
   mssql_data:

@@ -102,19 +102,73 @@ You are in READ-ONLY mode. You cannot modify data. If a user asks to insert, upd
 SYSTEM_PROMPT_MINIMAL = """You are a SQL data analyst assistant with access to a SQL Server database. Use the available MCP tools to explore tables, understand schemas, and query data to answer user questions. Be concise and helpful."""
 
 
-def get_system_prompt(readonly: bool = False, minimal: bool = False) -> str:
+EXPLANATION_MODE_SUFFIX = """
+
+## Query Explanation Mode
+
+You are in EXPLANATION MODE. For every query you execute, you MUST:
+
+1. **Before executing**: Explain what you're about to do and why
+   - State the tables you'll query
+   - Explain the filters/conditions being used
+   - Describe expected results
+
+2. **Show the query logic**: Break down the SQL concepts being used
+   - Explain JOIN operations and why they're needed
+   - Describe WHERE conditions and their purpose
+   - Explain aggregations (GROUP BY, COUNT, SUM, etc.)
+   - Describe sorting (ORDER BY) rationale
+
+3. **After results**: Help the user learn
+   - Explain what the results mean
+   - Point out interesting patterns
+   - Suggest follow-up queries they might run
+   - Teach SQL concepts demonstrated by this query
+
+Example format:
+
+**What I'm doing:**
+I'm going to query the [table] to find [goal]. This requires [explanation of approach].
+
+**Query breakdown:**
+- SELECT: We're retrieving [columns] because [reason]
+- FROM: The data comes from [table] which contains [description]
+- WHERE: We filter by [condition] to [reason]
+- ORDER BY: Results are sorted by [column] to [reason]
+
+**Results explained:**
+[Explanation of what the data shows and what insights can be drawn]
+
+**Learning point:**
+[One SQL concept the user can learn from this query]
+
+Your goal is to be an educational assistant that helps users learn SQL through practical examples."""
+
+
+def get_system_prompt(
+    readonly: bool = False,
+    minimal: bool = False,
+    explain_mode: bool = False,
+) -> str:
     """
     Get the appropriate system prompt based on configuration.
 
     Args:
         readonly: Whether the agent is in read-only mode
         minimal: Use minimal prompt for smaller context
+        explain_mode: Add educational explanations for queries
 
     Returns:
         System prompt string
     """
     if minimal:
-        return SYSTEM_PROMPT_MINIMAL
-    if readonly:
-        return SYSTEM_PROMPT_READONLY
-    return SYSTEM_PROMPT
+        base_prompt = SYSTEM_PROMPT_MINIMAL
+    elif readonly:
+        base_prompt = SYSTEM_PROMPT_READONLY
+    else:
+        base_prompt = SYSTEM_PROMPT
+
+    if explain_mode:
+        return base_prompt + EXPLANATION_MODE_SUFFIX
+
+    return base_prompt

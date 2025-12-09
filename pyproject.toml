@@ -31,36 +31,40 @@ dependencies = [
     # Agent Framework
     "pydantic-ai>=0.2.0",
     "pydantic>=2.0.0",
-    
+
     # Web UI
     "streamlit>=1.30.0",
-    
+
     # CLI
     "typer>=0.9.0",
     "rich>=13.0.0",
-    
+
     # Configuration & Environment
     "python-dotenv>=1.0.0",
     "pydantic-settings>=2.0.0",
-    
+
     # Logging
     "structlog>=24.0.0",
-    
-    # HTTP Client (for Ollama)
+
+    # HTTP Client (for Ollama and Foundry Local)
     "httpx>=0.27.0",
 ]
 
 [project.optional-dependencies]
+foundry = [
+    # Microsoft Foundry Local SDK for alternative LLM provider
+    "foundry-local-sdk>=0.1.0",
+]
 dev = [
     # Testing
     "pytest>=8.0.0",
     "pytest-asyncio>=0.23.0",
     "pytest-cov>=4.0.0",
-    
+
     # Linting & Formatting
     "ruff>=0.1.0",
     "mypy>=1.0.0",
-    
+
     # Debugging
     "ipdb>=0.13.0",
 ]
@@ -123,6 +127,13 @@ addopts = [
 filterwarnings = [
     "ignore::DeprecationWarning",
 ]
+markers = [
+    "unit: mark test as unit test (fast, no external dependencies)",
+    "integration: mark test as integration test (may use mocked external services)",
+    "slow: mark test as slow running",
+    "requires_ollama: mark test as requiring a running Ollama instance",
+    "requires_foundry: mark test as requiring a running Foundry Local instance",
+]
 
 [tool.mypy]
 python_version = "3.11"
@@ -164,6 +175,10 @@ exclude_lines = [
     "if TYPE_CHECKING:",
 ]
 
+[tool.bandit]
+exclude_dirs = ["tests", ".venv", "venv"]
+skips = ["B101"]  # Skip assert warnings in non-test code
+
 [dependency-groups]
 dev = [
     "pytest>=8.0.0",
@@ -172,4 +187,6 @@ dev = [
     "ruff>=0.1.0",
     "mypy>=1.0.0",
     "ipdb>=0.13.0",
+    "pre-commit>=3.5.0",
+    "bandit[toml]>=1.7.0",
 ]

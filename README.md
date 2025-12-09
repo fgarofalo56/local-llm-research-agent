@@ -389,7 +389,7 @@ The MSSQL MCP Server provides these tools:
             |                                    |
             v                                    v
 +-------------------------------------------------------------+
-|                     Pydantic AI Agent                        |
+|                     Pydantic AI Agent                       |
 |  +-------------------------------------------------------+  |
 |  |  System Prompt + Tool Orchestration + Conversation    |  |
 |  +-------------------------------------------------------+  |
@@ -398,7 +398,7 @@ The MSSQL MCP Server provides these tools:
             +----------------+----------------+
             v                                 v
 +--------------------+       +----------------------------------+
-|      Ollama        |       |          MCP Servers             |
+|      Ollama        |       |          MCP Servers            |
 |   (Local LLM)      |       |  +----------------------------+ |
 |                    |       |  |    MSSQL MCP Server        | |
 | qwen2.5/llama3.1   |       |  |   (SQL Server Access)      | |

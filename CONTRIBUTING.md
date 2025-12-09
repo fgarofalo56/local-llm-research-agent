@@ -1,104 +1,105 @@
-# Contributing to Local LLM Research Agent
+# 🤝 Contributing to Local LLM Research Agent
 
-Thank you for your interest in contributing! This document outlines our contribution process and guidelines.
+> **Guidelines for contributing to the project**
 
-## Code of Conduct
+---
+
+## 📑 Table of Contents
+
+- [Code of Conduct](#-code-of-conduct)
+- [How to Contribute](#-how-to-contribute)
+- [Development Setup](#-development-setup)
+- [Code Style Guidelines](#-code-style-guidelines)
+- [Testing](#-testing)
+- [Reporting Issues](#-reporting-issues)
+
+---
+
+## 🎯 Code of Conduct
 
 By participating in this project, you agree to maintain a respectful and inclusive environment for everyone.
 
-## How to Contribute
+---
+
+## 🚀 How to Contribute
 
 ### For External Contributors
 
-**All external contributions must be submitted via Pull Request.** Direct pushes to the `main` branch are not allowed.
+> ⚠️ **Important:** All external contributions must be submitted via Pull Request. Direct pushes to `main` are not allowed.
 
-1. **Fork the Repository**
-   ```bash
-   # Fork via GitHub UI, then clone your fork
-   git clone https://github.com/YOUR_USERNAME/local-llm-research-agent.git
-   cd local-llm-research-agent
-   ```
+### Step-by-Step Process
 
-2. **Create a Feature Branch**
-   ```bash
-   git checkout -b feature/your-feature-name
-   # or
-   git checkout -b fix/your-bug-fix
-   ```
+| Step | Action | Command |
+|------|--------|---------|
+| 1 | Fork the repository | GitHub UI |
+| 2 | Clone your fork | `git clone https://github.com/YOUR_USERNAME/local-llm-research-agent.git` |
+| 3 | Create feature branch | `git checkout -b feature/your-feature-name` |
+| 4 | Make changes | Follow guidelines below |
+| 5 | Test changes | `uv run pytest tests/ -v` |
+| 6 | Commit changes | `git commit -m "feat: description"` |
+| 7 | Push branch | `git push origin feature/your-feature-name` |
+| 8 | Create PR | GitHub UI |
 
-3. **Make Your Changes**
-   - Follow the code style guidelines below
-   - Add tests for new functionality
-   - Update documentation as needed
+### Branch Naming
 
-4. **Test Your Changes**
-   ```bash
-   # Install dependencies
-   uv sync
+| Type | Pattern | Example |
+|------|---------|---------|
+| Feature | `feature/description` | `feature/add-streaming` |
+| Bug fix | `fix/description` | `fix/connection-timeout` |
+| Docs | `docs/description` | `docs/update-readme` |
 
-   # Run tests
-   uv run pytest tests/ -v
+### Commit Messages
 
-   # Run linter
-   uv run ruff check .
+Follow [Conventional Commits](https://www.conventionalcommits.org/):
 
-   # Format code
-   uv run ruff format .
-   ```
+| Prefix | Use For | Example |
+|--------|---------|---------|
+| `feat:` | New features | `feat: add streaming responses` |
+| `fix:` | Bug fixes | `fix: resolve connection timeout` |
+| `docs:` | Documentation | `docs: update installation guide` |
+| `test:` | Test changes | `test: add agent unit tests` |
+| `refactor:` | Code refactoring | `refactor: simplify MCP client` |
+| `chore:` | Maintenance | `chore: update dependencies` |
 
-5. **Commit Your Changes**
-   ```bash
-   git add .
-   git commit -m "feat: add your feature description"
-   ```
+### Pull Request Checklist
 
-   Follow [Conventional Commits](https://www.conventionalcommits.org/):
-   - `feat:` - New features
-   - `fix:` - Bug fixes
-   - `docs:` - Documentation changes
-   - `test:` - Test additions/changes
-   - `refactor:` - Code refactoring
-   - `chore:` - Maintenance tasks
+Before submitting your PR:
 
-6. **Push and Create Pull Request**
-   ```bash
-   git push origin feature/your-feature-name
-   ```
-   Then create a Pull Request via GitHub UI.
+- [ ] Clear, descriptive title
+- [ ] References related issues (e.g., "Fixes #123")
+- [ ] Description of changes and rationale
+- [ ] All CI checks pass (tests, linting)
+- [ ] Appropriate test coverage
+- [ ] Documentation updated if needed
+- [ ] No unrelated changes included
 
-### Pull Request Guidelines
+### Review Process
 
-Your PR should:
+| Timeline | Action |
+|----------|--------|
+| 3-5 days | Initial review by maintainer |
+| As needed | Address requested changes |
+| After approval | Maintainer merges PR |
 
-- [ ] Have a clear, descriptive title
-- [ ] Reference any related issues (e.g., "Fixes #123")
-- [ ] Include a description of what changed and why
-- [ ] Pass all CI checks (tests, linting)
-- [ ] Have appropriate test coverage
-- [ ] Update documentation if needed
-- [ ] Not include unrelated changes
+---
 
-### PR Review Process
-
-1. A maintainer will review your PR within 3-5 business days
-2. Address any requested changes
-3. Once approved, a maintainer will merge your PR
-
-## Development Setup
+## 💻 Development Setup
 
 ### Prerequisites
 
-- Python 3.11+
-- [uv](https://github.com/astral-sh/uv) (recommended) or pip
-- Docker Desktop (for SQL Server)
-- Node.js 18+ (for MSSQL MCP Server)
-- Ollama installed locally
+| Requirement | Version | Purpose |
+|-------------|---------|---------|
+| Python | 3.11+ | Runtime |
+| uv | Latest | Package manager |
+| Docker Desktop | Latest | SQL Server |
+| Node.js | 18+ | MSSQL MCP Server |
+| Ollama | Latest | Local LLM |
 
 ### Quick Setup
 
 ```bash
-# Clone repo
-git clone https://github.com/ORIGINAL_OWNER/local-llm-research-agent.git
+# Clone repository
+git clone https://github.com/fgarofalo56/local-llm-research-agent.git
 cd local-llm-research-agent
 
 # Install dependencies
@@ -110,8 +111,7 @@ cp .env.example .env
 # Start SQL Server (Docker)
 cd docker
 ./setup-database.bat  # Windows
-# or
-docker compose up -d && docker compose --profile init up mssql-tools  # Linux/Mac
+./setup-database.sh   # Linux/Mac
 
 # Pull Ollama model
 ollama pull qwen2.5:7b-instruct
@@ -120,17 +120,38 @@ ollama pull qwen2.5:7b-instruct
 uv run pytest tests/ -v
 ```
 
-## Code Style Guidelines
+---
 
-### Python
+## 🎨 Code Style Guidelines
 
-- Use Python 3.11+ features
-- Type hints for all function signatures
-- Pydantic models for data structures
-- Async/await for I/O operations
-- Maximum line length: 100 characters
+### Python Standards
 
-### Formatting
+| Standard | Requirement |
+|----------|-------------|
+| Python version | 3.11+ features |
+| Type hints | All function signatures |
+| Data models | Pydantic v2 |
+| I/O operations | async/await |
+| Line length | 100 characters max |
+
+### Example Code
+
+```python
+# ✅ Good - typed, async, Pydantic
+from pydantic import BaseModel
+
+class QueryResult(BaseModel):
+    query: str
+    rows: list[dict]
+    execution_time: float
+
+async def execute_query(sql: str) -> QueryResult:
+    """Execute a SQL query and return results."""
+    # Implementation
+    pass
+```
+
+### Formatting Tools
 
 We use [Ruff](https://github.com/astral-sh/ruff) for linting and formatting:
 
@@ -145,14 +166,18 @@ uv run ruff check --fix .
 uv run ruff format .
 ```
 
-### Documentation
+### Documentation Standards
 
-- Docstrings for all public functions and classes
-- Update README.md for user-facing changes
-- Update CLAUDE.md for architectural changes
-- Keep ai_docs/ updated for MCP tool changes
+| File Type | Update When |
+|-----------|-------------|
+| `README.md` | User-facing changes |
+| `CLAUDE.md` | Architectural changes |
+| `docs/` | Feature additions |
+| Docstrings | All public functions |
 
-## Testing
+---
+
+## 🧪 Testing
 
 ### Running Tests
 
@@ -163,41 +188,76 @@ uv run pytest tests/ -v
 # Specific test file
 uv run pytest tests/test_agent.py -v
 
-# With coverage
+# With coverage report
 uv run pytest tests/ --cov=src --cov-report=html
 ```
 
 ### Writing Tests
 
-- Place tests in `tests/` directory
-- Use pytest fixtures for common setup
-- Mock external dependencies (Ollama, MCP servers)
-- Test both success and error cases
+| Guideline | Description |
+|-----------|-------------|
+| Location | `tests/` directory |
+| Fixtures | Use pytest fixtures for setup |
+| Mocking | Mock external dependencies |
+| Coverage | Test success and error cases |
 
-## Reporting Issues
+### Example Test
+
+```python
+import pytest
+from unittest.mock import AsyncMock
+
+@pytest.mark.asyncio
+async def test_agent_processes_query():
+    """Test that agent correctly processes a query."""
+    agent = create_test_agent()
+    result = await agent.run("List all tables")
+
+    assert result.output is not None
+    assert "tables" in result.output.lower()
+```
+
+---
+
+## 📝 Reporting Issues
 
 ### Bug Reports
 
-Include:
-- Python version
-- OS and version
-- Steps to reproduce
-- Expected vs actual behavior
-- Error messages/logs
+Include the following information:
+
+| Information | Example |
+|-------------|---------|
+| Python version | `python --version` output |
+| OS and version | Windows 11, macOS 14, Ubuntu 22.04 |
+| Steps to reproduce | Numbered steps |
+| Expected behavior | What should happen |
+| Actual behavior | What actually happens |
+| Error messages | Full stack trace |
 
 ### Feature Requests
 
 Include:
-- Clear description of the feature
-- Use case / motivation
-- Proposed implementation (optional)
 
-## Questions?
+| Information | Description |
+|-------------|-------------|
+| Feature description | Clear explanation |
+| Use case | Why it's needed |
+| Proposed implementation | Optional but helpful |
 
-- Check existing issues and discussions
-- Review the documentation in `ai_docs/`
-- Open a new issue with the "question" label
+### Getting Help
 
-## License
+| Resource | Use For |
+|----------|---------|
+| Existing issues | Check if already reported |
+| Documentation | `docs/` directory |
+| New issue | Use "question" label |
+
+---
+
+## 📄 License
 
 By contributing, you agree that your contributions will be licensed under the MIT License.
+
+---
+
+*Last Updated: December 2024*

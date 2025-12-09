@@ -1,6 +1,6 @@
 # 📋 Documentation Standards
 
-> **Visual documentation guidelines for the Azure Document Intelligence Pipeline project**
+> **Visual documentation guidelines for the Local LLM Research Agent project**
 
 ---
 
@@ -29,18 +29,18 @@ This project uses consistent visual elements to make documentation clear, scanna
 | Resources/Links | 📚 | External references |
 | Table of Contents | 📑 | Navigation |
 
-### Azure Service Icons
+### Project Component Icons
 
-| Service | Icon | Color Code |
-|---------|------|------------|
-| Azure Functions | ⚡ | #F59E0B (Orange) |
-| Document Intelligence | 🤖 | #DC2626 (Red) |
-| Cosmos DB | 🗄️ | #059669 (Green) |
-| Blob Storage | 📦 | #0078D4 (Blue) |
-| Key Vault | 🔐 | #6B7280 (Gray) |
-| Synapse Analytics | 🔄 | #7C3AED (Purple) |
-| Log Analytics | 📊 | #0EA5E9 (Cyan) |
-| Application Insights | 📈 | #0EA5E9 (Cyan) |
+| Component | Icon | Description |
+|-----------|------|-------------|
+| Ollama / LLM | 🦙 | Local LLM inference |
+| Pydantic AI Agent | 🤖 | Agent orchestration |
+| MCP Server | 🔌 | Model Context Protocol |
+| SQL Server | 🗃️ | Database storage |
+| Docker | 🐳 | Container runtime |
+| CLI Interface | ⌨️ | Command line |
+| Web UI | 🌐 | Streamlit interface |
+| Configuration | ⚙️ | Settings |
 
 ---
 
@@ -69,9 +69,9 @@ Always use tables for:
 ```markdown
 | Feature | Status | Notes |
 |---------|--------|-------|
-| PDF Splitting | ✅ | Automatic 2-page chunks |
-| Parallel Processing | ✅ | 3 concurrent forms |
-| Custom Models | ✅ | Neural model support |
+| Tool calling | ✅ | Qwen2.5 recommended |
+| Local inference | ✅ | 100% on-device |
+| Cloud APIs | ❌ | Not used |
 ```
 
 ### Status Indicators
@@ -92,14 +92,14 @@ Always specify language for syntax highlighting:
 
 ````markdown
 ```python
-def process_document(blob_url: str) -> dict:
-    """Process a PDF document."""
+def process_query(message: str) -> dict:
+    """Process a natural language query."""
     pass
 ```
 
 ```bash
-# Deploy command
-az deployment sub create --location eastus
+# Start the agent
+uv run python -m src.cli.chat
 ```
 
 ```json
@@ -130,20 +130,18 @@ Use for important information:
 ```
 docs/
 ├── README.md                    # Documentation index
-├── DOCUMENTATION-STANDARDS.md   # This file
 ├── guides/
 │   ├── getting-started.md       # Quick start guide
-│   ├── deployment.md            # Deployment guide
 │   ├── configuration.md         # Configuration reference
-│   └── troubleshooting.md       # Troubleshooting guide
-├── azure-services/
-│   ├── README.md                # Services overview
-│   └── [service-name].md        # Per-service docs
+│   ├── troubleshooting.md       # Troubleshooting guide
+│   └── DOCUMENTATION-STANDARDS.md # This file
+├── reference/
+│   ├── mssql_mcp_tools.md       # MCP tools reference
+│   └── pydantic_ai_mcp.md       # Pydantic AI integration
 ├── diagrams/
-│   ├── architecture.excalidraw  # Main architecture
-│   └── *.png                    # Exported images
+│   └── architecture.excalidraw  # Main architecture
 └── api/
-    └── function-api.md          # API documentation
+    └── (future API docs)
 ```
 
 ### File Naming
@@ -151,7 +149,7 @@ docs/
 | Type | Convention | Example |
 |------|------------|---------|
 | Guides | `kebab-case.md` | `getting-started.md` |
-| Services | `service-name.md` | `cosmos-db.md` |
+| Reference | `technology_name.md` | `mssql_mcp_tools.md` |
 | Diagrams | `diagram-name.excalidraw` | `architecture.excalidraw` |
 | Standards | `SCREAMING-KEBAB.md` | `DOCUMENTATION-STANDARDS.md` |
 
@@ -165,13 +163,12 @@ docs/
 
 | Element | Color | Hex Code |
 |---------|-------|----------|
-| Storage | Blue | `#deebff` / `#0078D4` |
-| Compute | Orange | `#fef3c7` / `#F59E0B` |
-| AI Services | Red | `#fee2e2` / `#DC2626` |
-| Database | Green | `#d1fae5` / `#059669` |
-| Security | Gray | `#f3f4f6` / `#6B7280` |
-| Orchestration | Purple | `#ede9fe` / `#7C3AED` |
-| Monitoring | Cyan | `#e0f2fe` / `#0EA5E9` |
+| User Interface | Blue | `#deebff` / `#0078D4` |
+| Agent/AI | Orange | `#fef3c7` / `#F59E0B` |
+| LLM/Ollama | Purple | `#ede9fe` / `#7C3AED` |
+| MCP/Integration | Green | `#d1fae5` / `#059669` |
+| Database | Gray | `#f3f4f6` / `#6B7280` |
+| Docker | Cyan | `#e0f2fe` / `#0EA5E9` |
 
 **Arrow Conventions:**
 
@@ -206,7 +203,7 @@ docs/
 |-------|---------|
 | "Run the following command" | "You should run this command" |
 | "Configure the settings" | "The settings should be configured" |
-| "The function processes PDFs" | "PDFs are processed by the function" |
+| "The agent processes queries" | "Queries are processed by the agent" |
 
 ### Technical Terms
 
@@ -216,10 +213,10 @@ docs/
 
 | Term | Definition |
 |------|------------|
-| **MI** | Managed Identity |
-| **SAS** | Shared Access Signature |
-| **RU/s** | Request Units per second |
-| **TPS** | Transactions Per Second |
+| **MCP** | Model Context Protocol |
+| **LLM** | Large Language Model |
+| **MSSQL** | Microsoft SQL Server |
+| **CLI** | Command Line Interface |
 
 ---
 
@@ -244,7 +241,6 @@ Every document should end with:
 ---
 
 *Last Updated: [Month Year]*
-*API Version: [version]*
 ```
 
 ---
@@ -299,10 +295,10 @@ Every document should end with:
 *Last Updated: [Month Year]*
 ```
 
-### New Service Doc Template
+### New Reference Doc Template
 
 ```markdown
-# [Icon] [Service Name]
+# [Icon] [Reference Title]
 
 > **[One-line purpose statement]**
 
@@ -310,7 +306,7 @@ Every document should end with:
 
 ## 📑 Table of Contents
 
-- [Purpose](#-purpose)
+- [Overview](#-overview)
 - [Configuration](#-configuration)
 - [Usage](#-usage)
 - [Best Practices](#-best-practices)
@@ -318,9 +314,9 @@ Every document should end with:
 
 ---
 
-## 🎯 Purpose
+## 🎯 Overview
 
-[Why this service is used in the project]
+[Why this component is used in the project]
 
 ## ⚙️ Configuration
 

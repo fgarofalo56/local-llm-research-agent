@@ -1,88 +1,171 @@
-# Security Policy
+# 🔐 Security Policy
 
-## Supported Versions
+> **Security guidelines and vulnerability reporting for the Local LLM Research Agent**
 
-| Version | Supported          |
-| ------- | ------------------ |
-| 1.x.x   | :white_check_mark: |
-| < 1.0   | :x:                |
+---
 
-## Reporting a Vulnerability
+## 📑 Table of Contents
 
-We take security seriously. If you discover a security vulnerability in this project, please report it responsibly.
+- [Supported Versions](#-supported-versions)
+- [Reporting a Vulnerability](#-reporting-a-vulnerability)
+- [Security Best Practices](#-security-best-practices)
+- [Known Security Considerations](#-known-security-considerations)
+- [Security Updates](#-security-updates)
+
+---
+
+## ✅ Supported Versions
+
+| Version | Supported |
+|---------|-----------|
+| 1.x.x | ✅ Active support |
+| < 1.0 | ❌ No support |
+
+---
+
+## 🚨 Reporting a Vulnerability
+
+We take security seriously. If you discover a security vulnerability, please report it responsibly.
 
 ### How to Report
 
-1. **DO NOT** create a public GitHub issue for security vulnerabilities
-2. Email security concerns to the repository maintainers privately
-3. Include as much detail as possible:
-   - Description of the vulnerability
-   - Steps to reproduce
-   - Potential impact
-   - Suggested fix (if any)
+| Step | Action |
+|------|--------|
+| 1 | ❌ **DO NOT** create a public GitHub issue |
+| 2 | 📧 Email security concerns to maintainers privately |
+| 3 | 📝 Include detailed information (see below) |
+
+### Information to Include
+
+- Description of the vulnerability
+- Steps to reproduce
+- Potential impact
+- Suggested fix (if any)
 
 ### What to Expect
 
-- **Acknowledgment**: We will acknowledge receipt within 48 hours
-- **Assessment**: We will assess the vulnerability and determine severity within 7 days
-- **Resolution**: Critical vulnerabilities will be addressed within 30 days
-- **Credit**: We will credit reporters in release notes (unless you prefer anonymity)
+| Timeline | Response |
+|----------|----------|
+| 48 hours | Acknowledgment of receipt |
+| 7 days | Vulnerability assessment and severity rating |
+| 30 days | Resolution for critical vulnerabilities |
+| Release | Credit in release notes (unless you prefer anonymity) |
 
-## Security Best Practices for Users
+---
 
-### Environment Variables
+## 🏆 Security Best Practices
 
-- **NEVER** commit `.env` files to version control
-- Use `.env.example` as a template only
-- Rotate credentials regularly
-- Use strong passwords for SQL Server authentication
+### ⚙️ Environment Variables
 
-### SQL Server Security
+| Practice | Status | Description |
+|----------|--------|-------------|
+| Never commit `.env` files | 🔴 Critical | Use `.gitignore` |
+| Use `.env.example` as template | ✅ Recommended | Safe documentation |
+| Rotate credentials regularly | ✅ Recommended | Limit exposure |
+| Strong SQL Server passwords | 🔴 Critical | Avoid defaults |
 
-- Prefer Windows Authentication over SQL Server Authentication when possible
-- Use the `READONLY=true` setting when exploring data
-- Grant minimum necessary permissions to database users
-- Keep SQL Server updated with security patches
+```bash
+# ❌ Bad - default password
+MSSQL_SA_PASSWORD=LocalLLM@2024!
 
-### Local Deployment
+# ✅ Good - strong unique password
+MSSQL_SA_PASSWORD=YourSecure!P@ssw0rd#2024
+```
 
-- Run Ollama on localhost only (default configuration)
-- Do not expose the Streamlit port (8501) to the public internet
-- Use firewall rules to restrict access to SQL Server port (1433)
-- Keep all dependencies updated
+### 🗄️ SQL Server Security
 
-### Docker Security
+| Practice | Priority | Description |
+|----------|----------|-------------|
+| Windows Authentication | ✅ Preferred | More secure than SQL auth |
+| Use `READONLY=true` | 🔴 High | Safe exploration mode |
+| Minimum permissions | 🔴 High | Principle of least privilege |
+| Regular updates | 🟡 Medium | Security patches |
 
-- Do not use the default `LocalLLM@2024!` password in production
-- Set `MSSQL_SA_PASSWORD` via environment variable or `.env` file
-- Review the `docker-compose.yml` before deploying
-- Keep Docker and images updated
+```bash
+# Enable read-only mode for safe exploration
+MCP_MSSQL_READONLY=true
+```
 
-## Known Security Considerations
+### 🖥️ Local Deployment
 
-### Local LLM (Ollama)
+| Practice | Priority | Description |
+|----------|----------|-------------|
+| Localhost only for Ollama | ✅ Default | No external exposure |
+| Don't expose Streamlit publicly | 🔴 High | Port 8501 |
+| Firewall SQL Server port | 🔴 High | Port 1433 |
+| Update dependencies | 🟡 Medium | Regular updates |
 
-- All inference runs locally - no data sent to external APIs
-- Model responses may contain unexpected content
-- Validate and sanitize any generated SQL before execution
+### 🐳 Docker Security
 
-### MCP Server Communication
+| Practice | Priority | Description |
+|----------|----------|-------------|
+| Change default password | 🔴 Critical | Never use `LocalLLM@2024!` in production |
+| Use `.env` for credentials | ✅ Recommended | Don't hardcode |
+| Review `docker-compose.yml` | 🟡 Medium | Before deploying |
+| Keep images updated | 🟡 Medium | Pull latest versions |
 
-- MCP servers communicate via stdio (local process)
-- No network exposure by default
-- Review MCP server source code before use
+---
 
-### SQL Queries
+## ⚠️ Known Security Considerations
 
-- The agent generates SQL based on natural language
-- Always review generated queries before execution
-- Use read-only mode for exploration
-- Implement query logging for audit trails
+### 🦙 Local LLM (Ollama)
 
-## Security Updates
+| Consideration | Risk Level | Mitigation |
+|---------------|------------|------------|
+| Local-only inference | ✅ Low | No external data transfer |
+| Unexpected model output | 🟡 Medium | Review generated content |
+| SQL injection potential | 🔴 High | Validate generated SQL |
 
-Security updates will be released as patch versions. Subscribe to repository releases to be notified of security fixes.
+> 💡 **Tip:** All inference runs locally via Ollama - no data is sent to external APIs.
 
-## Dependencies
+### 🔌 MCP Server Communication
 
-We monitor dependencies for known vulnerabilities using GitHub's Dependabot. Critical dependency updates are prioritized.
+| Consideration | Risk Level | Mitigation |
+|---------------|------------|------------|
+| Stdio communication | ✅ Low | Local process only |
+| No network exposure | ✅ Low | Default configuration |
+| Third-party code | 🟡 Medium | Review MCP server source |
+
+### 📊 SQL Query Generation
+
+| Consideration | Risk Level | Mitigation |
+|---------------|------------|------------|
+| Natural language to SQL | 🔴 High | Review generated queries |
+| Data modification | 🔴 High | Use read-only mode |
+| Audit trails | 🟡 Medium | Implement query logging |
+
+```python
+# ✅ Always validate generated SQL
+if "DROP" in generated_sql or "DELETE" in generated_sql:
+    raise SecurityError("Dangerous SQL operation blocked")
+```
+
+---
+
+## 🔄 Security Updates
+
+Security updates are released as patch versions.
+
+### Stay Updated
+
+| Method | Action |
+|--------|--------|
+| GitHub Releases | Watch repository for notifications |
+| Dependabot | Automatic dependency vulnerability alerts |
+| Security Advisories | Monitor for CVEs in dependencies |
+
+---
+
+## 📚 Dependencies
+
+We monitor dependencies for known vulnerabilities:
+
+| Tool | Purpose |
+|------|---------|
+| GitHub Dependabot | Automated vulnerability scanning |
+| Regular audits | Periodic manual review |
+| Quick patches | Critical updates prioritized |
+
+---
+
+*Last Updated: December 2024*

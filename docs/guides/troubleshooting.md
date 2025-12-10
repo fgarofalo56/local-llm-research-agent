@@ -1,76 +1,120 @@
-# 🔧 Troubleshooting Guide
+# Troubleshooting Guide
 
-> **Common issues and solutions for the Local LLM Research Agent**
-
----
-
-## 📑 Table of Contents
-
-- [Quick Diagnostics](#-quick-diagnostics)
-- [Ollama Issues](#-ollama-issues)
-- [Database Issues](#-database-issues)
-- [MCP Server Issues](#-mcp-server-issues)
-- [Agent Issues](#-agent-issues)
-- [Performance Issues](#-performance-issues)
-- [Getting Help](#-getting-help)
+> **Comprehensive troubleshooting guide for the Local LLM Research Agent**
 
 ---
 
-## 🔍 Quick Diagnostics
+## Table of Contents
 
-Run these commands to quickly diagnose common issues:
+- [Quick Diagnostics](#quick-diagnostics)
+- [LLM Provider Issues](#llm-provider-issues)
+  - [Ollama Issues](#ollama-issues)
+  - [Foundry Local Issues](#foundry-local-issues)
+- [Database Issues](#database-issues)
+  - [Connection Issues](#connection-issues)
+  - [Authentication Issues](#authentication-issues)
+  - [Azure SQL Issues](#azure-sql-issues)
+- [MCP Server Issues](#mcp-server-issues)
+- [Agent Issues](#agent-issues)
+- [CLI Issues](#cli-issues)
+- [Streamlit Issues](#streamlit-issues)
+- [Performance Issues](#performance-issues)
+- [Cache and Rate Limiting](#cache-and-rate-limiting)
+- [Diagnostic Commands](#diagnostic-commands)
+- [Getting Help](#getting-help)
 
-### System Health Check
+---
+
+## Quick Diagnostics
+
+Run this comprehensive health check to identify issues:
+
+### All-in-One Health Check
 
 ```bash
-# Check Ollama
-curl http://localhost:11434/api/tags
-
-# Check Docker
-docker ps | grep local-llm
-
-# Check SQL Server connection
-docker exec -it local-llm-mssql /opt/mssql-tools18/bin/sqlcmd \
-  -S localhost -U sa -P "LocalLLM@2024!" -No -Q "SELECT 1"
-
-# Check Python environment
-python --version
-uv pip list | grep pydantic
+# Windows PowerShell
+echo "=== System Diagnostics ===" `
+  && echo "" `
+  && echo "--- Python Environment ---" `
+  && python --version `
+  && echo "" `
+  && echo "--- Ollama Status ---" `
+  && curl -s http://localhost:11434/api/tags 2>$null || echo "Ollama not running" `
+  && echo "" `
+  && echo "--- Foundry Local Status ---" `
+  && curl -s http://127.0.0.1:55588/v1/models 2>$null || echo "Foundry Local not running" `
+  && echo "" `
+  && echo "--- Docker Containers ---" `
+  && docker ps --format "{{.Names}}: {{.Status}}" 2>$null | Select-String "llm" `
+  && echo "" `
+  && echo "--- Environment File ---" `
+  && if (Test-Path .env) { echo ".env exists" } else { echo ".env MISSING" }
 ```
 
-### Status Summary
+```bash
+# Linux/macOS
+echo "=== System Diagnostics ===" && \
+echo "" && \
+echo "--- Python Environment ---" && \
+python --version && \
+echo "" && \
+echo "--- Ollama Status ---" && \
+(curl -s http://localhost:11434/api/tags | head -c 100 || echo "Ollama not running") && \
+echo "" && \
+echo "--- Foundry Local Status ---" && \
+(curl -s http://127.0.0.1:55588/v1/models | head -c 100 || echo "Foundry Local not running") && \
+echo "" && \
+echo "--- Docker Containers ---" && \
+docker ps --format "{{.Names}}: {{.Status}}" 2>/dev/null | grep llm && \
+echo "" && \
+echo "--- Environment File ---" && \
+[ -f .env ] && echo ".env exists" || echo ".env MISSING"
+```
+
+### Component Status Table
 
 | Component | Check Command | Expected Result |
 |-----------|---------------|-----------------|
-| Ollama | `curl localhost:11434` | JSON response |
-| Docker | `docker ps` | Container running |
+| Python | `python --version` | 3.11+ |
+| Ollama | `curl localhost:11434/api/tags` | JSON with models |
+| Foundry Local | `curl 127.0.0.1:55588/v1/models` | JSON with models |
+| Docker | `docker ps` | Containers running |
 | SQL Server | `docker logs local-llm-mssql` | No errors |
 | MCP Server | `node $MCP_MSSQL_PATH` | Server starts |
+| .env file | `cat .env` | Configuration exists |
 
 ---
 
-## 🦙 Ollama Issues
+## LLM Provider Issues
 
-### Ollama Not Running
+### Ollama Issues
+
+#### Ollama Not Running
 
 **Symptoms:**
 - `Connection refused` errors
 - Agent cannot process queries
+- `curl: (7) Failed to connect`
 
 **Solutions:**
 
 ```bash
-# Start Ollama service
+# Start Ollama (Windows/Mac - from app)
+# Or Linux:
 ollama serve
 
-# Or restart Ollama app (Windows/Mac)
-# Quit and reopen Ollama from system tray/menu bar
+# Check status
+curl http://localhost:11434/api/tags
+
+# Restart systemd service (Linux)
+sudo systemctl restart ollama
+sudo systemctl status ollama
 ```
 
-### Model Not Found
+#### Model Not Found
 
 **Symptoms:**
-- `model not found` error
+- `model 'xyz' not found` error
 - Agent fails to initialize
 
 **Solutions:**
@@ -84,54 +128,141 @@ ollama pull qwen2.5:7b-instruct
 
 # Verify model works
 ollama run qwen2.5:7b-instruct "Hello"
+
+# Update .env
+OLLAMA_MODEL=qwen2.5:7b-instruct
 ```
 
-### Out of Memory
+#### Model Doesn't Support Tool Calling
+
+**Symptoms:**
+- Agent says "I don't have database tools"
+- SQL queries not executed
+
+**Solution:** Use a tool-capable model:
+
+| Supported Models | Command |
+|------------------|---------|
+| `qwen2.5:7b-instruct` | `ollama pull qwen2.5:7b-instruct` |
+| `llama3.1:8b` | `ollama pull llama3.1:8b` |
+| `mistral:7b-instruct` | `ollama pull mistral:7b-instruct` |
+
+#### Out of Memory (OOM)
 
 **Symptoms:**
 - Ollama crashes during inference
 - `CUDA out of memory` errors
+- System becomes unresponsive
 
 **Solutions:**
 
-| Option | Description |
-|--------|-------------|
-| Use smaller model | `ollama pull mistral:7b` |
+| Option | Command/Action |
+|--------|----------------|
+| Use smaller model | `ollama pull qwen2.5:3b-instruct` |
+| Use quantized model | `ollama pull qwen2.5:7b-instruct-q4_K_M` |
 | Close other apps | Free up VRAM |
-| Reduce context | Set `num_ctx: 4096` |
+| CPU-only mode | `OLLAMA_NUM_GPU=0 ollama serve` |
 
-```bash
-# Try a smaller model
-OLLAMA_MODEL=mistral:7b-instruct
-
-# Or quantized version
-ollama pull qwen2.5:7b-instruct-q4_K_M
-```
-
-### Slow Response
+#### Slow Responses
 
 **Symptoms:**
-- Long wait times for responses
+- Long wait times (>30s)
 - Queries timeout
 
 **Solutions:**
 
 ```bash
-# Check if GPU is being used
+# Pre-load model to avoid cold start
+ollama run qwen2.5:7b-instruct ""
+
+# Check GPU utilization
 ollama ps
 
-# Increase timeout in .env
-OLLAMA_TIMEOUT=180
-
-# Pre-load model
-ollama run qwen2.5:7b-instruct ""
+# Use faster model
+OLLAMA_MODEL=mistral:7b-instruct
 ```
 
 ---
 
-## 🗄️ Database Issues
+### Foundry Local Issues
 
-### Container Not Starting
+#### SDK Not Installed
+
+**Symptoms:**
+- `ModuleNotFoundError: No module named 'foundry_local'`
+
+**Solution:**
+
+```bash
+pip install foundry-local-sdk
+```
+
+#### Connection Refused
+
+**Symptoms:**
+- Cannot connect to `http://127.0.0.1:55588`
+
+**Solutions:**
+
+```python
+# Ensure model is started
+from foundry_local import FoundryLocalManager
+manager = FoundryLocalManager("phi-4")
+print(manager.endpoint)
+```
+
+```bash
+# Check if port is in use
+# Windows
+netstat -ano | findstr 55588
+
+# Linux/Mac
+lsof -i :55588
+```
+
+#### Model Download Failed
+
+**Symptoms:**
+- Download errors or timeouts
+
+**Solutions:**
+
+```bash
+# Check internet connection
+ping huggingface.co
+
+# Clear cache and retry
+# Windows
+del %LOCALAPPDATA%\FoundryLocal\models\* /q
+
+# Linux/Mac
+rm -rf ~/.local/share/FoundryLocal/models/*
+```
+
+#### Auto-Start Not Working
+
+**Symptoms:**
+- Model doesn't start when `FOUNDRY_AUTO_START=true`
+
+**Solutions:**
+
+```bash
+# Verify .env settings
+LLM_PROVIDER=foundry_local
+FOUNDRY_AUTO_START=true
+FOUNDRY_MODEL=phi-4
+
+# Check SDK is installed
+pip show foundry-local-sdk
+```
+
+---
+
+## Database Issues
+
+### Connection Issues
+
+#### Container Not Starting
 
 **Symptoms:**
 - `docker compose up` fails
@@ -143,19 +274,18 @@ ollama run qwen2.5:7b-instruct ""
 # Check Docker logs
 docker logs local-llm-mssql
 
-# Common fixes:
-# 1. Remove old container
+# Remove old container
 docker rm -f local-llm-mssql
 
-# 2. Remove volume (WARNING: deletes data)
+# Remove volume (WARNING: deletes data)
 docker volume rm local-llm-mssql-data
 
-# 3. Restart fresh
+# Restart fresh
 cd docker
 docker compose up -d
 ```
 
-### Connection Refused
+#### Connection Refused
 
 **Symptoms:**
 - Cannot connect to `localhost:1433`
@@ -166,63 +296,144 @@ docker compose up -d
 | Check | Solution |
 |-------|----------|
 | Port in use | Stop other SQL Server instances |
-| Container health | Wait for healthy status |
+| Container health | Wait for healthy status (30-60s) |
 | Firewall | Allow port 1433 |
 
 ```bash
-# Check if port 1433 is in use
-netstat -an | grep 1433
+# Check port availability
+# Windows
+netstat -ano | findstr 1433
 
-# Check container health
-docker inspect local-llm-mssql --format='{{.State.Health.Status}}'
+# Linux/Mac
+lsof -i :1433
 
-# Wait for healthy (may take 30-60 seconds)
+# Wait for container health
 docker compose ps
+docker inspect local-llm-mssql --format='{{.State.Health.Status}}'
 ```
 
-### Authentication Failed
+### Authentication Issues
+
+#### SQL Authentication Failed
 
 **Symptoms:**
 - `Login failed for user 'sa'`
-- Password errors
 
 **Solutions:**
 
 ```bash
-# Verify password in .env matches Docker
+# Verify password matches
 cat .env | grep SQL_PASSWORD
 docker exec local-llm-mssql env | grep MSSQL_SA_PASSWORD
 
-# Reset password (recreate container)
+# Reset container with correct password
 cd docker
 docker compose down -v
-MSSQL_SA_PASSWORD="NewPassword123!" docker compose up -d
+docker compose up -d
 ```
 
-### Database Not Found
+#### Windows Authentication Failed
 
 **Symptoms:**
-- `Cannot open database 'ResearchAnalytics'`
-- Empty database
+- `Login failed` with Windows Auth
 
 **Solutions:**
 
 ```bash
-# Run initialization scripts
-cd docker
-docker compose --profile init up mssql-tools
+# Verify configuration
+SQL_AUTH_TYPE=windows
+SQL_USERNAME=
+SQL_PASSWORD=
 
-# Verify database exists
-docker exec -it local-llm-mssql /opt/mssql-tools18/bin/sqlcmd \
-  -S localhost -U sa -P "LocalLLM@2024!" -No \
-  -Q "SELECT name FROM sys.databases"
+# Ensure running on domain-joined machine
+# Check Kerberos/NTLM configuration
+```
+
+#### Azure AD Authentication Failed
+
+**Symptoms:**
+- `AADSTS` error codes
+- Token acquisition failed
+
+**Solutions by Auth Type:**
+
+**Interactive Auth (`azure_ad_interactive`):**
+```bash
+# Ensure browser access
+# Check Azure AD permissions for user
+SQL_AUTH_TYPE=azure_ad_interactive
+```
+
+**Service Principal (`azure_ad_service_principal`):**
+```bash
+# Verify credentials
+AZURE_TENANT_ID=your-tenant-guid
+AZURE_CLIENT_ID=your-client-guid
+AZURE_CLIENT_SECRET=your-secret
+
+# Check app registration permissions in Azure Portal
+# Ensure "Azure SQL Database" permission granted
+```
+
+**Managed Identity (`azure_ad_managed_identity`):**
+```bash
+# Only works on Azure-hosted resources (VM, App Service)
+# Verify managed identity is enabled
+# Check database user created for managed identity
+
+# For user-assigned identity, specify client ID:
+AZURE_CLIENT_ID=user-assigned-identity-client-id
+```
+
+**Default Credential (`azure_ad_default`):**
+```bash
+# Try Azure CLI login first
+az login
+
+# Then use default credential
+SQL_AUTH_TYPE=azure_ad_default
+```
+
+### Azure SQL Issues
+
+#### Cannot Connect to Azure SQL
+
+**Symptoms:**
+- Connection timeout to `.database.windows.net`
+
+**Solutions:**
+
+```bash
+# Check server firewall
+# Add client IP in Azure Portal > SQL Server > Networking
+
+# Verify encryption settings
+SQL_ENCRYPT=true
+SQL_TRUST_SERVER_CERTIFICATE=false
+
+# Check DNS resolution
+nslookup your-server.database.windows.net
+```
+
+#### Azure AD Permission Denied
+
+**Symptoms:**
+- `The server principal is not able to access the database`
+
+**Solution:**
+
+```sql
+-- In Azure SQL, create user for Azure AD identity
+CREATE USER [your-app-name] FROM EXTERNAL PROVIDER;
+ALTER ROLE db_datareader ADD MEMBER [your-app-name];
+-- Add db_datawriter if not using readonly mode
 ```
 
 ---
 
-## 🔌 MCP Server Issues
+## MCP Server Issues
 
-### Server Not Found
+#### Server Not Found
 
 **Symptoms:**
 - `ENOENT` file not found error
@@ -243,7 +454,7 @@ npm install
 npm run build
 ```
 
-### Node.js Version Issues
+#### Node.js Version Issues
 
 **Symptoms:**
 - Syntax errors in MCP server
@@ -255,13 +466,13 @@ npm run build
 # Check Node.js version (need 18+)
 node --version
 
-# Update Node.js if needed
+# Update Node.js
 # Windows: Download from nodejs.org
 # Mac: brew upgrade node
 # Linux: nvm install 18
 ```
 
-### MCP Connection Timeout
+#### MCP Connection Timeout
 
 **Symptoms:**
 - `MCP operation timed out`
@@ -270,38 +481,33 @@ node --version
 **Solutions:**
 
 ```bash
-# Increase timeout in .env
+# Increase timeout
 MCP_TIMEOUT=60
 
 # Test MCP server directly
 node $MCP_MSSQL_PATH
-# Should start without errors
 ```
 
-### Tool Calls Failing
+#### Tool Calls Failing
 
 **Symptoms:**
 - `Tool execution failed`
 - SQL errors from MCP
 
-**Solutions:**
+**Error Reference:**
 
 | Error | Cause | Fix |
 |-------|-------|-----|
 | Invalid object | Table doesn't exist | Check table name |
-| Permission denied | User lacks access | Check SQL user permissions |
+| Permission denied | User lacks access | Check SQL permissions |
 | Syntax error | Invalid query | Review generated SQL |
-
-```bash
-# Enable debug logging
-DEBUG=true uv run python -m src.cli.chat
-```
+| Readonly violation | Write in readonly mode | Set `MCP_MSSQL_READONLY=false` |
 
 ---
 
-## 🤖 Agent Issues
+## Agent Issues
 
-### Agent Won't Initialize
+#### Agent Won't Initialize
 
 **Symptoms:**
 - Import errors
@@ -320,7 +526,7 @@ python --version  # Need 3.11+
 ls -la .env
 ```
 
-### No Tools Available
+#### No Tools Available
 
 **Symptoms:**
 - Agent says "I don't have access to database tools"
@@ -335,27 +541,76 @@ cat mcp_config.json
 # Verify MCP server starts
 node $MCP_MSSQL_PATH
 
-# Check environment variables are loaded
+# Enable debug logging
 DEBUG=true uv run python -m src.cli.chat
 ```
 
-### Incorrect SQL Generation
+#### Wrong Provider Selected
 
 **Symptoms:**
-- Agent generates wrong queries
-- Syntax errors in SQL
+- Using Ollama when Foundry expected (or vice versa)
+
+**Solution:**
+
+```bash
+# Check .env
+LLM_PROVIDER=ollama  # or foundry_local
+
+# Override at runtime
+uv run python -m src.cli.chat --provider ollama
+```
+
+---
+
+## CLI Issues
+
+#### Command Not Found
+
+**Symptoms:**
+- `llm-chat: command not found`
 
 **Solutions:**
 
-| Issue | Solution |
-|-------|----------|
-| Wrong table names | Ask "What tables exist?" first |
-| Wrong column names | Ask "Describe the [table] table" |
-| Complex query fails | Break into simpler questions |
+```bash
+# Install package in development mode
+pip install -e .
 
-> 💡 **Tip:** Provide context in your questions: "Query the **Researchers** table to find..."
+# Or run directly
+uv run python -m src.cli.chat
+```
 
-### Streamlit Won't Start
+#### Streaming Not Working
+
+**Symptoms:**
+- Output appears all at once
+
+**Solution:**
+
+```bash
+# Enable streaming
+uv run python -m src.cli.chat --stream
+```
+
+#### History Not Saving
+
+**Symptoms:**
+- `history save` fails
+
+**Solutions:**
+
+```bash
+# Check write permissions
+ls -la ~/.local/share/local-llm-research-agent/
+
+# Create directory if missing
+mkdir -p ~/.local/share/local-llm-research-agent/history
+```
+
+---
+
+## Streamlit Issues
+
+#### Streamlit Won't Start
 
 **Symptoms:**
 - `streamlit: command not found`
@@ -374,9 +629,23 @@ STREAMLIT_PORT=8502 uv run streamlit run src/ui/streamlit_app.py
 uv run streamlit run src/ui/streamlit_app.py --server.port 8502
 ```
 
+#### Session State Issues
+
+**Symptoms:**
+- Conversation resets unexpectedly
+
+**Solutions:**
+
+```bash
+# Clear browser cache
+# Or use incognito mode
+
+# Check for widget key conflicts in logs
+```
+
 ---
 
-## ⚡ Performance Issues
+## Performance Issues
 
 ### Slow Queries
 
@@ -389,19 +658,11 @@ uv run streamlit run src/ui/streamlit_app.py --server.port 8502
 | Bottleneck | Diagnosis | Solution |
 |------------|-----------|----------|
 | LLM inference | High CPU/GPU | Use smaller model |
-| SQL execution | Slow queries | Add indexes |
+| SQL execution | Slow queries | Add database indexes |
 | MCP latency | Tool call delays | Check network |
-
-```bash
-# Enable timing logs
-DEBUG=true LOG_LEVEL=DEBUG uv run python -m src.cli.chat
-```
+| Cold start | First query slow | Pre-load model |
 
 ### High Memory Usage
-
-**Symptoms:**
-- System becomes unresponsive
-- Out of memory errors
 
 **Solutions:**
 
@@ -409,20 +670,15 @@ DEBUG=true LOG_LEVEL=DEBUG uv run python -m src.cli.chat
 # Monitor memory
 docker stats local-llm-mssql
 
-# Reduce SQL Server memory
-docker compose down
-# Edit docker-compose.yml to add:
-# MSSQL_MEMORY_LIMIT_MB=2048
-
 # Use smaller LLM model
-OLLAMA_MODEL=mistral:7b-instruct
+OLLAMA_MODEL=qwen2.5:3b-instruct
+
+# Limit SQL Server memory
+# Edit docker-compose.yml:
+# MSSQL_MEMORY_LIMIT_MB=2048
 ```
 
 ### GPU Not Utilized
-
-**Symptoms:**
-- High CPU usage
-- GPU shows 0% utilization
 
 **Solutions:**
 
@@ -433,36 +689,93 @@ ollama ps  # Should show GPU info
 # Verify CUDA (NVIDIA)
 nvidia-smi
 
-# Reinstall Ollama with GPU support if needed
+# Check Foundry Local
+# GPU auto-detected
 ```
 
 ---
 
-## 📊 Diagnostic Commands
+## Cache and Rate Limiting
 
-### Complete System Check
+### Cache Not Working
+
+**Symptoms:**
+- Repeated queries not faster
+- Cache stats show no hits
+
+**Solutions:**
+
+```bash
+# Verify cache enabled
+CACHE_ENABLED=true
+
+# Check cache stats in CLI
+cache
+
+# Clear and retry
+cache-clear
+```
+
+### Rate Limiting Blocking Requests
+
+**Symptoms:**
+- `Rate limit exceeded` errors
+
+**Solutions:**
+
+```bash
+# Adjust rate limit settings
+RATE_LIMIT_ENABLED=true
+RATE_LIMIT_RPM=60  # Requests per minute
+RATE_LIMIT_BURST=10
+
+# Or disable temporarily
+RATE_LIMIT_ENABLED=false
+```
+
+---
+
+## Diagnostic Commands
+
+### Complete System Check Script
 
 ```bash
 #!/bin/bash
-echo "=== System Diagnostics ==="
+echo "=== Local LLM Research Agent Diagnostics ==="
+echo "Generated: $(date)"
+echo ""
 
-echo -e "\n--- Ollama ---"
-curl -s http://localhost:11434/api/tags | jq '.models[].name' 2>/dev/null || echo "Ollama not running"
+echo "--- Environment ---"
+[ -f .env ] && echo ".env file: EXISTS" || echo ".env file: MISSING"
+echo "Python: $(python --version 2>&1)"
+echo "Node.js: $(node --version 2>&1)"
+echo "Docker: $(docker --version 2>&1)"
 
-echo -e "\n--- Docker ---"
-docker ps --format "{{.Names}}: {{.Status}}" | grep llm
+echo ""
+echo "--- LLM Providers ---"
+echo "Ollama:"
+curl -s http://localhost:11434/api/tags 2>/dev/null | head -c 200 || echo "  Not running"
+echo ""
+echo "Foundry Local:"
+curl -s http://127.0.0.1:55588/v1/models 2>/dev/null | head -c 200 || echo "  Not running"
 
-echo -e "\n--- SQL Server ---"
+echo ""
+echo "--- Docker Containers ---"
+docker ps --format "table {{.Names}}\t{{.Status}}" 2>/dev/null | grep -E "(NAMES|llm)"
+
+echo ""
+echo "--- SQL Server ---"
 docker exec local-llm-mssql /opt/mssql-tools18/bin/sqlcmd \
   -S localhost -U sa -P "LocalLLM@2024!" -No \
-  -Q "SELECT @@VERSION" 2>/dev/null | head -1 || echo "SQL Server not accessible"
+  -Q "SELECT @@VERSION" 2>/dev/null | head -1 || echo "Not accessible"
 
-echo -e "\n--- Python ---"
-python --version
-pip show pydantic-ai 2>/dev/null | grep Version || echo "pydantic-ai not installed"
+echo ""
+echo "--- Configuration Summary ---"
+grep -E "^(LLM_PROVIDER|OLLAMA_|FOUNDRY_|SQL_|MCP_)" .env 2>/dev/null | \
+  sed 's/PASSWORD=.*/PASSWORD=***HIDDEN***/'
 
-echo -e "\n--- Environment ---"
-[ -f .env ] && echo ".env file exists" || echo ".env file MISSING"
+echo ""
+echo "=== End Diagnostics ==="
 ```
 
 ### Log Collection
@@ -480,18 +793,16 @@ DEBUG=true LOG_LEVEL=DEBUG uv run python -m src.cli.chat 2>&1 | tee debug-logs/a
 
 ---
 
-## ❓ Getting Help
+## Getting Help
 
 ### Before Asking for Help
 
-1. ✅ Run the diagnostic commands above
-2. ✅ Check this troubleshooting guide
-3. ✅ Review the [Configuration Guide](configuration.md)
-4. ✅ Search existing [GitHub Issues](https://github.com/fgarofalo56/local-llm-research-agent/issues)
+1. Run the diagnostic commands above
+2. Check this troubleshooting guide
+3. Review the [Configuration Guide](configuration.md)
+4. Search existing [GitHub Issues](https://github.com/yourusername/local-llm-research-agent/issues)
 
 ### Information to Include
-
-When reporting issues, provide:
 
 | Information | How to Get It |
 |-------------|---------------|
@@ -500,12 +811,32 @@ When reporting issues, provide:
 | Python version | `python --version` |
 | Docker version | `docker --version` |
 | Ollama version | `ollama --version` |
+| Provider in use | Check `LLM_PROVIDER` in .env |
+| Auth type | Check `SQL_AUTH_TYPE` in .env |
 | `.env` settings | Redact passwords! |
 
 ### Getting Support
 
-- **GitHub Issues:** [Report a bug](https://github.com/fgarofalo56/local-llm-research-agent/issues/new)
-- **Discussions:** [Ask questions](https://github.com/fgarofalo56/local-llm-research-agent/discussions)
+- **GitHub Issues:** [Report a bug](https://github.com/yourusername/local-llm-research-agent/issues/new)
+- **Discussions:** [Ask questions](https://github.com/yourusername/local-llm-research-agent/discussions)
+
+---
+
+## Error Code Reference
+
+### Common Error Codes
+
+| Error | Component | Meaning | Solution |
+|-------|-----------|---------|----------|
+| ECONNREFUSED | Network | Service not running | Start the service |
+| ENOENT | Filesystem | File not found | Check path configuration |
+| ETIMEDOUT | Network | Connection timeout | Check firewall/network |
+| OOM | Memory | Out of memory | Use smaller model |
+| 401 | Auth | Unauthorized | Check credentials |
+| 403 | Auth | Forbidden | Check permissions |
+| AADSTS50001 | Azure AD | App not found | Check client ID |
+| AADSTS7000215 | Azure AD | Invalid secret | Regenerate secret |
+| AADSTS90002 | Azure AD | Tenant not found | Check tenant ID |
 
 ---
 

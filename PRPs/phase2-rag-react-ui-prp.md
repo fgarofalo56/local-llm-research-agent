@@ -1,3 +1,21 @@
+## ⚠️ CRITICAL CONSTRAINTS
+
+1. **DO NOT modify or delete** any existing files in:
+   - `src/agent/research_agent.py`
+   - `src/cli/chat.py`
+   - `src/ui/streamlit_app.py`
+   - `src/utils/config.py`
+   - `src/mcp/client.py`
+
+2. **ADD NEW files** for Phase 2 features - do not replace existing implementations
+
+3. **EXTEND, don't replace** - if modifying `src/agent/research_agent.py`, 
+   add new methods, don't rewrite existing ones
+
+4. **TEST existing interfaces** after each sub-phase:
+   - `uv run python -m src.cli.chat` still works
+   - `uv run streamlit run src/ui/streamlit_app.py` still works
+
 # PRP: Phase 2 - RAG + React Full-Stack UI with Dynamic MCP Server Configuration
 
 ## Goal

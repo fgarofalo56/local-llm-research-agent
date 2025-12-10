@@ -48,6 +48,29 @@ dependencies = [
 
     # HTTP Client (for Ollama and Foundry Local)
     "httpx>=0.27.0",
+
+    # ===== Phase 2.1 Dependencies =====
+    # FastAPI Backend
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.32.0",
+    "python-multipart>=0.0.12",
+    "aiofiles>=24.1.0",
+    "websockets>=14.0",
+
+    # Database (SQLAlchemy for ORM, Alembic for migrations)
+    "sqlalchemy>=2.0.0",
+    "alembic>=1.14.0",
+    "aioodbc>=0.5.0",
+
+    # Redis Vector Store
+    "redis>=5.0.0",
+    "redisvl>=0.3.0",
+
+    # Document Processing (RAG Pipeline)
+    "docling>=2.15.0",
+
+    # Scheduling
+    "apscheduler>=3.10.0",
 ]
 
 [project.optional-dependencies]

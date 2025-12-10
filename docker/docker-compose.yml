@@ -156,9 +156,91 @@ services:
     profiles:
       - cli  # Only runs with: docker compose --profile cli run agent-cli
 
+  # ==========================================================================
+  # Redis Stack for Vector Search
+  # ==========================================================================
+
+  redis-stack:
+    image: redis/redis-stack:latest
+    container_name: local-llm-redis
+    ports:
+      - "6379:6379"
+      - "8001:8001"  # RedisInsight GUI
+    volumes:
+      - redis_data:/data
+    environment:
+      REDIS_ARGS: "--save 60 1 --appendonly yes"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - llm-network
+
+  # ==========================================================================
+  # FastAPI Backend Service
+  # ==========================================================================
+
+  api:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.api
+    container_name: local-llm-api
+    depends_on:
+      mssql:
+        condition: service_healthy
+      redis-stack:
+        condition: service_healthy
+    environment:
+      # LLM Provider
+      LLM_PROVIDER: "${LLM_PROVIDER:-ollama}"
+      OLLAMA_HOST: "${OLLAMA_HOST:-http://host.docker.internal:11434}"
+      OLLAMA_MODEL: "${OLLAMA_MODEL:-qwen2.5:7b-instruct}"
+      EMBEDDING_MODEL: "${EMBEDDING_MODEL:-nomic-embed-text}"
+      # SQL Server connection
+      SQL_SERVER_HOST: mssql
+      SQL_SERVER_PORT: "1433"
+      SQL_DATABASE_NAME: "${SQL_DATABASE_NAME:-ResearchAnalytics}"
+      SQL_USERNAME: sa
+      SQL_PASSWORD: "${MSSQL_SA_PASSWORD:-LocalLLM@2024!}"
+      SQL_TRUST_SERVER_CERTIFICATE: "true"
+      # Redis
+      REDIS_URL: "redis://redis-stack:6379"
+      # MCP Configuration
+      MCP_MSSQL_PATH: /opt/mssql-mcp/dist/index.js
+      MCP_MSSQL_READONLY: "${MCP_MSSQL_READONLY:-false}"
+      MCP_CONFIG_PATH: "/app/mcp_config.json"
+      # RAG Settings
+      CHUNK_SIZE: "${CHUNK_SIZE:-500}"
+      CHUNK_OVERLAP: "${CHUNK_OVERLAP:-50}"
+      RAG_TOP_K: "${RAG_TOP_K:-5}"
+      # Storage
+      UPLOAD_DIR: "/app/data/uploads"
+      MAX_UPLOAD_SIZE_MB: "${MAX_UPLOAD_SIZE_MB:-100}"
+      # Application settings
+      LOG_LEVEL: "${LOG_LEVEL:-INFO}"
+      DEBUG: "${DEBUG:-false}"
+    ports:
+      - "${API_PORT:-8000}:8000"
+    volumes:
+      - ../data/uploads:/app/data/uploads
+      - ../data/models:/app/data/models
+      - ../mcp_config.json:/app/mcp_config.json:ro
+    restart: unless-stopped
+    networks:
+      - llm-network
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    profiles:
+      - api  # Only runs with: docker compose --profile api up
+
 volumes:
   mssql_data:
     name: local-llm-mssql-data
+  redis_data:
+    name: local-llm-redis-data
 
 networks:
   llm-network:

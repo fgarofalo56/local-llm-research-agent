@@ -5,16 +5,28 @@ Loads configuration from environment variables and provides a typed settings obj
 Supports .env files via python-dotenv.
 """
 
+from enum import Enum
 from functools import lru_cache
 from pathlib import Path
 
 from dotenv import load_dotenv
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings
 
 # Load .env file from project root
 _env_path = Path(__file__).parent.parent.parent / ".env"
 load_dotenv(_env_path)
+
+
+class SqlAuthType(str, Enum):
+    """SQL Server authentication types."""
+
+    SQL_AUTH = "sql"  # SQL Server authentication (username/password)
+    WINDOWS_AUTH = "windows"  # Windows integrated authentication
+    AZURE_AD_INTERACTIVE = "azure_ad_interactive"  # Azure AD interactive (browser)
+    AZURE_AD_SERVICE_PRINCIPAL = "azure_ad_service_principal"  # Azure AD app credentials
+    AZURE_AD_MANAGED_IDENTITY = "azure_ad_managed_identity"  # Azure managed identity
+    AZURE_AD_DEFAULT = "azure_ad_default"  # Azure DefaultAzureCredential (auto-detect)
 
 
 class Settings(BaseSettings):
@@ -67,13 +79,39 @@ class Settings(BaseSettings):
         default=True,
         description="Trust self-signed certificates"
     )
+    sql_encrypt: bool = Field(
+        default=True,
+        description="Encrypt connection (required for Azure SQL)"
+    )
+
+    # SQL Authentication Type
+    sql_auth_type: SqlAuthType = Field(
+        default=SqlAuthType.SQL_AUTH,
+        description="Authentication type: sql, windows, azure_ad_interactive, azure_ad_service_principal, azure_ad_managed_identity, azure_ad_default"
+    )
+
+    # SQL Server Authentication (for sql auth type)
     sql_username: str = Field(
         default="",
-        description="SQL Server username (blank for Windows Auth)"
+        description="SQL Server username (for SQL auth)"
     )
     sql_password: str = Field(
         default="",
-        description="SQL Server password"
+        description="SQL Server password (for SQL auth)"
+    )
+
+    # Azure AD Service Principal Authentication
+    azure_tenant_id: str = Field(
+        default="",
+        description="Azure tenant ID (for service principal auth)"
+    )
+    azure_client_id: str = Field(
+        default="",
+        description="Azure client/application ID (for service principal or managed identity)"
+    )
+    azure_client_secret: str = Field(
+        default="",
+        description="Azure client secret (for service principal auth)"
     )
 
     # MCP Configuration
@@ -144,10 +182,64 @@ class Settings(BaseSettings):
         case_sensitive = False
         extra = "ignore"  # Ignore extra env vars not defined in Settings
 
+    @field_validator("sql_auth_type", mode="before")
+    @classmethod
+    def validate_auth_type(cls, v):
+        """Validate and normalize auth type."""
+        if isinstance(v, SqlAuthType):
+            return v
+        if isinstance(v, str):
+            # Normalize the string
+            v_lower = v.lower().strip()
+            # Handle common aliases
+            aliases = {
+                "sql": SqlAuthType.SQL_AUTH,
+                "sql_auth": SqlAuthType.SQL_AUTH,
+                "sqlauth": SqlAuthType.SQL_AUTH,
+                "windows": SqlAuthType.WINDOWS_AUTH,
+                "windows_auth": SqlAuthType.WINDOWS_AUTH,
+                "integrated": SqlAuthType.WINDOWS_AUTH,
+                "azure_ad": SqlAuthType.AZURE_AD_DEFAULT,
+                "azure_ad_interactive": SqlAuthType.AZURE_AD_INTERACTIVE,
+                "azure_interactive": SqlAuthType.AZURE_AD_INTERACTIVE,
+                "interactive": SqlAuthType.AZURE_AD_INTERACTIVE,
+                "azure_ad_service_principal": SqlAuthType.AZURE_AD_SERVICE_PRINCIPAL,
+                "service_principal": SqlAuthType.AZURE_AD_SERVICE_PRINCIPAL,
+                "sp": SqlAuthType.AZURE_AD_SERVICE_PRINCIPAL,
+                "azure_ad_managed_identity": SqlAuthType.AZURE_AD_MANAGED_IDENTITY,
+                "managed_identity": SqlAuthType.AZURE_AD_MANAGED_IDENTITY,
+                "msi": SqlAuthType.AZURE_AD_MANAGED_IDENTITY,
+                "azure_ad_default": SqlAuthType.AZURE_AD_DEFAULT,
+                "default": SqlAuthType.AZURE_AD_DEFAULT,
+            }
+            if v_lower in aliases:
+                return aliases[v_lower]
+            # Try direct enum value
+            try:
+                return SqlAuthType(v_lower)
+            except ValueError:
+                pass
+        raise ValueError(f"Invalid SQL auth type: {v}")
+
     @property
     def ollama_api_url(self) -> str:
         """Get the full Ollama API URL for OpenAI-compatible endpoint."""
         return f"{self.ollama_host}/v1"
+
+    @property
+    def is_azure_sql(self) -> bool:
+        """Check if connecting to Azure SQL Database."""
+        return ".database.windows.net" in self.sql_server_host.lower()
+
+    @property
+    def requires_azure_auth(self) -> bool:
+        """Check if Azure AD authentication is configured."""
+        return self.sql_auth_type in (
+            SqlAuthType.AZURE_AD_INTERACTIVE,
+            SqlAuthType.AZURE_AD_SERVICE_PRINCIPAL,
+            SqlAuthType.AZURE_AD_MANAGED_IDENTITY,
+            SqlAuthType.AZURE_AD_DEFAULT,
+        )
 
     def validate_ollama_model(self) -> bool:
         """Check if the configured model supports tool calling."""
@@ -163,6 +255,52 @@ class Settings(BaseSettings):
         model_lower = self.ollama_model.lower()
         return any(model in model_lower for model in tool_capable_models)
 
+    def validate_auth_config(self) -> list[str]:
+        """
+        Validate authentication configuration.
+
+        Returns:
+            List of validation error messages (empty if valid)
+        """
+        errors = []
+
+        if self.sql_auth_type == SqlAuthType.SQL_AUTH:
+            if not self.sql_username:
+                errors.append("SQL_USERNAME is required for SQL authentication")
+            if not self.sql_password:
+                errors.append("SQL_PASSWORD is required for SQL authentication")
+
+        elif self.sql_auth_type == SqlAuthType.AZURE_AD_SERVICE_PRINCIPAL:
+            if not self.azure_tenant_id:
+                errors.append("AZURE_TENANT_ID is required for service principal authentication")
+            if not self.azure_client_id:
+                errors.append("AZURE_CLIENT_ID is required for service principal authentication")
+            if not self.azure_client_secret:
+                errors.append("AZURE_CLIENT_SECRET is required for service principal authentication")
+
+        elif self.sql_auth_type == SqlAuthType.AZURE_AD_MANAGED_IDENTITY:
+            # Client ID is optional for system-assigned managed identity
+            pass
+
+        elif self.sql_auth_type == SqlAuthType.AZURE_AD_INTERACTIVE:
+            # No additional config required - uses browser login
+            pass
+
+        elif self.sql_auth_type == SqlAuthType.AZURE_AD_DEFAULT:
+            # Uses DefaultAzureCredential - auto-detects available credentials
+            pass
+
+        elif self.sql_auth_type == SqlAuthType.WINDOWS_AUTH:
+            # No additional config required - uses current Windows credentials
+            if self.sql_username or self.sql_password:
+                errors.append("SQL_USERNAME and SQL_PASSWORD should be empty for Windows authentication")
+
+        # Azure SQL requires encryption
+        if self.is_azure_sql and not self.sql_encrypt:
+            errors.append("SQL_ENCRYPT must be true for Azure SQL Database connections")
+
+        return errors
+
     def get_mcp_env(self) -> dict[str, str]:
         """Get environment variables for MCP server."""
         env = {
@@ -170,14 +308,52 @@ class Settings(BaseSettings):
             "DATABASE_NAME": self.sql_database_name,
             "TRUST_SERVER_CERTIFICATE": str(self.sql_trust_server_certificate).lower(),
             "READONLY": str(self.mcp_mssql_readonly).lower(),
+            "ENCRYPT": str(self.sql_encrypt).lower(),
         }
 
-        if self.sql_username:
-            env["SQL_USERNAME"] = self.sql_username
-        if self.sql_password:
-            env["SQL_PASSWORD"] = self.sql_password
+        # Set authentication type for MCP server
+        env["AUTH_TYPE"] = self.sql_auth_type.value
+
+        # Add auth-specific environment variables
+        if self.sql_auth_type == SqlAuthType.SQL_AUTH:
+            if self.sql_username:
+                env["SQL_USERNAME"] = self.sql_username
+            if self.sql_password:
+                env["SQL_PASSWORD"] = self.sql_password
+
+        elif self.sql_auth_type == SqlAuthType.AZURE_AD_SERVICE_PRINCIPAL:
+            if self.azure_tenant_id:
+                env["AZURE_TENANT_ID"] = self.azure_tenant_id
+            if self.azure_client_id:
+                env["AZURE_CLIENT_ID"] = self.azure_client_id
+            if self.azure_client_secret:
+                env["AZURE_CLIENT_SECRET"] = self.azure_client_secret
+
+        elif self.sql_auth_type == SqlAuthType.AZURE_AD_MANAGED_IDENTITY:
+            if self.azure_client_id:
+                env["AZURE_CLIENT_ID"] = self.azure_client_id  # For user-assigned MI
+
+        elif self.sql_auth_type == SqlAuthType.AZURE_AD_INTERACTIVE:
+            # Browser-based login - no additional env vars needed
+            env["AZURE_AD_INTERACTIVE"] = "true"
+
+        elif self.sql_auth_type == SqlAuthType.AZURE_AD_DEFAULT:
+            # Uses DefaultAzureCredential chain
+            env["AZURE_AD_DEFAULT"] = "true"
 
         return env
+
+    def get_auth_display(self) -> str:
+        """Get human-readable authentication type for display."""
+        display_names = {
+            SqlAuthType.SQL_AUTH: f"SQL Server ({self.sql_username or 'no user'})",
+            SqlAuthType.WINDOWS_AUTH: "Windows Integrated",
+            SqlAuthType.AZURE_AD_INTERACTIVE: "Azure AD Interactive",
+            SqlAuthType.AZURE_AD_SERVICE_PRINCIPAL: f"Azure AD Service Principal ({self.azure_client_id[:8]}...)" if self.azure_client_id else "Azure AD Service Principal",
+            SqlAuthType.AZURE_AD_MANAGED_IDENTITY: "Azure Managed Identity",
+            SqlAuthType.AZURE_AD_DEFAULT: "Azure AD (Default Credential)",
+        }
+        return display_names.get(self.sql_auth_type, self.sql_auth_type.value)
 
 
 @lru_cache

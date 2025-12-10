@@ -1,0 +1,85 @@
+# Integration Tests with Real Ollama
+# These tests require Ollama to be running and are triggered manually or on schedule
+
+name: Integration Tests
+
+on:
+  workflow_dispatch:
+    inputs:
+      ollama_model:
+        description: 'Ollama model to use for testing'
+        required: false
+        default: 'qwen2.5:7b-instruct'
+        type: string
+  schedule:
+    # Run weekly on Sundays at midnight UTC
+    - cron: '0 0 * * 0'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHON_VERSION: "3.11"
+  OLLAMA_MODEL: ${{ github.event.inputs.ollama_model || 'qwen2.5:7b-instruct' }}
+
+jobs:
+  integration-tests:
+    name: Integration Tests with Ollama
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          version: "latest"
+
+      - name: Install dependencies
+        run: uv sync --dev
+
+      - name: Install Ollama
+        run: |
+          curl -fsSL https://ollama.com/install.sh | sh
+          
+      - name: Start Ollama server
+        run: |
+          ollama serve &
+          # Wait for Ollama to start
+          sleep 5
+          # Verify Ollama is running
+          curl -s http://localhost:11434/api/tags || exit 1
+          
+      - name: Pull Ollama model
+        run: |
+          ollama pull ${{ env.OLLAMA_MODEL }}
+          # Verify model is available
+          ollama list | grep -q "${{ env.OLLAMA_MODEL }}" || exit 1
+
+      - name: Run integration tests
+        env:
+          OLLAMA_HOST: http://localhost:11434
+          OLLAMA_MODEL: ${{ env.OLLAMA_MODEL }}
+          SQL_SERVER_HOST: localhost
+          SQL_DATABASE_NAME: test_db
+          MCP_MSSQL_PATH: /tmp/mcp/index.js
+        run: |
+          uv run pytest tests/test_integration_ollama.py -v --tb=short -x -m "requires_ollama"
+
+      - name: Run slow integration tests
+        if: github.event_name == 'schedule'
+        env:
+          OLLAMA_HOST: http://localhost:11434
+          OLLAMA_MODEL: ${{ env.OLLAMA_MODEL }}
+          SQL_SERVER_HOST: localhost
+          SQL_DATABASE_NAME: test_db
+          MCP_MSSQL_PATH: /tmp/mcp/index.js
+        run: |
+          uv run pytest tests/test_integration_ollama.py -v --tb=short -m "requires_ollama and slow"

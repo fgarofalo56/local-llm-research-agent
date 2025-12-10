@@ -7,6 +7,7 @@ https://learn.microsoft.com/en-us/azure/ai-foundry/foundry-local/get-started
 
 import httpx
 from pydantic_ai.models.openai import OpenAIModel
+from pydantic_ai.providers.openai import OpenAIProvider
 
 from src.providers.base import LLMProvider, ProviderStatus, ProviderType
 from src.utils.logger import get_logger
@@ -91,10 +92,14 @@ class FoundryLocalProvider(LLMProvider):
         Returns:
             OpenAIModel configured for Foundry Local
         """
-        return OpenAIModel(
-            model_name=self._model_name,
+        # Use OpenAIProvider with custom base_url for Foundry Local compatibility
+        provider = OpenAIProvider(
             base_url=self.endpoint,
             api_key=self._api_key,
+        )
+        return OpenAIModel(
+            model_name=self._model_name,
+            provider=provider,
         )
 
     async def check_connection(self) -> ProviderStatus:

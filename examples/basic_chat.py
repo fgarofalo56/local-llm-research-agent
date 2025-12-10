@@ -15,6 +15,7 @@ from dataclasses import dataclass
 
 from pydantic_ai import Agent
 from pydantic_ai.models.openai import OpenAIModel
+from pydantic_ai.providers.openai import OpenAIProvider
 from pydantic_ai.mcp import MCPServerStdio
 
 
@@ -43,12 +44,15 @@ Always explain what you're doing and provide context for your answers."""
 
 async def create_agent(config: ChatConfig) -> Agent:
     """Create and configure the research agent."""
-    
+
     # Configure Ollama as OpenAI-compatible model
-    model = OpenAIModel(
-        model_name=config.ollama_model,
+    provider = OpenAIProvider(
         base_url=f"{config.ollama_host}/v1",
         api_key="ollama"  # Ollama doesn't validate API keys
+    )
+    model = OpenAIModel(
+        model_name=config.ollama_model,
+        provider=provider,
     )
     
     # Configure MSSQL MCP Server

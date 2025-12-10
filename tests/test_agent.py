@@ -37,13 +37,22 @@ class TestResearchAgentInit:
     """Tests for ResearchAgent initialization."""
 
     @patch("src.agent.research_agent.MCPClientManager")
-    @patch("src.agent.research_agent.OpenAIModel")
+    @patch("src.agent.research_agent.create_provider")
     @patch("src.agent.research_agent.Agent")
-    def test_init_default_settings(self, mock_agent_cls, mock_model_cls, mock_mcp_cls):
+    def test_init_default_settings(self, mock_agent_cls, mock_create_provider, mock_mcp_cls):
         """Test agent initializes with default settings."""
         mock_mcp = MagicMock()
         mock_mcp.get_mssql_server.return_value = MagicMock()
         mock_mcp_cls.return_value = mock_mcp
+
+        # Mock provider
+        mock_provider = MagicMock()
+        mock_provider.get_model.return_value = MagicMock()
+        mock_provider.model_name = "qwen2.5:7b-instruct"
+        mock_provider.endpoint = "http://localhost:11434/v1"
+        mock_provider.provider_type = MagicMock()
+        mock_provider.provider_type.value = "ollama"
+        mock_create_provider.return_value = mock_provider
 
         agent = ResearchAgent()
 
@@ -52,13 +61,22 @@ class TestResearchAgentInit:
         mock_mcp.get_mssql_server.assert_called_once()
 
     @patch("src.agent.research_agent.MCPClientManager")
-    @patch("src.agent.research_agent.OpenAIModel")
+    @patch("src.providers.ollama.OllamaProvider")
     @patch("src.agent.research_agent.Agent")
-    def test_init_custom_settings(self, mock_agent_cls, mock_model_cls, mock_mcp_cls):
+    def test_init_custom_settings(self, mock_agent_cls, mock_ollama_provider_cls, mock_mcp_cls):
         """Test agent initializes with custom settings."""
         mock_mcp = MagicMock()
         mock_mcp.get_mssql_server.return_value = MagicMock()
         mock_mcp_cls.return_value = mock_mcp
+
+        # Mock provider
+        mock_provider = MagicMock()
+        mock_provider.get_model.return_value = MagicMock()
+        mock_provider.model_name = "llama3.1:8b"
+        mock_provider.endpoint = "http://custom:11434/v1"
+        mock_provider.provider_type = MagicMock()
+        mock_provider.provider_type.value = "ollama"
+        mock_ollama_provider_cls.return_value = mock_provider
 
         agent = ResearchAgent(
             ollama_host="http://custom:11434",
@@ -66,7 +84,7 @@ class TestResearchAgentInit:
             readonly=True,
         )
 
-        assert agent.ollama_host == "http://custom:11434"
+        assert agent.ollama_host == "http://custom:11434/v1"
         assert agent.ollama_model == "llama3.1:8b"
         assert agent.readonly is True
 
@@ -76,14 +94,23 @@ class TestResearchAgentChat:
 
     @pytest.mark.asyncio
     @patch("src.agent.research_agent.MCPClientManager")
-    @patch("src.agent.research_agent.OpenAIModel")
+    @patch("src.agent.research_agent.create_provider")
     @patch("src.agent.research_agent.Agent")
-    async def test_chat_success(self, mock_agent_cls, mock_model_cls, mock_mcp_cls):
+    async def test_chat_success(self, mock_agent_cls, mock_create_provider, mock_mcp_cls):
         """Test successful chat response."""
         # Setup mocks
         mock_mcp = MagicMock()
         mock_mcp.get_mssql_server.return_value = MagicMock()
         mock_mcp_cls.return_value = mock_mcp
+
+        # Mock provider
+        mock_provider = MagicMock()
+        mock_provider.get_model.return_value = MagicMock()
+        mock_provider.model_name = "qwen2.5:7b-instruct"
+        mock_provider.endpoint = "http://localhost:11434/v1"
+        mock_provider.provider_type = MagicMock()
+        mock_provider.provider_type.value = "ollama"
+        mock_create_provider.return_value = mock_provider
 
         mock_result = MagicMock()
         mock_result.output = "Found 3 tables."
@@ -102,13 +129,22 @@ class TestResearchAgentChat:
 
     @pytest.mark.asyncio
     @patch("src.agent.research_agent.MCPClientManager")
-    @patch("src.agent.research_agent.OpenAIModel")
+    @patch("src.agent.research_agent.create_provider")
     @patch("src.agent.research_agent.Agent")
-    async def test_chat_error_handling(self, mock_agent_cls, mock_model_cls, mock_mcp_cls):
+    async def test_chat_error_handling(self, mock_agent_cls, mock_create_provider, mock_mcp_cls):
         """Test chat error handling."""
         mock_mcp = MagicMock()
         mock_mcp.get_mssql_server.return_value = MagicMock()
         mock_mcp_cls.return_value = mock_mcp
+
+        # Mock provider
+        mock_provider = MagicMock()
+        mock_provider.get_model.return_value = MagicMock()
+        mock_provider.model_name = "qwen2.5:7b-instruct"
+        mock_provider.endpoint = "http://localhost:11434/v1"
+        mock_provider.provider_type = MagicMock()
+        mock_provider.provider_type.value = "ollama"
+        mock_create_provider.return_value = mock_provider
 
         mock_agent_instance = MagicMock()
         mock_agent_instance.__aenter__ = AsyncMock(return_value=mock_agent_instance)
@@ -128,13 +164,22 @@ class TestConversationHistory:
     """Tests for conversation history management."""
 
     @patch("src.agent.research_agent.MCPClientManager")
-    @patch("src.agent.research_agent.OpenAIModel")
+    @patch("src.agent.research_agent.create_provider")
     @patch("src.agent.research_agent.Agent")
-    def test_clear_history(self, mock_agent_cls, mock_model_cls, mock_mcp_cls):
+    def test_clear_history(self, mock_agent_cls, mock_create_provider, mock_mcp_cls):
         """Test clearing conversation history."""
         mock_mcp = MagicMock()
         mock_mcp.get_mssql_server.return_value = MagicMock()
         mock_mcp_cls.return_value = mock_mcp
+
+        # Mock provider
+        mock_provider = MagicMock()
+        mock_provider.get_model.return_value = MagicMock()
+        mock_provider.model_name = "qwen2.5:7b-instruct"
+        mock_provider.endpoint = "http://localhost:11434/v1"
+        mock_provider.provider_type = MagicMock()
+        mock_provider.provider_type.value = "ollama"
+        mock_create_provider.return_value = mock_provider
 
         agent = ResearchAgent()
         agent.clear_history()
@@ -142,13 +187,22 @@ class TestConversationHistory:
         assert agent.turn_count == 0
 
     @patch("src.agent.research_agent.MCPClientManager")
-    @patch("src.agent.research_agent.OpenAIModel")
+    @patch("src.agent.research_agent.create_provider")
     @patch("src.agent.research_agent.Agent")
-    def test_get_history_empty(self, mock_agent_cls, mock_model_cls, mock_mcp_cls):
+    def test_get_history_empty(self, mock_agent_cls, mock_create_provider, mock_mcp_cls):
         """Test getting empty history."""
         mock_mcp = MagicMock()
         mock_mcp.get_mssql_server.return_value = MagicMock()
         mock_mcp_cls.return_value = mock_mcp
+
+        # Mock provider
+        mock_provider = MagicMock()
+        mock_provider.get_model.return_value = MagicMock()
+        mock_provider.model_name = "qwen2.5:7b-instruct"
+        mock_provider.endpoint = "http://localhost:11434/v1"
+        mock_provider.provider_type = MagicMock()
+        mock_provider.provider_type.value = "ollama"
+        mock_create_provider.return_value = mock_provider
 
         agent = ResearchAgent()
         history = agent.get_history()

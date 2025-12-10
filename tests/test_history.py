@@ -203,16 +203,19 @@ class TestHistoryManager:
 
     def test_search_sessions(self, history_manager, sample_conversation):
         """Test searching sessions."""
-        history_manager.save_session(sample_conversation, title="Database queries")
+        # Clear any existing sessions first (test isolation)
+        history_manager.clear_all()
+
+        history_manager.save_session(sample_conversation, title="Weather forecast")
         history_manager.save_session(sample_conversation, title="User management")
         history_manager.save_session(sample_conversation, title="Table analysis")
 
-        # Search by title
-        results = history_manager.search_sessions("database")
+        # Search by unique title keyword (only "Weather forecast" matches "weather")
+        results = history_manager.search_sessions("weather")
         assert len(results) == 1
-        assert results[0].title == "Database queries"
+        assert results[0].title == "Weather forecast"
 
-        # Search by content (should find "table" in message)
+        # Search by content (should find "table" in message content)
         results = history_manager.search_sessions("users")
         assert len(results) >= 1
 

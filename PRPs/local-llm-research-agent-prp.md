@@ -18,6 +18,7 @@ A complete local AI agent system with the following capabilities:
 
 ### Success Criteria
 
+- [ ] Docker SQL Server starts with sample ResearchAnalytics database
 - [ ] User can start CLI chat and query SQL Server data using natural language
 - [ ] User can start Streamlit web UI and have conversations about their data
 - [ ] Agent correctly invokes MSSQL MCP tools (list tables, describe table, read data, etc.)
@@ -151,18 +152,71 @@ These tools will be available to the agent:
 
 ### Ollama Model Selection
 
-For tool calling, use one of these models:
+For tool calling with high-VRAM GPUs, use larger models for better quality:
 
-1. **qwen2.5:7b-instruct** - Best balance of performance and capability
-2. **llama3.1:8b** - Strong alternative with good tool support
-3. **mistral:7b-instruct** - Lighter weight option
+**RTX 5090 (32GB VRAM) - Recommended:**
+1. **qwen2.5:32b-instruct** - Best quality + excellent tool calling
+2. **llama3.3:70b-instruct-q4_K_M** - Near GPT-4 quality (partial CPU offload)
+3. **deepseek-r1:32b** - Superior reasoning capabilities
+
+**RTX 4090/3090 (24GB VRAM):**
+1. **qwen2.5:14b-instruct** - Great balance of speed and quality
+2. **llama3.1:8b-instruct** - Fast and reliable
+
+**RTX 4080/3080 (16GB) or lower:**
+1. **qwen2.5:7b-instruct** - Best tool calling at this size
+2. **mistral:7b-instruct** - Lighter weight option
 
 Verify model supports tools:
 ```bash
-curl http://localhost:11434/api/show -d '{"name":"qwen2.5:7b-instruct"}' | jq '.template'
+curl http://localhost:11434/api/show -d '{"name":"qwen2.5:32b-instruct"}' | jq '.template'
 ```
 
 ## Implementation Plan
+
+### Phase 0: Docker SQL Server Setup
+
+**Prerequisites:**
+- Docker Desktop installed and running
+
+**Files (already created in scaffold):**
+- `docker/docker-compose.yml` - SQL Server 2022 container definition
+- `docker/init/01-create-database.sql` - Database creation script
+- `docker/init/02-create-schema.sql` - Tables, views, indexes
+- `docker/init/03-seed-data.sql` - Sample research analytics data
+- `docker/setup-database.bat` - Windows helper script
+
+**Steps to execute:**
+```bash
+# Start SQL Server container
+cd docker
+docker compose up -d mssql
+
+# Wait for healthy status, then run init scripts
+docker compose --profile init up mssql-tools
+
+# Or use the helper script on Windows:
+.\setup-database.bat
+```
+
+**Sample Database: ResearchAnalytics**
+
+The database includes:
+- **Departments** (8 records) - AI, Data Science, ML, NLP, CV, Robotics, Security, Cloud
+- **Researchers** (23 records) - Staff with titles, salaries, specializations
+- **Projects** (14 records) - Active, completed, and planned research projects
+- **Publications** (10 records) - Journal articles, conference papers, technical reports
+- **Datasets** (10 records) - Training data, sensor data, medical images
+- **Experiments** (11 records) - ML experiments with results and metrics
+- **Funding** (12 records) - Grants from NSF, NIH, DARPA, industry partners
+- **Equipment** (10 records) - GPU clusters, drones, medical workstations
+
+**Example queries to test:**
+- "What tables are in the database?"
+- "Show me all active projects with their budgets"
+- "Who are the top 5 researchers by publication count?"
+- "What experiments are currently in progress?"
+- "How much total funding has the ML department received?"
 
 ### Phase 1: Project Foundation
 
@@ -400,6 +454,7 @@ if prompt := st.chat_input("Ask about your data..."):
 
 After each phase, verify:
 
+0. **Phase 0**: Docker SQL Server starts, `SELECT * FROM dbo.Researchers` returns data
 1. **Phase 1**: `uv sync` succeeds, config loads correctly
 2. **Phase 2**: MCP server starts, tools are listed
 3. **Phase 3**: Agent responds to "hello" without errors
@@ -414,7 +469,7 @@ After each phase, verify:
 - User authentication
 - Conversation persistence to database
 - Fine-tuned model support
-- Docker containerization
+- Production deployment (Kubernetes, etc.)
 
 ## Notes for Implementation
 

@@ -11,6 +11,15 @@
 
 **CRITICAL: This project uses Archon MCP server for knowledge management, task tracking, and project organization. ALWAYS start with Archon MCP server task management.**
 
+## Project ID
+**Archon Project ID:** `16394505-e6c5-4e24-8ab4-97bd6a650cfb`
+
+Use this ID when querying or creating tasks for this project:
+```bash
+find_tasks(filter_by="project", filter_value="16394505-e6c5-4e24-8ab4-97bd6a650cfb")
+manage_task("create", project_id="16394505-e6c5-4e24-8ab4-97bd6a650cfb", title="...", ...)
+```
+
 ## Core Workflow: Task-Driven Development
 
 **MANDATORY task cycle before coding:**
@@ -131,8 +140,14 @@ local-llm-research-agent/
 │   ├── agent/
 │   │   ├── __init__.py
 │   │   ├── research_agent.py    # Main Pydantic AI agent
-│   │   ├── prompts.py           # System prompts and templates
-│   │   └── tools.py             # Custom tool definitions
+│   │   └── prompts.py           # System prompts and templates
+│   │
+│   ├── providers/
+│   │   ├── __init__.py
+│   │   ├── base.py              # LLM provider base class
+│   │   ├── factory.py           # Provider factory
+│   │   ├── ollama.py            # Ollama provider
+│   │   └── foundry.py           # Microsoft Foundry Local provider
 │   │
 │   ├── mcp/
 │   │   ├── __init__.py
@@ -156,33 +171,40 @@ local-llm-research-agent/
 │   └── utils/
 │       ├── __init__.py
 │       ├── config.py            # Configuration management
-│       └── logger.py            # Logging configuration
+│       ├── logger.py            # Logging configuration
+│       ├── history.py           # Conversation history persistence
+│       ├── export.py            # Export conversations
+│       ├── health.py            # Health check utilities
+│       ├── cache.py             # Caching utilities
+│       └── rate_limiter.py      # Rate limiting
 │
-├── tests/
-│   ├── __init__.py
-│   ├── test_agent.py
-│   ├── test_mcp_client.py
-│   └── test_cli.py
+├── tests/                       # Comprehensive test suite (307 tests)
+│   ├── conftest.py              # Pytest fixtures
+│   ├── test_agent.py            # Agent tests
+│   ├── test_providers.py        # Provider tests
+│   ├── test_mcp_client.py       # MCP client tests
+│   ├── test_models.py           # Data model tests
+│   ├── test_config.py           # Configuration tests
+│   ├── test_history.py          # History persistence tests
+│   └── ...                      # Additional test files
 │
-├── PRPs/
-│   ├── templates/
-│   │   └── prp_base.md          # PRP template
-│   └── README.md                # PRP documentation
+├── docker/
+│   ├── docker-compose.yml       # SQL Server container config
+│   ├── setup-database.bat       # Windows setup script
+│   ├── setup-database.sh        # Linux/Mac setup script
+│   └── init/                    # Database initialization scripts
+│       ├── 01-create-database.sql
+│       ├── 02-create-schema.sql
+│       └── 03-seed-data.sql
 │
-├── .claude/
-│   ├── commands/
-│   │   ├── generate-prp.md      # PRP generation command
-│   │   └── execute-prp.md       # PRP execution command
-│   └── settings.local.json      # Claude Code settings
+├── examples/
+│   ├── basic_chat.py            # Basic chat example
+│   ├── sql_query_example.py     # SQL query via MCP example
+│   ├── multi_tool_example.py    # Multiple MCP tools example
+│   └── streaming_example.py     # Streaming responses example
 │
-├── ai_docs/                     # AI documentation context
-│   ├── pydantic_ai_mcp.md       # Pydantic AI MCP integration docs
-│   └── mssql_mcp_tools.md       # MSSQL MCP tools reference
-│
-└── examples/
-    ├── basic_chat.py            # Basic chat example
-    ├── sql_query_example.py     # SQL query via MCP example
-    └── multi_tool_example.py    # Multiple MCP tools example
+└── .claude/
+    └── settings.local.json      # Claude Code settings
 ```
 
 ## Core Principles

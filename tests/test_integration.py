@@ -173,7 +173,8 @@ class TestProviderSwitching:
             ollama_model="llama3.1:8b",
         )
 
-        assert agent.ollama_host == "http://custom:11434"
+        # endpoint now includes /v1 suffix for OpenAI compatibility
+        assert agent.ollama_host == "http://custom:11434/v1"
         assert agent.ollama_model == "llama3.1:8b"
 
 
@@ -197,7 +198,7 @@ class TestConversationManagement:
         ]
         response_idx = 0
 
-        def get_response():
+        def get_response(message):
             nonlocal response_idx
             result = MagicMock()
             result.output = responses[min(response_idx, len(responses) - 1)]

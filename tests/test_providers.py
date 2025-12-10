@@ -50,7 +50,8 @@ class TestOllamaProvider:
         )
 
         assert provider.model_name == "llama3.1:8b"
-        assert provider.endpoint == "http://custom:11434"
+        # endpoint now includes /v1 suffix for OpenAI compatibility
+        assert provider.endpoint == "http://custom:11434/v1"
 
     def test_get_model(self):
         """Test getting OpenAI-compatible model."""
@@ -60,13 +61,37 @@ class TestOllamaProvider:
         assert model is not None
 
     @pytest.mark.asyncio
-    @patch("httpx.AsyncClient.get")
-    async def test_check_connection_success(self, mock_get):
+    @patch("httpx.AsyncClient")
+    async def test_check_connection_success(self, mock_client_cls):
         """Test successful connection check."""
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = {"version": "0.3.0"}
-        mock_get.return_value = mock_response
+        # Setup mock client
+        mock_client = MagicMock()
+        mock_client_cls.return_value.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client_cls.return_value.__aexit__ = AsyncMock(return_value=None)
+
+        # Mock version response
+        version_response = MagicMock()
+        version_response.status_code = 200
+        version_response.raise_for_status = MagicMock()
+        version_response.json.return_value = {"version": "0.3.0"}
+
+        # Mock models response
+        models_response = MagicMock()
+        models_response.status_code = 200
+        models_response.raise_for_status = MagicMock()
+        models_response.json.return_value = {
+            "models": [{"name": "qwen2.5:7b-instruct"}, {"name": "llama3.1:8b"}]
+        }
+
+        # Setup get to return different responses based on URL
+        async def mock_get(url):
+            if "version" in url:
+                return version_response
+            elif "tags" in url:
+                return models_response
+            return MagicMock()
+
+        mock_client.get = mock_get
 
         provider = OllamaProvider()
         status = await provider.check_connection()
@@ -127,7 +152,8 @@ class TestFoundryLocalProvider:
         )
 
         assert provider.model_name == "phi-3-mini"
-        assert provider.endpoint == "http://custom:55588"
+        # endpoint now includes /v1 suffix for OpenAI compatibility
+        assert provider.endpoint == "http://custom:55588/v1"
 
     def test_get_model(self):
         """Test getting OpenAI-compatible model."""

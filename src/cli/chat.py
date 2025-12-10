@@ -9,14 +9,37 @@ Supports both Ollama and Foundry Local as LLM providers.
 import asyncio
 
 import typer
-from rich.console import Console
 from rich.panel import Panel
 from rich.prompt import Prompt
 from rich.table import Table
+from rich.text import Text
 
 from src.agent.research_agent import ResearchAgent, ResearchAgentError
+from src.cli.theme import (
+    BANNER_ART,
+    BANNER_SIMPLE,
+    COLORS,
+    Icons,
+    create_console,
+    create_data_table,
+    create_database_table,
+    create_help_panel,
+    create_session_table,
+    create_status_table,
+    create_welcome_panel,
+    error_message,
+    format_agent_response_header,
+    format_goodbye,
+    format_user_message,
+    info_message,
+    styled_divider,
+    styled_status_indicator,
+    success_message,
+    thinking_status,
+    warning_message,
+)
 from src.providers import ProviderType, create_provider, get_available_providers
-from src.utils.config import settings
+from src.utils.config import settings, SqlAuthType
 from src.utils.database_manager import DatabaseConfig, get_database_manager
 from src.utils.export import (
     export_conversation_to_csv,
@@ -40,7 +63,7 @@ app = typer.Typer(
     help="Local LLM Research Agent - Chat with your SQL Server data",
     no_args_is_help=False,
 )
-console = Console()
+console = create_console()
 
 
 async def check_provider_status(provider_type: str | None = None) -> dict:
@@ -73,20 +96,13 @@ async def check_provider_status(provider_type: str | None = None) -> dict:
         }
 
 
-def print_welcome(provider_type: str) -> None:
-    """Print welcome message and status."""
+def print_welcome(provider_type: str, model: str = "", readonly: bool = False) -> None:
+    """Print welcome banner and status."""
     console.print()
-    provider_name = "Ollama" if provider_type == "ollama" else "Foundry Local"
-    console.print(
-        Panel.fit(
-            f"[bold green]Local LLM Research Agent[/]\n\n"
-            f"Chat with your SQL Server data using natural language.\n"
-            f"Provider: [cyan]{provider_name}[/]\n"
-            "Type [bold]'quit'[/] to exit, [bold]'clear'[/] to reset conversation.",
-            title="Welcome",
-            border_style="green",
-        )
-    )
+    # Print the ASCII art banner
+    console.print(BANNER_ART)
+    # Print the welcome panel with provider info
+    console.print(create_welcome_panel(provider_type, model, readonly))
     console.print()
 
 
@@ -96,83 +112,137 @@ def print_status_sync(provider_type: str | None = None) -> None:
 
 
 async def print_status_async(provider_type: str | None = None) -> None:
-    """Print connection status."""
-    table = Table(show_header=False, box=None)
-    table.add_column("Item", style="cyan")
+    """Print connection status with styled table."""
+    table = create_status_table(show_header=True)
+    table.add_column(f"{Icons.LIGHTNING} Component", style=COLORS["accent"])
     table.add_column("Status")
+    table.add_column("Details", style=COLORS["gray_400"])
 
     # Get all provider statuses
     statuses = await get_available_providers()
 
     for status in statuses:
         provider_name = "Ollama" if status.provider_type == ProviderType.OLLAMA else "Foundry Local"
+
         if status.available:
-            status_text = f"[green]Connected[/] ({status.model_name})"
+            status_text = Text()
+            status_text.append(f"{Icons.CHECK} ", style=COLORS["success"])
+            status_text.append("Connected", style=COLORS["success"])
+            details = status.model_name or ""
             if status.version:
-                status_text += f" v{status.version}"
+                details += f" (v{status.version})"
         else:
-            status_text = f"[red]Not Available[/]"
-            if status.error:
-                status_text += f" - {status.error[:50]}"
+            status_text = Text()
+            status_text.append(f"{Icons.CROSS} ", style=COLORS["error"])
+            status_text.append("Not Available", style=COLORS["error"])
+            details = status.error[:50] if status.error else ""
 
         # Highlight active provider
         active = (provider_type or settings.llm_provider) == status.provider_type.value
         if active:
-            provider_name = f"[bold]{provider_name}[/] (active)"
+            name_text = Text()
+            name_text.append(f"{Icons.STAR} ", style=COLORS["accent"])
+            name_text.append(provider_name, style=f"bold {COLORS['accent']}")
+            name_text.append(" (active)", style=COLORS["gray_400"])
+        else:
+            name_text = Text(provider_name)
 
-        table.add_row(provider_name, status_text)
+        table.add_row(name_text, status_text, details)
 
     # MCP config status
     mcp_path = settings.mcp_mssql_path
-    mcp_status = "[green]Configured[/]" if mcp_path else "[yellow]Not Set[/]"
-    table.add_row("MCP MSSQL Path", mcp_status)
+    mcp_status = Text()
+    if mcp_path:
+        mcp_status.append(f"{Icons.CHECK} ", style=COLORS["success"])
+        mcp_status.append("Configured", style=COLORS["success"])
+    else:
+        mcp_status.append(f"{Icons.WARNING} ", style=COLORS["warning"])
+        mcp_status.append("Not Set", style=COLORS["warning"])
+    table.add_row(f"{Icons.DATABASE} MCP MSSQL", mcp_status, "")
+
+    # SQL Server connection info
+    sql_server = settings.sql_server_host
+    sql_db = settings.sql_database_name
+    sql_info = f"{sql_server}/{sql_db}"
+    if settings.is_azure_sql:
+        sql_info += " (Azure)"
+    table.add_row(f"{Icons.DATABASE} SQL Server", sql_info, "")
+
+    # Authentication type
+    auth_status = Text()
+    auth_type = settings.sql_auth_type
+    if auth_type == SqlAuthType.SQL_AUTH:
+        auth_status.append(f"{Icons.GEAR} ", style=COLORS["info"])
+        auth_status.append("SQL Auth", style=COLORS["info"])
+        auth_details = f"User: {settings.sql_username}" if settings.sql_username else ""
+    elif auth_type == SqlAuthType.WINDOWS_AUTH:
+        auth_status.append(f"{Icons.GEAR} ", style=COLORS["info"])
+        auth_status.append("Windows Auth", style=COLORS["info"])
+        auth_details = "Integrated Security"
+    elif auth_type == SqlAuthType.AZURE_AD_INTERACTIVE:
+        auth_status.append(f"{Icons.GEAR} ", style=COLORS["accent"])
+        auth_status.append("Azure AD Interactive", style=COLORS["accent"])
+        auth_details = "Browser login"
+    elif auth_type == SqlAuthType.AZURE_AD_SERVICE_PRINCIPAL:
+        auth_status.append(f"{Icons.GEAR} ", style=COLORS["accent"])
+        auth_status.append("Azure AD SP", style=COLORS["accent"])
+        auth_details = f"App: {settings.azure_client_id[:8]}..." if settings.azure_client_id else ""
+    elif auth_type == SqlAuthType.AZURE_AD_MANAGED_IDENTITY:
+        auth_status.append(f"{Icons.GEAR} ", style=COLORS["accent"])
+        auth_status.append("Managed Identity", style=COLORS["accent"])
+        auth_details = "System/User-assigned"
+    elif auth_type == SqlAuthType.AZURE_AD_DEFAULT:
+        auth_status.append(f"{Icons.GEAR} ", style=COLORS["accent"])
+        auth_status.append("Azure AD Default", style=COLORS["accent"])
+        auth_details = "Auto-detect credentials"
+    else:
+        auth_status.append(f"{Icons.INFO} ", style=COLORS["gray_400"])
+        auth_status.append(auth_type.value, style=COLORS["gray_400"])
+        auth_details = ""
+    table.add_row(f"{Icons.GEAR} Auth Type", auth_status, auth_details)
 
     # Read-only mode
-    readonly_status = "[cyan]Yes[/]" if settings.mcp_mssql_readonly else "[yellow]No[/]"
-    table.add_row("Read-Only Mode", readonly_status)
+    readonly_status = Text()
+    if settings.mcp_mssql_readonly:
+        readonly_status.append(f"{Icons.INFO} ", style=COLORS["info"])
+        readonly_status.append("Enabled", style=COLORS["info"])
+    else:
+        readonly_status.append(f"{Icons.WARNING} ", style=COLORS["warning"])
+        readonly_status.append("Disabled", style=COLORS["warning"])
+    table.add_row(f"{Icons.GEAR} Read-Only", readonly_status, "")
 
     console.print(table)
     console.print()
 
 
 def print_help_commands() -> None:
-    """Print available commands."""
-    console.print("[bold]Commands:[/]")
-    console.print("  [cyan]quit[/], [cyan]exit[/], [cyan]q[/]  - Exit the chat")
-    console.print("  [cyan]clear[/]               - Clear conversation history")
-    console.print("  [cyan]status[/]              - Show connection status")
-    console.print("  [cyan]cache[/]               - Show cache statistics")
-    console.print("  [cyan]cache-clear[/]         - Clear the response cache")
-    console.print("  [cyan]export[/]              - Export conversation (prompts for format)")
-    console.print("  [cyan]export json[/]         - Export conversation to JSON")
-    console.print("  [cyan]export csv[/]          - Export conversation to CSV")
-    console.print("  [cyan]export md[/]           - Export conversation to Markdown")
-    console.print("  [cyan]history[/]             - List saved sessions")
-    console.print("  [cyan]history load <id>[/]   - Load a saved session")
-    console.print("  [cyan]history save[/]        - Save current session")
-    console.print("  [cyan]history delete <id>[/] - Delete a saved session")
-    console.print("  [cyan]db[/]                  - List configured databases")
-    console.print("  [cyan]db switch <name>[/]    - Switch to a different database")
-    console.print("  [cyan]db add[/]              - Add a new database configuration")
-    console.print("  [cyan]db remove <name>[/]    - Remove a database configuration")
-    console.print("  [cyan]help[/]                - Show this help message")
-    console.print()
+    """Print available commands using styled help panel."""
+    console.print(create_help_panel())
 
 
 def print_cache_stats(agent: ResearchAgent) -> None:
-    """Print cache statistics."""
+    """Print cache statistics with styled table."""
     stats = agent.get_cache_stats()
-    table = Table(show_header=False, box=None)
-    table.add_column("Item", style="cyan")
-    table.add_column("Value")
+    table = create_status_table(show_header=True)
+    table.add_column(f"{Icons.DATABASE} Metric", style=COLORS["accent"])
+    table.add_column("Value", style=COLORS["white"])
 
-    table.add_row("Cache Enabled", "[green]Yes[/]" if agent.cache_enabled else "[red]No[/]")
+    # Cache enabled status
+    enabled_text = Text()
+    if agent.cache_enabled:
+        enabled_text.append(f"{Icons.CHECK} ", style=COLORS["success"])
+        enabled_text.append("Enabled", style=COLORS["success"])
+    else:
+        enabled_text.append(f"{Icons.CROSS} ", style=COLORS["error"])
+        enabled_text.append("Disabled", style=COLORS["error"])
+
+    table.add_row("Cache Status", enabled_text)
     table.add_row("Entries", str(stats.size))
     table.add_row("Max Size", str(stats.max_size))
     table.add_row("TTL", f"{stats.ttl_seconds}s" if stats.ttl_seconds > 0 else "No expiration")
-    table.add_row("Hits", str(stats.hits))
-    table.add_row("Misses", str(stats.misses))
-    table.add_row("Hit Rate", stats.to_dict()["hit_rate"])
+    table.add_row("Hits", f"[{COLORS['success']}]{stats.hits}[/]")
+    table.add_row("Misses", f"[{COLORS['warning']}]{stats.misses}[/]")
+    table.add_row("Hit Rate", f"[{COLORS['primary']}]{stats.to_dict()['hit_rate']}[/]")
     table.add_row("Evictions", str(stats.evictions))
 
     console.print(table)
@@ -206,25 +276,26 @@ async def run_chat_loop(
     if not status["available"]:
         error_msg = status.get("error", "Unknown error")
         if effective_provider == "ollama":
-            console.print(
-                f"[red]Error:[/] Ollama is not available.\n"
-                f"Reason: {error_msg}\n"
-                "Please start Ollama: [cyan]ollama serve[/]"
-            )
+            console.print(error_message(f"Ollama is not available: {error_msg}"))
+            console.print(f"  {Icons.ARROW_RIGHT} Please start Ollama: [{COLORS['accent']}]ollama serve[/]")
         else:
-            console.print(
-                f"[red]Error:[/] Foundry Local is not available.\n"
-                f"Reason: {error_msg}\n"
-                "Start with: [cyan]pip install foundry-local-sdk[/] and use FoundryLocalManager"
-            )
+            console.print(error_message(f"Foundry Local is not available: {error_msg}"))
+            console.print(f"  {Icons.ARROW_RIGHT} Install: [{COLORS['accent']}]pip install foundry-local-sdk[/]")
         raise typer.Exit(1)
 
     if not settings.mcp_mssql_path:
-        console.print(
-            "[yellow]Warning:[/] MCP_MSSQL_PATH is not set.\n"
-            "SQL Server tools will not be available.\n"
-            "Set this in your .env file."
-        )
+        console.print(warning_message("MCP_MSSQL_PATH is not set"))
+        console.print(f"  {Icons.BULLET} SQL Server tools will not be available")
+        console.print(f"  {Icons.BULLET} Set this in your .env file")
+        console.print()
+
+    # Validate authentication configuration
+    auth_errors = settings.validate_auth_config()
+    if auth_errors:
+        console.print(warning_message("Authentication configuration issues:"))
+        for err in auth_errors:
+            console.print(f"  {Icons.BULLET} [{COLORS['warning']}]{err}[/]")
+        console.print()
 
     try:
         agent = ResearchAgent(
@@ -235,25 +306,28 @@ async def run_chat_loop(
             explain_mode=explain_mode,
         )
     except Exception as e:
-        console.print(f"[red]Error creating agent:[/] {e}")
+        console.print(error_message(f"Error creating agent: {e}"))
         raise typer.Exit(1)
 
     # Show mode status
     mode_info = []
     if cache_enabled:
-        mode_info.append(f"cache (max {settings.cache_max_size})")
+        mode_info.append(f"[{COLORS['accent']}]cache[/] (max {settings.cache_max_size})")
     if explain_mode:
-        mode_info.append("[cyan]explain mode[/]")
+        mode_info.append(f"[{COLORS['info']}]explain mode[/]")
+    if readonly:
+        mode_info.append(f"[{COLORS['warning']}]read-only[/]")
     if mode_info:
-        console.print(f"[dim]Features: {', '.join(mode_info)}[/]")
+        console.print(f"[{COLORS['gray_400']}]{Icons.GEAR} Features: {', '.join(mode_info)}[/]")
     console.print()
 
     print_help_commands()
 
     while True:
         try:
-            # Get user input
-            user_input = Prompt.ask("\n[bold blue]You[/]")
+            # Get user input with styled prompt
+            console.print()
+            user_input = Prompt.ask(f"[{COLORS['accent_light']}]{Icons.USER} You[/]")
 
             if not user_input.strip():
                 continue
@@ -262,12 +336,13 @@ async def run_chat_loop(
             command = user_input.strip().lower()
 
             if command in ("quit", "exit", "q"):
-                console.print("[yellow]Goodbye![/]")
+                console.print()
+                console.print(format_goodbye())
                 break
 
             if command == "clear":
                 agent.clear_history()
-                console.print("[yellow]Conversation cleared.[/]")
+                console.print(success_message("Conversation cleared"))
                 continue
 
             if command == "status":
@@ -280,7 +355,7 @@ async def run_chat_loop(
 
             if command == "cache-clear":
                 count = agent.clear_cache()
-                console.print(f"[yellow]Cache cleared ({count} entries removed).[/]")
+                console.print(success_message(f"Cache cleared ({count} entries removed)"))
                 continue
 
             if command.startswith("export"):
@@ -288,7 +363,7 @@ async def run_chat_loop(
                 if len(parts) == 1:
                     # Prompt for format
                     fmt = Prompt.ask(
-                        "Export format",
+                        f"[{COLORS['gray_400']}]Export format[/]",
                         choices=["json", "csv", "md"],
                         default="json",
                     )
@@ -296,7 +371,7 @@ async def run_chat_loop(
                     fmt = parts[1].lower()
 
                 if agent.conversation.total_turns == 0:
-                    console.print("[yellow]No conversation to export.[/]")
+                    console.print(warning_message("No conversation to export"))
                     continue
 
                 try:
@@ -308,11 +383,11 @@ async def run_chat_loop(
                     elif fmt in ("md", "markdown"):
                         export_to_markdown(agent.conversation, filename)
                     else:
-                        console.print(f"[red]Unknown format: {fmt}[/]")
+                        console.print(error_message(f"Unknown format: {fmt}"))
                         continue
-                    console.print(f"[green]Exported to:[/] {filename}")
+                    console.print(success_message(f"Exported to: {filename}"))
                 except Exception as e:
-                    console.print(f"[red]Export failed:[/] {e}")
+                    console.print(error_message(f"Export failed: {e}"))
                 continue
 
             if command.startswith("history"):
@@ -323,19 +398,15 @@ async def run_chat_loop(
                     # List sessions
                     sessions = history.list_sessions(limit=10)
                     if not sessions:
-                        console.print("[yellow]No saved sessions.[/]")
+                        console.print(warning_message("No saved sessions"))
                     else:
-                        console.print("\n[bold]Saved Sessions:[/]")
-                        table = Table(show_header=True, header_style="bold cyan")
-                        table.add_column("ID", width=10)
-                        table.add_column("Title", width=40)
-                        table.add_column("Turns", justify="right")
-                        table.add_column("Updated", width=16)
+                        console.print()
+                        table = create_session_table()
 
                         for session in sessions:
                             table.add_row(
                                 session.session_id,
-                                session.title[:40],
+                                session.title[:35],
                                 str(session.turn_count),
                                 session.updated_at.strftime("%Y-%m-%d %H:%M"),
                             )
@@ -344,16 +415,16 @@ async def run_chat_loop(
 
                 elif parts[1] == "save":
                     if agent.conversation.total_turns == 0:
-                        console.print("[yellow]No conversation to save.[/]")
+                        console.print(warning_message("No conversation to save"))
                     else:
-                        title = Prompt.ask("Session title", default="")
+                        title = Prompt.ask(f"[{COLORS['gray_400']}]Session title[/]", default="")
                         session_id = history.save_session(
                             agent.conversation,
                             title=title if title else None,
                             provider=effective_provider,
                             model=model or "",
                         )
-                        console.print(f"[green]Session saved:[/] {session_id}")
+                        console.print(success_message(f"Session saved: {session_id}"))
                     continue
 
                 elif parts[1] == "load" and len(parts) >= 3:
@@ -362,22 +433,22 @@ async def run_chat_loop(
                     if session:
                         # Restore conversation
                         agent.conversation = session.to_conversation()
-                        console.print(f"[green]Session loaded:[/] {session.metadata.title}")
-                        console.print(f"  {session.metadata.turn_count} turns restored")
+                        console.print(success_message(f"Session loaded: {session.metadata.title}"))
+                        console.print(f"  {Icons.BULLET} [{COLORS['gray_400']}]{session.metadata.turn_count} turns restored[/]")
                     else:
-                        console.print(f"[red]Session not found:[/] {session_id}")
+                        console.print(error_message(f"Session not found: {session_id}"))
                     continue
 
                 elif parts[1] == "delete" and len(parts) >= 3:
                     session_id = parts[2]
                     if history.delete_session(session_id):
-                        console.print(f"[green]Session deleted:[/] {session_id}")
+                        console.print(success_message(f"Session deleted: {session_id}"))
                     else:
-                        console.print(f"[red]Session not found:[/] {session_id}")
+                        console.print(error_message(f"Session not found: {session_id}"))
                     continue
 
                 else:
-                    console.print("[yellow]Usage: history [list|save|load <id>|delete <id>][/]")
+                    console.print(info_message("Usage: history [list|save|load <id>|delete <id>]"))
                     continue
 
             if command.startswith("db"):
@@ -387,23 +458,28 @@ async def run_chat_loop(
                 if len(parts) == 1:
                     # List databases
                     databases = db_manager.list_databases()
-                    console.print("\n[bold]Configured Databases:[/]")
-                    table = Table(show_header=True, header_style="bold cyan")
-                    table.add_column("Name", width=15)
-                    table.add_column("Host", width=20)
-                    table.add_column("Database", width=20)
-                    table.add_column("Mode", width=10)
-                    table.add_column("Active", width=8)
+                    console.print()
+                    table = create_database_table()
 
                     for db in databases:
-                        mode = "[cyan]RO[/]" if db["readonly"] else "RW"
-                        active = "[green]Yes[/]" if db["active"] else ""
+                        mode_text = Text()
+                        if db["readonly"]:
+                            mode_text.append("RO", style=COLORS["info"])
+                        else:
+                            mode_text.append("RW", style=COLORS["warning"])
+
+                        active_text = Text()
+                        if db["active"]:
+                            active_text.append(f"{Icons.CHECK} Yes", style=COLORS["success"])
+                        else:
+                            active_text.append("")
+
                         table.add_row(
                             db["name"],
                             db["host"],
                             db["database"],
-                            mode,
-                            active,
+                            mode_text,
+                            active_text,
                         )
                     console.print(table)
                     continue
@@ -412,30 +488,33 @@ async def run_chat_loop(
                     db_name = parts[2]
                     if db_manager.set_active(db_name):
                         db_config = db_manager.active
-                        console.print(f"[green]Switched to database:[/] {db_name}")
-                        console.print(f"  Connection: {db_config.connection_string_display}")
-                        # Note: Agent would need to be recreated to use new database
-                        console.print("[yellow]Note: Restart chat to apply new database connection.[/]")
+                        console.print(success_message(f"Switched to database: {db_name}"))
+                        console.print(f"  {Icons.BULLET} [{COLORS['gray_400']}]Connection: {db_config.connection_string_display}[/]")
+                        console.print(warning_message("Restart chat to apply new database connection"))
                     else:
-                        console.print(f"[red]Database not found:[/] {db_name}")
+                        console.print(error_message(f"Database not found: {db_name}"))
                     continue
 
                 elif parts[1] == "add":
-                    console.print("\n[bold]Add New Database Configuration[/]")
-                    name = Prompt.ask("Database name (unique identifier)")
+                    console.print()
+                    console.print(f"[bold {COLORS['primary']}]{Icons.DATABASE} Add New Database Configuration[/]")
+                    console.print(styled_divider())
+                    console.print()
+
+                    name = Prompt.ask(f"[{COLORS['gray_400']}]Database name (unique identifier)[/]")
                     if not name:
-                        console.print("[red]Name is required.[/]")
+                        console.print(error_message("Name is required"))
                         continue
 
-                    host = Prompt.ask("SQL Server host", default="localhost")
-                    port = int(Prompt.ask("Port", default="1433"))
-                    database = Prompt.ask("Database name")
-                    username = Prompt.ask("Username (blank for Windows Auth)", default="")
+                    host = Prompt.ask(f"[{COLORS['gray_400']}]SQL Server host[/]", default="localhost")
+                    port = int(Prompt.ask(f"[{COLORS['gray_400']}]Port[/]", default="1433"))
+                    database = Prompt.ask(f"[{COLORS['gray_400']}]Database name[/]")
+                    username = Prompt.ask(f"[{COLORS['gray_400']}]Username (blank for Windows Auth)[/]", default="")
                     password = ""
                     if username:
-                        password = Prompt.ask("Password", password=True, default="")
-                    readonly = Prompt.ask("Read-only mode?", choices=["y", "n"], default="n") == "y"
-                    description = Prompt.ask("Description (optional)", default="")
+                        password = Prompt.ask(f"[{COLORS['gray_400']}]Password[/]", password=True, default="")
+                    readonly = Prompt.ask(f"[{COLORS['gray_400']}]Read-only mode?[/]", choices=["y", "n"], default="n") == "y"
+                    description = Prompt.ask(f"[{COLORS['gray_400']}]Description (optional)[/]", default="")
 
                     try:
                         config = DatabaseConfig(
@@ -449,22 +528,22 @@ async def run_chat_loop(
                             description=description,
                         )
                         db_manager.add_database(config)
-                        console.print(f"[green]Database added:[/] {name}")
+                        console.print(success_message(f"Database added: {name}"))
                     except Exception as e:
-                        console.print(f"[red]Failed to add database:[/] {e}")
+                        console.print(error_message(f"Failed to add database: {e}"))
                     continue
 
                 elif parts[1] == "remove" and len(parts) >= 3:
                     db_name = parts[2]
                     if db_manager.remove_database(db_name):
-                        console.print(f"[green]Database removed:[/] {db_name}")
+                        console.print(success_message(f"Database removed: {db_name}"))
                     else:
-                        console.print(f"[red]Cannot remove database:[/] {db_name}")
-                        console.print("  (default database cannot be removed)")
+                        console.print(error_message(f"Cannot remove database: {db_name}"))
+                        console.print(f"  {Icons.BULLET} [{COLORS['gray_400']}](default database cannot be removed)[/]")
                     continue
 
                 else:
-                    console.print("[yellow]Usage: db [list|switch <name>|add|remove <name>][/]")
+                    console.print(info_message("Usage: db [list|switch <name>|add|remove <name>]"))
                     continue
 
             if command == "help":
@@ -473,7 +552,7 @@ async def run_chat_loop(
 
             # Send to agent
             console.print()
-            console.print("[bold green]Agent:[/] ", end="")
+            console.print(format_agent_response_header(), end="")
 
             if stream:
                 # Streaming mode - print chunks as they arrive
@@ -482,21 +561,24 @@ async def run_chat_loop(
                 console.print()  # Final newline
             else:
                 # Non-streaming mode - show spinner while waiting
-                with console.status("[bold green]Thinking...[/]", spinner="dots"):
+                with console.status(thinking_status(), spinner="dots"):
                     response = await agent.chat(user_input)
                 console.print(response)
 
         except KeyboardInterrupt:
-            console.print("\n[yellow]Interrupted. Type 'quit' to exit.[/]")
+            console.print()
+            console.print(warning_message("Interrupted. Type 'quit' to exit."))
             continue
 
         except ResearchAgentError as e:
-            console.print(f"\n[red]Agent error:[/] {e}")
+            console.print()
+            console.print(error_message(f"Agent error: {e}"))
             continue
 
         except Exception as e:
             logger.exception("chat_loop_error")
-            console.print(f"\n[red]Unexpected error:[/] {e}")
+            console.print()
+            console.print(error_message(f"Unexpected error: {e}"))
             continue
 
 
@@ -543,13 +625,19 @@ def chat(
         "-d",
         help="Enable debug logging",
     ),
+    simple_banner: bool = typer.Option(
+        False,
+        "--simple",
+        help="Use simplified banner (less ASCII art)",
+    ),
 ) -> None:
     """Start an interactive chat session with the research agent."""
     if debug:
         setup_logging("DEBUG")
 
     effective_provider = provider or settings.llm_provider
-    print_welcome(effective_provider)
+    effective_model = model or ""
+    print_welcome(effective_provider, effective_model, readonly)
     print_status_sync(effective_provider)
 
     try:
@@ -562,7 +650,7 @@ def chat(
             explain_mode=explain,
         ))
     except Exception as e:
-        console.print(f"[red]Fatal error:[/] {e}")
+        console.print(error_message(f"Fatal error: {e}"))
         raise typer.Exit(1)
 
 
@@ -591,7 +679,7 @@ def health(
     import json
 
     async def run_checks() -> None:
-        with console.status("[bold blue]Running health checks..."):
+        with console.status(f"[bold {COLORS['primary']}]{Icons.THINKING} Running health checks...[/]"):
             result = await run_health_checks(include_database=database)
 
         if json_output:
@@ -599,58 +687,64 @@ def health(
         else:
             # Color-coded output
             status_colors = {
-                HealthStatus.HEALTHY: "green",
-                HealthStatus.UNHEALTHY: "red",
-                HealthStatus.DEGRADED: "yellow",
-                HealthStatus.UNKNOWN: "dim",
+                HealthStatus.HEALTHY: COLORS["success"],
+                HealthStatus.UNHEALTHY: COLORS["error"],
+                HealthStatus.DEGRADED: COLORS["warning"],
+                HealthStatus.UNKNOWN: COLORS["gray_500"],
             }
             status_icons = {
-                HealthStatus.HEALTHY: "[OK]",
-                HealthStatus.UNHEALTHY: "[FAIL]",
-                HealthStatus.DEGRADED: "[WARN]",
-                HealthStatus.UNKNOWN: "[?]",
+                HealthStatus.HEALTHY: Icons.CHECK,
+                HealthStatus.UNHEALTHY: Icons.CROSS,
+                HealthStatus.DEGRADED: Icons.WARNING,
+                HealthStatus.UNKNOWN: Icons.INFO,
             }
 
-            color = status_colors.get(result.status, "white")
-            console.print(f"\n[bold]System Health:[/] [{color}]{result.status.value.upper()}[/]\n")
+            color = status_colors.get(result.status, COLORS["white"])
+            icon = status_icons.get(result.status, Icons.INFO)
+            console.print()
+            console.print(f"[bold {COLORS['white']}]{Icons.LIGHTNING} System Health:[/] [{color}]{icon} {result.status.value.upper()}[/]")
+            console.print()
 
-            # Create table for components
-            table = Table(show_header=True, header_style="bold")
-            table.add_column("Component", style="cyan")
+            # Create styled table for components
+            table = create_status_table(show_header=True)
+            table.add_column(f"{Icons.GEAR} Component", style=COLORS["accent"])
             table.add_column("Status")
-            table.add_column("Message")
+            table.add_column("Message", style=COLORS["gray_400"])
             if verbose:
-                table.add_column("Latency")
+                table.add_column(f"{Icons.CLOCK} Latency")
 
             for component in result.components:
-                comp_color = status_colors.get(component.status, "white")
-                icon = status_icons.get(component.status, "[?]")
-                status_str = f"[{comp_color}]{icon} {component.status.value}[/]"
+                comp_color = status_colors.get(component.status, COLORS["white"])
+                icon = status_icons.get(component.status, Icons.INFO)
+                status_text = Text()
+                status_text.append(f"{icon} ", style=comp_color)
+                status_text.append(component.status.value, style=comp_color)
 
                 if verbose and component.latency_ms:
                     latency = f"{component.latency_ms:.0f}ms"
-                    table.add_row(component.name, status_str, component.message, latency)
+                    table.add_row(component.name, status_text, component.message, latency)
                 else:
-                    table.add_row(component.name, status_str, component.message)
+                    table.add_row(component.name, status_text, component.message)
 
             console.print(table)
 
             if verbose:
-                console.print("\n[bold]Details:[/]")
+                console.print()
+                console.print(f"[bold {COLORS['primary']}]{Icons.INFO} Details:[/]")
                 for component in result.components:
                     if component.details:
-                        console.print(f"\n  [cyan]{component.name}:[/]")
+                        console.print(f"\n  [{COLORS['accent']}]{component.name}:[/]")
                         for key, value in component.details.items():
                             if isinstance(value, list):
                                 value = ", ".join(str(v) for v in value[:5])
-                            console.print(f"    {key}: {value}")
+                            console.print(f"    [{COLORS['gray_400']}]{key}:[/] {value}")
 
             console.print()
 
     try:
         asyncio.run(run_checks())
     except Exception as e:
-        console.print(f"[red]Health check failed:[/] {e}")
+        console.print(error_message(f"Health check failed: {e}"))
         raise typer.Exit(1)
 
 
@@ -664,7 +758,10 @@ def status(
     ),
 ) -> None:
     """Show current configuration and connection status."""
-    console.print("\n[bold]Configuration Status[/]\n")
+    console.print()
+    console.print(f"[bold {COLORS['primary']}]{Icons.GEAR} Configuration Status[/]")
+    console.print(styled_divider())
+    console.print()
     print_status_sync(provider)
 
 
@@ -694,9 +791,9 @@ def query(
         status = await check_provider_status(effective_provider)
 
         if not status["available"]:
-            console.print(f"[red]Error:[/] {effective_provider} is not available.")
+            console.print(error_message(f"{effective_provider} is not available"))
             if status.get("error"):
-                console.print(f"Reason: {status['error']}")
+                console.print(f"  {Icons.BULLET} [{COLORS['gray_400']}]{status['error']}[/]")
             raise typer.Exit(1)
 
         try:
@@ -711,11 +808,11 @@ def query(
                     console.print(chunk, end="")
                 console.print()
             else:
-                with console.status("[bold green]Processing...[/]", spinner="dots"):
+                with console.status(thinking_status(), spinner="dots"):
                     response = await agent.chat(message)
                 console.print(response)
         except Exception as e:
-            console.print(f"[red]Error:[/] {e}")
+            console.print(error_message(f"Error: {e}"))
             raise typer.Exit(1)
 
     asyncio.run(run_query())

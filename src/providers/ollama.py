@@ -6,6 +6,7 @@ Implementation for Ollama local LLM inference engine.
 
 import httpx
 from pydantic_ai.models.openai import OpenAIModel
+from pydantic_ai.providers.openai import OpenAIProvider
 
 from src.providers.base import LLMProvider, ProviderStatus, ProviderType
 from src.utils.logger import get_logger
@@ -82,10 +83,14 @@ class OllamaProvider(LLMProvider):
         Returns:
             OpenAIModel configured for Ollama
         """
-        return OpenAIModel(
-            model_name=self._model_name,
+        # Use OpenAIProvider with custom base_url for Ollama compatibility
+        provider = OpenAIProvider(
             base_url=self.endpoint,
             api_key="ollama",  # Ollama doesn't validate API keys
+        )
+        return OpenAIModel(
+            model_name=self._model_name,
+            provider=provider,
         )
 
     async def check_connection(self) -> ProviderStatus:

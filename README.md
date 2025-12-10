@@ -264,8 +264,11 @@ LOG_LEVEL=INFO
 ### ⌨️ CLI Interface
 
 ```bash
+# Check available commands
+uv run python -m src.cli.chat --help
+
 # Start the CLI chat
-uv run python -m src.cli.chat
+uv run python -m src.cli.chat chat
 
 # With streaming responses
 uv run python -m src.cli.chat --stream

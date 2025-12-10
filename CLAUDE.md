@@ -23,7 +23,8 @@ This is a **100% local** smart chat agent for SQL Server data analytics research
 | Phase | Status | Description |
 |-------|--------|-------------|
 | **Phase 1** | ✅ Complete | CLI + Streamlit + SQL Agent + Docker SQL Server |
-| **Phase 2** | 🚧 Next | RAG + React UI + Dynamic MCP Server Configuration |
+| **Phase 2.1** | ✅ Complete | Backend Infrastructure + RAG Pipeline + FastAPI |
+| **Phase 2.2** | 🚧 Next | React UI + Frontend Integration |
 
 ---
 
@@ -103,6 +104,11 @@ manage_task("update", task_id="...", status="doing")
 | Data Validation | Pydantic v2 | Type-safe data models |
 | Async Runtime | asyncio | Async operations |
 | Environment | python-dotenv | Environment configuration |
+| **Backend API** | FastAPI + Uvicorn | REST API server (Phase 2.1) |
+| **ORM** | SQLAlchemy 2.0 + Alembic | Database models & migrations |
+| **Vector Store** | Redis Stack | Vector similarity search (RAG) |
+| **Embeddings** | Ollama (nomic-embed-text) | Local document embeddings |
+| **Document Processing** | Docling | PDF/DOCX parsing for RAG |
 
 ---
 
@@ -118,9 +124,20 @@ local-llm-research-agent/
 ├── .env                         # Local environment config (git-ignored)
 ├── .gitignore                   # Git ignore rules
 ├── mcp_config.json              # MCP server configuration
+├── alembic.ini                  # Alembic migrations config (Phase 2.1)
 │
-├── docker/                      # Docker SQL Server setup
-│   ├── docker-compose.yml       # SQL Server 2022 container
+├── alembic/                     # Database migrations (Phase 2.1)
+│   ├── env.py
+│   ├── script.py.mako
+│   └── versions/
+│
+├── data/                        # Data storage (Phase 2.1)
+│   ├── uploads/                 # Uploaded documents for RAG
+│   └── models/                  # Cached model files
+│
+├── docker/                      # Docker services setup
+│   ├── docker-compose.yml       # SQL Server, Redis Stack, API containers
+│   ├── Dockerfile.api           # FastAPI container (Phase 2.1)
 │   ├── setup-database.bat       # Windows setup helper
 │   ├── setup-database.sh        # Linux/Mac setup helper
 │   └── init/                    # Database initialization
@@ -137,6 +154,31 @@ local-llm-research-agent/
 │   │   ├── research_agent.py    # Main Pydantic AI agent
 │   │   └── prompts.py           # System prompts and templates
 │   │
+│   ├── api/                     # FastAPI backend (Phase 2.1)
+│   │   ├── __init__.py
+│   │   ├── main.py              # FastAPI app with lifespan
+│   │   ├── deps.py              # Dependency injection
+│   │   ├── models/
+│   │   │   ├── __init__.py
+│   │   │   └── database.py      # SQLAlchemy ORM models
+│   │   └── routes/
+│   │       ├── __init__.py
+│   │       ├── health.py        # Health checks + metrics
+│   │       ├── documents.py     # Document upload/RAG
+│   │       ├── conversations.py # Chat history
+│   │       ├── queries.py       # Query history/saved
+│   │       ├── dashboards.py    # Dashboard widgets
+│   │       ├── mcp_servers.py   # Dynamic MCP management
+│   │       ├── settings.py      # App settings/themes
+│   │       └── agent.py         # Agent chat endpoint
+│   │
+│   ├── rag/                     # RAG pipeline (Phase 2.1)
+│   │   ├── __init__.py
+│   │   ├── embedder.py          # Ollama embeddings
+│   │   ├── redis_vector_store.py # Redis vector search
+│   │   ├── document_processor.py # Docling document parsing
+│   │   └── schema_indexer.py    # Database schema indexing
+│   │
 │   ├── providers/
 │   │   ├── __init__.py
 │   │   ├── base.py              # LLM provider base class
@@ -148,7 +190,8 @@ local-llm-research-agent/
 │   │   ├── __init__.py
 │   │   ├── client.py            # MCP client wrapper
 │   │   ├── mssql_config.py      # MSSQL MCP server configuration
-│   │   └── server_manager.py    # MCP server lifecycle management
+│   │   ├── server_manager.py    # MCP server lifecycle management
+│   │   └── dynamic_manager.py   # Runtime MCP config (Phase 2.1)
 │   │
 │   ├── cli/
 │   │   ├── __init__.py
@@ -192,12 +235,17 @@ local-llm-research-agent/
 │   ├── pydantic_ai_mcp.md       # Pydantic AI MCP reference
 │   └── mssql_mcp_tools.md       # MSSQL MCP tools reference
 │
+├── docs/                        # Extended documentation
+│   ├── README.md
+│   └── api/                     # API documentation (Phase 2.1)
+│
 ├── PRPs/                        # Product Requirement Prompts
 │   ├── README.md
 │   ├── templates/
 │   │   └── prp_base.md
 │   ├── local-llm-research-agent-prp.md    # Phase 1 PRP
-│   └── phase2-rag-react-ui-prp.md         # Phase 2 PRP
+│   ├── phase2-rag-react-ui-prp.md         # Phase 2 overview PRP
+│   └── phase2.1-backend-rag-prp.md        # Phase 2.1 Backend PRP
 │
 └── .claude/
     ├── commands/
@@ -300,6 +348,30 @@ MCP_MSSQL_READONLY=false
 LOG_LEVEL=INFO
 STREAMLIT_PORT=8501
 DEBUG=false
+
+# === Phase 2.1 Configuration ===
+
+# Redis Stack (Vector Store)
+REDIS_URL=redis://localhost:6379
+
+# Embeddings
+EMBEDDING_MODEL=nomic-embed-text
+
+# RAG Pipeline
+CHUNK_SIZE=512
+CHUNK_OVERLAP=50
+RAG_TOP_K=5
+
+# Document Storage
+UPLOAD_DIR=data/uploads
+MAX_UPLOAD_SIZE_MB=50
+
+# FastAPI Backend
+API_HOST=0.0.0.0
+API_PORT=8000
+
+# Database Connection (SQLAlchemy async)
+DATABASE_URL=mssql+aioodbc://sa:LocalLLM%402024%21@localhost:1433/ResearchAnalytics?driver=ODBC+Driver+18+for+SQL+Server&TrustServerCertificate=yes
 ```
 
 ### MCP Configuration (mcp_config.json)
@@ -445,6 +517,9 @@ uv run python -m src.cli.chat
 # Run Streamlit UI
 uv run streamlit run src/ui/streamlit_app.py
 
+# Run FastAPI backend (Phase 2.1)
+uv run uvicorn src.api.main:app --reload --host 0.0.0.0 --port 8000
+
 # Run tests
 uv run pytest tests/ -v
 
@@ -455,12 +530,15 @@ uv run ruff format .
 uv run ruff check .
 ```
 
-### Docker SQL Server
+### Docker Services
 
 ```bash
-# Start SQL Server
+# Start all services (SQL Server + Redis Stack)
 cd docker
-docker compose up -d mssql
+docker compose up -d mssql redis-stack
+
+# Start with FastAPI container (alternative)
+docker compose up -d
 
 # Initialize database (first time)
 docker compose --profile init up mssql-tools
@@ -468,11 +546,30 @@ docker compose --profile init up mssql-tools
 # Or use Windows helper
 .\setup-database.bat
 
-# Stop SQL Server
+# View Redis Stack GUI
+# Open http://localhost:8001 (RedisInsight)
+
+# Stop all services
 docker compose down
 
 # Stop and remove data
 docker compose down -v
+```
+
+### Database Migrations (Alembic)
+
+```bash
+# Generate new migration
+uv run alembic revision --autogenerate -m "description"
+
+# Apply migrations
+uv run alembic upgrade head
+
+# Rollback one migration
+uv run alembic downgrade -1
+
+# View migration history
+uv run alembic history
 ```
 
 ### MSSQL MCP Server Setup
@@ -525,31 +622,57 @@ async def test_mssql_connection():
 
 ---
 
-## Phase 2 Preview (Upcoming)
+## Phase 2.1 Features (Implemented)
+
+### Backend Infrastructure
+
+| Feature | Description |
+|---------|-------------|
+| **FastAPI Backend** | REST API at `http://localhost:8000` with CORS, lifespan management |
+| **SQLAlchemy ORM** | 11 database models (Conversations, Messages, Dashboards, etc.) |
+| **Alembic Migrations** | Database schema version control |
+| **Redis Vector Store** | Vector similarity search using Redis Stack |
+| **RAG Pipeline** | Document processing with Docling, Ollama embeddings |
+| **Dynamic MCP** | Load/configure MCP servers from `mcp_config.json` at runtime |
+
+### API Endpoints (Phase 2.1)
+
+| Route | Description |
+|-------|-------------|
+| `/api/health` | Health checks, metrics, service status |
+| `/api/documents` | Document upload, RAG search, schema indexing |
+| `/api/conversations` | Chat history CRUD |
+| `/api/queries` | Query history, saved queries, favorites |
+| `/api/dashboards` | Dashboard and widget management |
+| `/api/mcp` | MCP server status, tool listing |
+| `/api/settings` | Theme config, app settings |
+| `/api/agent` | Agent chat endpoint |
+
+### Service Ports
+
+| Service | Port | URL |
+|---------|------|-----|
+| FastAPI | 8000 | http://localhost:8000 |
+| Streamlit | 8501 | http://localhost:8501 |
+| RedisInsight | 8001 | http://localhost:8001 |
+| SQL Server | 1433 | localhost:1433 |
+
+---
+
+## Phase 2.2 Preview (Upcoming)
 
 ### New Features
 
 | Feature | Description |
 |---------|-------------|
-| **RAG Pipeline** | SQL Server vector store, Docling document processing |
 | **React UI** | Modern full-stack UI (third deployment option) |
-| **Dynamic MCP** | Add/remove MCP servers via UI |
 | **Theming** | Dark/light mode, custom branding |
+| **Dashboard Builder** | Visual dashboard and widget configuration |
+| **Real-time Updates** | WebSocket-based chat streaming |
 
-### New Structure (Phase 2 additions)
+### New Structure (Phase 2.2 additions)
 
 ```
-├── src/
-│   ├── api/                     # FastAPI backend
-│   │   ├── main.py
-│   │   └── routes/
-│   ├── rag/                     # RAG pipeline
-│   │   ├── vector_store.py
-│   │   ├── document_processor.py
-│   │   └── retriever.py
-│   └── mcp/
-│       └── dynamic_manager.py   # Runtime MCP management
-│
 ├── frontend/                    # React UI
 │   ├── src/
 │   │   ├── pages/
@@ -558,17 +681,17 @@ async def test_mssql_connection():
 │   └── package.json
 ```
 
-### Execute Phase 2
+### Execute Phase 2.2
 
 ```bash
-/execute-prp PRPs/phase2-rag-react-ui-prp.md
+/execute-prp PRPs/phase2.2-react-frontend-prp.md
 ```
 
 ---
 
-## ⚠️ CRITICAL CONSTRAINTS FOR PHASE 2
+## ⚠️ CRITICAL CONSTRAINTS FOR PHASE 2.2
 
-When executing Phase 2 PRP, ensure:
+When executing Phase 2.2 PRP, ensure:
 
 1. **DO NOT modify or delete** any existing files in:
    - `src/agent/research_agent.py`
@@ -576,14 +699,17 @@ When executing Phase 2 PRP, ensure:
    - `src/ui/streamlit_app.py`
    - `src/utils/config.py`
    - `src/mcp/client.py`
+   - `src/api/` (Phase 2.1 - extend only)
+   - `src/rag/` (Phase 2.1 - extend only)
 
-2. **ADD NEW files** for Phase 2 features - do not replace existing implementations
+2. **ADD NEW files** for Phase 2.2 features - do not replace existing implementations
 
 3. **EXTEND, don't replace** - if modifying existing files, add new methods, don't rewrite existing ones
 
 4. **TEST existing interfaces** after each sub-phase:
    - `uv run python -m src.cli.chat` still works
    - `uv run streamlit run src/ui/streamlit_app.py` still works
+   - `uv run uvicorn src.api.main:app` still works
 
 ---
 
@@ -626,6 +752,39 @@ docker logs local-llm-mssql
 
 # Restart container
 docker compose restart mssql
+```
+
+### Redis Stack Issues (Phase 2.1)
+
+```bash
+# Check container status
+docker ps -a | grep redis
+
+# View logs
+docker logs local-llm-redis
+
+# Test Redis connection
+redis-cli ping
+
+# View RedisInsight GUI
+# Open http://localhost:8001
+
+# Restart Redis
+docker compose restart redis-stack
+```
+
+### FastAPI Issues (Phase 2.1)
+
+```bash
+# Test API is running
+curl http://localhost:8000/api/health
+
+# View API docs
+# Open http://localhost:8000/docs (Swagger)
+# Open http://localhost:8000/redoc (ReDoc)
+
+# Check import errors
+uv run python -c "from src.api.main import app; print('OK')"
 ```
 
 ### MCP Server Issues

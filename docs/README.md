@@ -14,6 +14,8 @@
 | [Foundry Local Guide](guides/foundry-local.md) | Install and manage Foundry Local |
 | [Troubleshooting](guides/troubleshooting.md) | Comprehensive problem-solving guide |
 | [API Reference](api/README.md) | Programmatic interface documentation |
+| [FastAPI Backend](api/fastapi.md) | REST API documentation (Phase 2.1) |
+| [RAG Pipeline](api/rag.md) | Document retrieval and vector search (Phase 2.1) |
 
 ---
 
@@ -37,7 +39,9 @@ docs/
 │   ├── providers.md             # LLM providers API
 │   ├── mcp-client.md            # MCP client API
 │   ├── models.md                # Data models API
-│   └── utilities.md             # Utilities API
+│   ├── utilities.md             # Utilities API
+│   ├── fastapi.md               # FastAPI REST API (Phase 2.1)
+│   └── rag.md                   # RAG Pipeline (Phase 2.1)
 │
 ├── reference/                   # Reference materials
 │   ├── configuration.md         # Full configuration reference
@@ -86,6 +90,8 @@ For developers integrating or extending the agent:
 | [MCP Client API](api/mcp-client.md) | MCP server integration |
 | [Models API](api/models.md) | Data models and schemas |
 | [Utilities API](api/utilities.md) | Config, logging, caching, health |
+| [FastAPI Backend](api/fastapi.md) | REST API endpoints (Phase 2.1) |
+| [RAG Pipeline](api/rag.md) | Vector search and document processing (Phase 2.1) |
 
 ---
 
@@ -106,35 +112,38 @@ The system architecture is documented in the [architecture diagram](diagrams/arc
 ### High-Level Overview
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                    User Interfaces                          │
-│  ┌─────────────────┐              ┌─────────────────────┐   │
-│  │   CLI (Typer)   │              │   Streamlit UI      │   │
-│  └────────┬────────┘              └──────────┬──────────┘   │
-└───────────┼──────────────────────────────────┼──────────────┘
-            │                                  │
-            ▼                                  ▼
-┌─────────────────────────────────────────────────────────────┐
-│                    Pydantic AI Agent                        │
-│  ┌───────────────────────────────────────────────────────┐  │
-│  │  System Prompt + Tool Orchestration + Conversation    │  │
-│  └───────────────────────────────────────────────────────┘  │
-└─────────────────────────┬───────────────────────────────────┘
-                          │
-            ┌─────────────┴─────────────┐
-            ▼                           ▼
-┌───────────────────────┐   ┌─────────────────────────────────┐
-│   LLM Provider        │   │        MCP Servers              │
-│  ┌─────────────────┐  │   │  ┌───────────────────────────┐  │
-│  │ Ollama          │  │   │  │  MSSQL MCP Server         │  │
-│  ├─────────────────┤  │   │  └─────────────┬─────────────┘  │
-│  │ Foundry Local   │  │   │                │                │
-│  └─────────────────┘  │   │                ▼                │
-└───────────────────────┘   │  ┌───────────────────────────┐  │
-                            │  │  SQL Server 2022          │  │
-                            │  │  (Local or Azure SQL)     │  │
-                            │  └───────────────────────────┘  │
-                            └─────────────────────────────────┘
+┌────────────────────────────────────────────────────────────────────────────┐
+│                           User Interfaces                                   │
+│  ┌─────────────────┐  ┌─────────────────────┐  ┌────────────────────────┐  │
+│  │   CLI (Typer)   │  │   Streamlit UI      │  │  FastAPI Backend       │  │
+│  └────────┬────────┘  └──────────┬──────────┘  └───────────┬────────────┘  │
+└───────────┼──────────────────────┼─────────────────────────┼───────────────┘
+            │                      │                         │
+            ▼                      ▼                         ▼
+┌────────────────────────────────────────────────────────────────────────────┐
+│                         Pydantic AI Agent                                   │
+│  ┌──────────────────────────────────────────────────────────────────────┐  │
+│  │  System Prompt + Tool Orchestration + Conversation + RAG Context     │  │
+│  └──────────────────────────────────────────────────────────────────────┘  │
+└─────────────────────────────────┬──────────────────────────────────────────┘
+                                  │
+            ┌─────────────────────┼─────────────────────┐
+            ▼                     ▼                     ▼
+┌───────────────────────┐  ┌─────────────────┐  ┌─────────────────────────┐
+│   LLM Provider        │  │   MCP Servers   │  │   RAG Pipeline          │
+│  ┌─────────────────┐  │  │  ┌───────────┐  │  │  ┌───────────────────┐  │
+│  │ Ollama          │  │  │  │ MSSQL MCP │  │  │  │ Docling Parser    │  │
+│  ├─────────────────┤  │  │  └─────┬─────┘  │  │  ├───────────────────┤  │
+│  │ Foundry Local   │  │  │        │        │  │  │ Ollama Embeddings │  │
+│  └─────────────────┘  │  │        ▼        │  │  ├───────────────────┤  │
+└───────────────────────┘  │  ┌───────────┐  │  │  │ Vector Search     │  │
+                           │  │SQL Server │  │  │  └─────────┬─────────┘  │
+                           │  └───────────┘  │  │            │            │
+                           └─────────────────┘  │            ▼            │
+                                                │  ┌───────────────────┐  │
+                                                │  │  Redis Stack      │  │
+                                                │  └───────────────────┘  │
+                                                └─────────────────────────┘
 ```
 
 ### Key Components
@@ -147,10 +156,17 @@ The system architecture is documented in the [architecture diagram](diagrams/arc
 | Web UI | Streamlit | Browser interface |
 | CLI | Typer + Rich | Terminal interface |
 | Database | SQL Server 2022 / Azure SQL | Data storage |
+| **Backend API** | FastAPI + Uvicorn | REST API (Phase 2.1) |
+| **ORM** | SQLAlchemy 2.0 + Alembic | Database models (Phase 2.1) |
+| **Vector Store** | Redis Stack | Similarity search (Phase 2.1) |
+| **Embeddings** | Ollama (nomic-embed-text) | Document vectors (Phase 2.1) |
+| **Doc Processing** | Docling | PDF/DOCX parsing (Phase 2.1) |
 
 ---
 
 ## Features
+
+### Phase 1 Features (Stable)
 
 | Feature | Status | Description |
 |---------|--------|-------------|
@@ -163,6 +179,20 @@ The system architecture is documented in the [architecture diagram](diagrams/arc
 | Session History | Stable | Save and recall conversations |
 | Export (JSON/CSV/MD) | Stable | Export conversations |
 | Read-Only Mode | Stable | Safe database exploration |
+
+### Phase 2.1 Features (Backend + RAG)
+
+| Feature | Status | Description |
+|---------|--------|-------------|
+| FastAPI Backend | Stable | REST API for all operations |
+| SQLAlchemy ORM | Stable | Database models with Alembic migrations |
+| Redis Vector Store | Stable | Vector similarity search |
+| Document Upload | Stable | PDF/DOCX processing with Docling |
+| RAG Search | Stable | Context-aware document retrieval |
+| Schema Indexing | Stable | Database schema for RAG context |
+| Dynamic MCP | Stable | Runtime MCP server configuration |
+| Dashboard API | Stable | Dashboard and widget management |
+| Query History | Stable | Saved queries and favorites |
 
 ---
 
@@ -203,4 +233,4 @@ Documentation contributions are welcome! Please follow the [Documentation Standa
 
 ---
 
-*Last Updated: December 2024*
+*Last Updated: December 2025* (Phase 2.1 Backend + RAG)

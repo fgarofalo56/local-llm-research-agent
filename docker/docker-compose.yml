@@ -1,6 +1,8 @@
 # Docker Compose for Local LLM Research Agent
 # SQL Server 2022 Developer Edition + Research Agent Application
 #
+# Project name: local-agent-ai-stack (all containers nested under this name)
+#
 # Usage:
 #   docker compose up -d              # Start SQL Server only
 #   docker compose up -d agent-ui     # Start agent web UI
@@ -14,17 +16,38 @@
 #   agent-ui    - Streamlit web interface (port 8501)
 #   agent-cli   - Interactive CLI chat (run manually)
 #   mssql-tools - Database initialization (profile: init)
+#   redis-stack - Redis with vector search (port 6379, RedisInsight on 8001)
+#   api         - FastAPI backend (port 8000)
 #
 # Connection:
 #   Server: localhost,1433
 #   Database: ResearchAnalytics
 #   User: sa
 #   Password: (see MSSQL_SA_PASSWORD below or .env)
+#
+# Port Configuration (via .env):
+#   REDIS_PORT=6379          # Redis server port
+#   REDIS_INSIGHT_PORT=8001  # RedisInsight GUI port (change if 8001 is in use)
+#   API_PORT=8000            # FastAPI backend port
+#   STREAMLIT_PORT=8501      # Streamlit UI port
+#
+# Data Persistence:
+#   Volumes are configured as EXTERNAL to preserve data across rebuilds.
+#   Default volume names: local-llm-mssql-data, local-llm-redis-data
+#   To use different volumes, set in .env:
+#     MSSQL_VOLUME_NAME=your-mssql-volume
+#     REDIS_VOLUME_NAME=your-redis-volume
+#
+#   IMPORTANT:
+#     - "docker compose down" preserves data (safe)
+#     - "docker compose down -v" DELETES all data (destructive)
+
+name: local-agent-ai-stack
 
 services:
   mssql:
     image: mcr.microsoft.com/mssql/server:2022-latest
-    container_name: local-llm-mssql
+    container_name: local-agent-mssql
     hostname: mssql
     environment:
       ACCEPT_EULA: "Y"
@@ -52,7 +75,7 @@ services:
   # Uses the same SQL Server image which includes sqlcmd tools
   mssql-tools:
     image: mcr.microsoft.com/mssql/server:2022-latest
-    container_name: local-llm-mssql-tools
+    container_name: local-agent-mssql-tools
     depends_on:
       mssql:
         condition: service_healthy
@@ -88,7 +111,7 @@ services:
     build:
       context: ..
       dockerfile: Dockerfile
-    container_name: local-llm-agent-ui
+    container_name: local-agent-streamlit-ui
     depends_on:
       mssql:
         condition: service_healthy
@@ -124,7 +147,7 @@ services:
     build:
       context: ..
       dockerfile: Dockerfile
-    container_name: local-llm-agent-cli
+    container_name: local-agent-cli
     depends_on:
       mssql:
         condition: service_healthy
@@ -162,10 +185,10 @@ services:
 
   redis-stack:
     image: redis/redis-stack:latest
-    container_name: local-llm-redis
+    container_name: local-agent-redis
     ports:
-      - "6379:6379"
-      - "8001:8001"  # RedisInsight GUI
+      - "${REDIS_PORT:-6379}:6379"
+      - "${REDIS_INSIGHT_PORT:-8001}:8001"  # RedisInsight GUI (change via REDIS_INSIGHT_PORT if port conflict)
     volumes:
       - redis_data:/data
     environment:
@@ -187,7 +210,7 @@ services:
     build:
       context: ..
       dockerfile: docker/Dockerfile.api
-    container_name: local-llm-api
+    container_name: local-agent-api
     depends_on:
       mssql:
         condition: service_healthy
@@ -238,11 +261,17 @@ services:
 
 volumes:
   mssql_data:
-    name: local-llm-mssql-data
+    # Use existing volume to preserve data from previous "docker" project
+    # If you have data in local-llm-mssql-data, change this name to match
+    # Or run: docker volume create local-agent-mssql-data
+    #         docker run --rm -v local-llm-mssql-data:/from -v local-agent-mssql-data:/to alpine cp -av /from/. /to/
+    name: ${MSSQL_VOLUME_NAME:-local-llm-mssql-data}
+    external: true
   redis_data:
-    name: local-llm-redis-data
+    name: ${REDIS_VOLUME_NAME:-local-llm-redis-data}
+    external: true
 
 networks:
   llm-network:
-    name: local-llm-network
+    name: local-agent-network
     driver: bridge

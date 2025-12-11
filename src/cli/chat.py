@@ -9,19 +9,14 @@ Supports both Ollama and Foundry Local as LLM providers.
 import asyncio
 
 import typer
-from rich.panel import Panel
 from rich.prompt import Prompt
-from rich.table import Table
 from rich.text import Text
 
 from src.agent.research_agent import ResearchAgent, ResearchAgentError
 from src.cli.theme import (
-    BANNER_ART,
-    BANNER_SIMPLE,
     COLORS,
     Icons,
     create_console,
-    create_data_table,
     create_database_table,
     create_help_panel,
     create_session_table,
@@ -30,27 +25,25 @@ from src.cli.theme import (
     error_message,
     format_agent_response_header,
     format_goodbye,
-    format_user_message,
+    format_token_usage,
     info_message,
+    print_banner,
     styled_divider,
-    styled_status_indicator,
     success_message,
     thinking_status,
     warning_message,
 )
 from src.providers import ProviderType, create_provider, get_available_providers
-from src.utils.config import settings, SqlAuthType
+from src.utils.config import SqlAuthType, settings
 from src.utils.database_manager import DatabaseConfig, get_database_manager
 from src.utils.export import (
     export_conversation_to_csv,
-    export_response_data,
     export_to_json,
     export_to_markdown,
     generate_export_filename,
 )
 from src.utils.health import (
     HealthStatus,
-    format_health_report,
     run_health_checks,
 )
 from src.utils.history import get_history_manager
@@ -59,8 +52,8 @@ from src.utils.logger import get_logger, setup_logging
 logger = get_logger(__name__)
 
 app = typer.Typer(
-    name="llm-chat",
-    help="Local LLM Research Agent - Chat with your SQL Server data",
+    name="agent-ai",
+    help="Agent AI - SQL Server Analytics with Local LLMs",
     no_args_is_help=False,
 )
 console = create_console()
@@ -77,7 +70,9 @@ async def check_provider_status(provider_type: str | None = None) -> dict:
         Dict with provider status information
     """
     try:
-        ptype = ProviderType(provider_type) if provider_type else ProviderType(settings.llm_provider)
+        ptype = (
+            ProviderType(provider_type) if provider_type else ProviderType(settings.llm_provider)
+        )
         provider = create_provider(provider_type=ptype)
         status = await provider.check_connection()
         return {
@@ -98,9 +93,8 @@ async def check_provider_status(provider_type: str | None = None) -> dict:
 
 def print_welcome(provider_type: str, model: str = "", readonly: bool = False) -> None:
     """Print welcome banner and status."""
-    console.print()
-    # Print the ASCII art banner
-    console.print(BANNER_ART)
+    # Print the ASCII art banner using theme function
+    print_banner(console)
     # Print the welcome panel with provider info
     console.print(create_welcome_panel(provider_type, model, readonly))
     console.print()
@@ -220,6 +214,17 @@ def print_help_commands() -> None:
     console.print(create_help_panel())
 
 
+async def list_provider_models(provider_type: str) -> list[str]:
+    """List available models for a provider."""
+    try:
+        ptype = ProviderType(provider_type)
+        provider = create_provider(provider_type=ptype)
+        return await provider.list_models()
+    except Exception as e:
+        logger.error("list_provider_models_error", provider=provider_type, error=str(e))
+        return []
+
+
 def print_cache_stats(agent: ResearchAgent) -> None:
     """Print cache statistics with styled table."""
     stats = agent.get_cache_stats()
@@ -277,10 +282,14 @@ async def run_chat_loop(
         error_msg = status.get("error", "Unknown error")
         if effective_provider == "ollama":
             console.print(error_message(f"Ollama is not available: {error_msg}"))
-            console.print(f"  {Icons.ARROW_RIGHT} Please start Ollama: [{COLORS['accent']}]ollama serve[/]")
+            console.print(
+                f"  {Icons.ARROW_RIGHT} Please start Ollama: [{COLORS['accent']}]ollama serve[/]"
+            )
         else:
             console.print(error_message(f"Foundry Local is not available: {error_msg}"))
-            console.print(f"  {Icons.ARROW_RIGHT} Install: [{COLORS['accent']}]pip install foundry-local-sdk[/]")
+            console.print(
+                f"  {Icons.ARROW_RIGHT} Install: [{COLORS['accent']}]pip install foundry-local-sdk[/]"
+            )
         raise typer.Exit(1)
 
     if not settings.mcp_mssql_path:
@@ -434,7 +443,9 @@ async def run_chat_loop(
                         # Restore conversation
                         agent.conversation = session.to_conversation()
                         console.print(success_message(f"Session loaded: {session.metadata.title}"))
-                        console.print(f"  {Icons.BULLET} [{COLORS['gray_400']}]{session.metadata.turn_count} turns restored[/]")
+                        console.print(
+                            f"  {Icons.BULLET} [{COLORS['gray_400']}]{session.metadata.turn_count} turns restored[/]"
+                        )
                     else:
                         console.print(error_message(f"Session not found: {session_id}"))
                     continue
@@ -489,15 +500,21 @@ async def run_chat_loop(
                     if db_manager.set_active(db_name):
                         db_config = db_manager.active
                         console.print(success_message(f"Switched to database: {db_name}"))
-                        console.print(f"  {Icons.BULLET} [{COLORS['gray_400']}]Connection: {db_config.connection_string_display}[/]")
-                        console.print(warning_message("Restart chat to apply new database connection"))
+                        console.print(
+                            f"  {Icons.BULLET} [{COLORS['gray_400']}]Connection: {db_config.connection_string_display}[/]"
+                        )
+                        console.print(
+                            warning_message("Restart chat to apply new database connection")
+                        )
                     else:
                         console.print(error_message(f"Database not found: {db_name}"))
                     continue
 
                 elif parts[1] == "add":
                     console.print()
-                    console.print(f"[bold {COLORS['primary']}]{Icons.DATABASE} Add New Database Configuration[/]")
+                    console.print(
+                        f"[bold {COLORS['primary']}]{Icons.DATABASE} Add New Database Configuration[/]"
+                    )
                     console.print(styled_divider())
                     console.print()
 
@@ -506,15 +523,30 @@ async def run_chat_loop(
                         console.print(error_message("Name is required"))
                         continue
 
-                    host = Prompt.ask(f"[{COLORS['gray_400']}]SQL Server host[/]", default="localhost")
+                    host = Prompt.ask(
+                        f"[{COLORS['gray_400']}]SQL Server host[/]", default="localhost"
+                    )
                     port = int(Prompt.ask(f"[{COLORS['gray_400']}]Port[/]", default="1433"))
                     database = Prompt.ask(f"[{COLORS['gray_400']}]Database name[/]")
-                    username = Prompt.ask(f"[{COLORS['gray_400']}]Username (blank for Windows Auth)[/]", default="")
+                    username = Prompt.ask(
+                        f"[{COLORS['gray_400']}]Username (blank for Windows Auth)[/]", default=""
+                    )
                     password = ""
                     if username:
-                        password = Prompt.ask(f"[{COLORS['gray_400']}]Password[/]", password=True, default="")
-                    readonly = Prompt.ask(f"[{COLORS['gray_400']}]Read-only mode?[/]", choices=["y", "n"], default="n") == "y"
-                    description = Prompt.ask(f"[{COLORS['gray_400']}]Description (optional)[/]", default="")
+                        password = Prompt.ask(
+                            f"[{COLORS['gray_400']}]Password[/]", password=True, default=""
+                        )
+                    readonly = (
+                        Prompt.ask(
+                            f"[{COLORS['gray_400']}]Read-only mode?[/]",
+                            choices=["y", "n"],
+                            default="n",
+                        )
+                        == "y"
+                    )
+                    description = Prompt.ask(
+                        f"[{COLORS['gray_400']}]Description (optional)[/]", default=""
+                    )
 
                     try:
                         config = DatabaseConfig(
@@ -539,7 +571,9 @@ async def run_chat_loop(
                         console.print(success_message(f"Database removed: {db_name}"))
                     else:
                         console.print(error_message(f"Cannot remove database: {db_name}"))
-                        console.print(f"  {Icons.BULLET} [{COLORS['gray_400']}](default database cannot be removed)[/]")
+                        console.print(
+                            f"  {Icons.BULLET} [{COLORS['gray_400']}](default database cannot be removed)[/]"
+                        )
                     continue
 
                 else:
@@ -550,20 +584,142 @@ async def run_chat_loop(
                 print_help_commands()
                 continue
 
+            # Handle /provider command - switch LLM provider
+            if command.startswith("/provider"):
+                parts = command.split()
+                if len(parts) < 2:
+                    console.print(info_message("Usage: /provider <ollama|foundry_local>"))
+                    console.print(f"  {Icons.BULLET} [{COLORS['gray_400']}]Current: {effective_provider}[/]")
+                    continue
+
+                new_provider = parts[1].lower()
+                if new_provider not in ("ollama", "foundry_local"):
+                    console.print(error_message(f"Unknown provider: {new_provider}"))
+                    console.print(f"  {Icons.BULLET} [{COLORS['gray_400']}]Available: ollama, foundry_local[/]")
+                    continue
+
+                # Check if the new provider is available
+                new_status = await check_provider_status(new_provider)
+                if not new_status["available"]:
+                    console.print(error_message(f"Provider not available: {new_provider}"))
+                    if new_status.get("error"):
+                        console.print(f"  {Icons.BULLET} [{COLORS['gray_400']}]{new_status['error']}[/]")
+                    continue
+
+                # Create new agent with the new provider
+                try:
+                    effective_provider = new_provider
+                    model = new_status.get("model")  # Use provider's default/available model
+                    agent = ResearchAgent(
+                        provider_type=effective_provider,
+                        model_name=model,
+                        readonly=readonly,
+                        cache_enabled=cache_enabled,
+                        explain_mode=explain_mode,
+                    )
+                    console.print(success_message(f"Switched to {new_provider}"))
+                    console.print(f"  {Icons.BULLET} [{COLORS['gray_400']}]Model: {agent.provider.model_name}[/]")
+                except Exception as e:
+                    console.print(error_message(f"Failed to switch provider: {e}"))
+                continue
+
+            # Handle /models command - list available models (before /model to avoid conflict)
+            if command == "/models":
+                console.print()
+                console.print(f"[bold {COLORS['primary']}]{Icons.DATABASE} Available Models[/]")
+                console.print(styled_divider())
+
+                # List models for both providers
+                for prov in ["ollama", "foundry_local"]:
+                    prov_name = "Ollama" if prov == "ollama" else "Foundry Local"
+                    console.print(f"\n[{COLORS['accent']}]{prov_name}[/]:")
+
+                    models = await list_provider_models(prov)
+                    if models:
+                        for m in models[:15]:  # Limit to 15 models
+                            is_current = (prov == effective_provider and m == agent.provider.model_name)
+                            if is_current:
+                                console.print(f"  {Icons.STAR} [{COLORS['success']}]{m}[/] (active)")
+                            else:
+                                console.print(f"  {Icons.BULLET} [{COLORS['gray_300']}]{m}[/]")
+                        if len(models) > 15:
+                            console.print(f"  [{COLORS['gray_500']}]... and {len(models) - 15} more[/]")
+                    else:
+                        console.print(f"  [{COLORS['gray_500']}]Not available or no models found[/]")
+
+                console.print()
+                continue
+
+            # Handle /model command - switch model
+            if command.startswith("/model "):  # Note: space after /model to differentiate from /models
+                parts = command.split(maxsplit=1)
+                if len(parts) < 2:
+                    console.print(info_message("Usage: /model <model_name>"))
+                    console.print(f"  {Icons.BULLET} [{COLORS['gray_400']}]Current: {agent.provider.model_name}[/]")
+                    console.print(f"  {Icons.BULLET} [{COLORS['gray_400']}]Use '/models' to list available models[/]")
+                    continue
+
+                new_model = parts[1].strip()
+
+                # Create new agent with the new model
+                try:
+                    agent = ResearchAgent(
+                        provider_type=effective_provider,
+                        model_name=new_model,
+                        readonly=readonly,
+                        cache_enabled=cache_enabled,
+                        explain_mode=explain_mode,
+                    )
+                    model = new_model
+                    console.print(success_message(f"Switched to model: {new_model}"))
+                except Exception as e:
+                    console.print(error_message(f"Failed to switch model: {e}"))
+                continue
+
+            # Handle /model with no args - show current model info
+            if command == "/model":
+                console.print(info_message("Usage: /model <model_name>"))
+                console.print(f"  {Icons.BULLET} [{COLORS['gray_400']}]Current provider: {effective_provider}[/]")
+                console.print(f"  {Icons.BULLET} [{COLORS['gray_400']}]Current model: {agent.provider.model_name}[/]")
+                console.print(f"  {Icons.BULLET} [{COLORS['gray_400']}]Use '/models' to list available models[/]")
+                continue
+
             # Send to agent
             console.print()
             console.print(format_agent_response_header(), end="")
 
             if stream:
                 # Streaming mode - print chunks as they arrive
-                async for chunk in agent.chat_stream(user_input):
-                    console.print(chunk, end="")
+                with console.status(thinking_status(), spinner="dots"):
+                    async for chunk in agent.chat_stream(user_input):
+                        # Clear the status on first chunk
+                        console.print(chunk, end="")
                 console.print()  # Final newline
+
+                # Display token usage after streaming
+                stats = agent.get_last_response_stats()
+                token_usage = stats.get("token_usage")
+                if token_usage and token_usage.total_tokens > 0:
+                    console.print(format_token_usage(
+                        prompt_tokens=token_usage.prompt_tokens,
+                        completion_tokens=token_usage.completion_tokens,
+                        total_tokens=token_usage.total_tokens,
+                        duration_ms=stats.get("duration_ms", 0),
+                    ))
             else:
                 # Non-streaming mode - show spinner while waiting
                 with console.status(thinking_status(), spinner="dots"):
-                    response = await agent.chat(user_input)
-                console.print(response)
+                    detailed_response = await agent.chat_with_details(user_input)
+                console.print(detailed_response.content)
+
+                # Display token usage
+                if detailed_response.token_usage and detailed_response.token_usage.total_tokens > 0:
+                    console.print(format_token_usage(
+                        prompt_tokens=detailed_response.token_usage.prompt_tokens,
+                        completion_tokens=detailed_response.token_usage.completion_tokens,
+                        total_tokens=detailed_response.token_usage.total_tokens,
+                        duration_ms=detailed_response.duration_ms,
+                    ))
 
         except KeyboardInterrupt:
             console.print()
@@ -641,14 +797,16 @@ def chat(
     print_status_sync(effective_provider)
 
     try:
-        asyncio.run(run_chat_loop(
-            provider_type=provider,
-            model=model,
-            readonly=readonly,
-            stream=stream,
-            cache_enabled=not no_cache,
-            explain_mode=explain,
-        ))
+        asyncio.run(
+            run_chat_loop(
+                provider_type=provider,
+                model=model,
+                readonly=readonly,
+                stream=stream,
+                cache_enabled=not no_cache,
+                explain_mode=explain,
+            )
+        )
     except Exception as e:
         console.print(error_message(f"Fatal error: {e}"))
         raise typer.Exit(1)
@@ -679,7 +837,9 @@ def health(
     import json
 
     async def run_checks() -> None:
-        with console.status(f"[bold {COLORS['primary']}]{Icons.THINKING} Running health checks...[/]"):
+        with console.status(
+            f"[bold {COLORS['primary']}]{Icons.THINKING} Running health checks...[/]"
+        ):
             result = await run_health_checks(include_database=database)
 
         if json_output:
@@ -702,7 +862,9 @@ def health(
             color = status_colors.get(result.status, COLORS["white"])
             icon = status_icons.get(result.status, Icons.INFO)
             console.print()
-            console.print(f"[bold {COLORS['white']}]{Icons.LIGHTNING} System Health:[/] [{color}]{icon} {result.status.value.upper()}[/]")
+            console.print(
+                f"[bold {COLORS['white']}]{Icons.LIGHTNING} System Health:[/] [{color}]{icon} {result.status.value.upper()}[/]"
+            )
             console.print()
 
             # Create styled table for components
@@ -804,13 +966,34 @@ def query(
                 cache_enabled=not no_cache,
             )
             if stream:
-                async for chunk in agent.chat_stream(message):
-                    console.print(chunk, end="")
+                with console.status(thinking_status(), spinner="dots"):
+                    async for chunk in agent.chat_stream(message):
+                        console.print(chunk, end="")
                 console.print()
+
+                # Display token usage after streaming
+                stats = agent.get_last_response_stats()
+                token_usage = stats.get("token_usage")
+                if token_usage and token_usage.total_tokens > 0:
+                    console.print(format_token_usage(
+                        prompt_tokens=token_usage.prompt_tokens,
+                        completion_tokens=token_usage.completion_tokens,
+                        total_tokens=token_usage.total_tokens,
+                        duration_ms=stats.get("duration_ms", 0),
+                    ))
             else:
                 with console.status(thinking_status(), spinner="dots"):
-                    response = await agent.chat(message)
-                console.print(response)
+                    detailed_response = await agent.chat_with_details(message)
+                console.print(detailed_response.content)
+
+                # Display token usage
+                if detailed_response.token_usage and detailed_response.token_usage.total_tokens > 0:
+                    console.print(format_token_usage(
+                        prompt_tokens=detailed_response.token_usage.prompt_tokens,
+                        completion_tokens=detailed_response.token_usage.completion_tokens,
+                        total_tokens=detailed_response.token_usage.total_tokens,
+                        duration_ms=detailed_response.duration_ms,
+                    ))
         except Exception as e:
             console.print(error_message(f"Error: {e}"))
             raise typer.Exit(1)

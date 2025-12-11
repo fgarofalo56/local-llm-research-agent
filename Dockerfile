@@ -89,9 +89,7 @@ EXPOSE 8501
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:8501/_stcore/health || exit 1
 
-# Default entrypoint - supports both CLI and UI modes
-COPY --chown=agent:agent docker/entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh 2>/dev/null || true
-
-ENTRYPOINT ["/bin/bash", "-c"]
-CMD ["python -m src.cli.chat"]
+# Default command - supports both CLI and UI modes
+# Use exec form for proper signal handling
+# Override with docker-compose command for different modes
+CMD ["python", "-m", "src.cli.chat"]

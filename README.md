@@ -96,7 +96,39 @@ ollama pull mistral:7b-instruct
 
 ## 🐳 Docker Setup (SQL Server + Redis Stack)
 
-The project includes a complete Docker setup with SQL Server 2022, Redis Stack for vector search, and a pre-populated research analytics database.
+The project includes a complete Docker setup with SQL Server 2022, Redis Stack for vector search, and a pre-populated research analytics database. All services are nested under the `local-agent-ai-stack` project.
+
+### ⚠️ Critical: Environment File Requirement
+
+When running docker-compose from the **project root** (recommended), you **MUST** include `--env-file .env`:
+
+```bash
+# ✅ Correct - includes env file
+docker-compose -f docker/docker-compose.yml --env-file .env up -d
+
+# ❌ Wrong - will use default ports, may cause conflicts
+docker-compose -f docker/docker-compose.yml up -d
+```
+
+**Why?** Docker Compose looks for `.env` in the same directory as the compose file. Since `docker-compose.yml` is in the `docker/` subdirectory but `.env` is in the project root, you must explicitly specify the env file path.
+
+**What happens without it?**
+- Port configurations (like `REDIS_INSIGHT_PORT`) won't be loaded
+- Containers may fail to start due to port conflicts
+- Volume names may not be set correctly
+
+### 📦 Docker Services
+
+| Service | Container Name | Port | Profile | Purpose |
+|---------|---------------|------|---------|---------|
+| **mssql** | `local-agent-mssql` | 1433 | default | SQL Server 2022 database |
+| **redis-stack** | `local-agent-redis` | 6379, 8001* | default | Redis with vector search |
+| **mssql-tools** | `local-agent-mssql-tools` | - | `init` | Database initialization |
+| **agent-ui** | `local-agent-streamlit-ui` | 8501 | default | Streamlit web interface |
+| **agent-cli** | `local-agent-cli` | - | `cli` | Interactive CLI chat |
+| **api** | `local-agent-api` | 8000 | `api` | FastAPI backend |
+
+> *RedisInsight GUI port is configurable via `REDIS_INSIGHT_PORT` (default: 8001)
 
 ### 🗄️ Database Overview
 
@@ -117,6 +149,10 @@ Plus 3 useful views: `vw_ActiveProjects`, `vw_ResearcherPublications`, `vw_Proje
 
 ### 🚀 Starting the Services
 
+All docker-compose commands should be run from the **project root** using `-f docker/docker-compose.yml --env-file .env`:
+
+> ⚠️ **Important**: Always include `--env-file .env` when running docker-compose from the project root to ensure environment variables are properly loaded.
+
 #### Option 1: Quick Setup (Windows)
 
 ```bash
@@ -124,42 +160,57 @@ cd docker
 setup-database.bat
 ```
 
-#### Option 2: Manual Setup (All Platforms)
+#### Option 2: Core Services (SQL Server + Redis)
 
 ```bash
-cd docker
-
-# Start all services (SQL Server + Redis Stack)
-docker compose up -d mssql redis-stack
+# From project root - Start SQL Server and Redis
+docker-compose -f docker/docker-compose.yml --env-file .env up -d
 
 # Wait for services to be healthy
-docker compose ps
+docker-compose -f docker/docker-compose.yml ps
 
-# Run database initialization scripts
-docker compose --profile init up mssql-tools
+# Initialize database with sample data (first time only)
+docker-compose -f docker/docker-compose.yml --env-file .env --profile init up mssql-tools
 ```
 
-#### Option 3: Full Stack (with FastAPI)
+#### Option 3: Full Stack (with FastAPI Backend)
 
 ```bash
-cd docker
-
-# Start all services including API
-docker compose up -d
+# Start all services including the API
+docker-compose -f docker/docker-compose.yml --env-file .env --profile api up -d
 
 # This starts: SQL Server, Redis Stack, and FastAPI backend
+```
+
+#### Option 4: With Streamlit UI in Docker
+
+```bash
+# Core services + Streamlit UI
+docker-compose -f docker/docker-compose.yml --env-file .env up -d agent-ui
+
+# Core services + FastAPI + Streamlit
+docker-compose -f docker/docker-compose.yml --env-file .env --profile api up -d agent-ui
+```
+
+#### Option 5: Interactive CLI in Docker
+
+```bash
+# Run interactive CLI chat
+docker-compose -f docker/docker-compose.yml --env-file .env --profile cli run agent-cli
 ```
 
 ### 🔴 Redis Stack
 
 Redis Stack provides vector similarity search for the RAG pipeline.
 
-| Service | Port | Purpose |
-|---------|------|---------|
-| Redis | 6379 | Vector store |
-| RedisInsight | 8001 | GUI management |
+| Service | Default Port | Environment Variable | Purpose |
+|---------|--------------|---------------------|---------|
+| Redis | 6379 | `REDIS_PORT` | Vector store |
+| RedisInsight | 8001 | `REDIS_INSIGHT_PORT` | GUI management |
 
-Access RedisInsight at: http://localhost:8001
+Access RedisInsight at: http://localhost:8001 (or your configured port)
+
+> 💡 **Tip**: If port 8001 is in use, set `REDIS_INSIGHT_PORT=8008` (or any free port) in your `.env` file.
 
 ### 🔌 Connection Details
 
@@ -176,28 +227,48 @@ Access RedisInsight at: http://localhost:8001
 # Using sqlcmd (if installed)
 sqlcmd -S localhost,1433 -U sa -P "LocalLLM@2024!" -d ResearchAnalytics -Q "SELECT COUNT(*) FROM Researchers"
 
-# Using Docker exec
-docker exec -it local-llm-mssql /opt/mssql-tools18/bin/sqlcmd \
+# Using Docker exec (note the new container name)
+docker exec -it local-agent-mssql /opt/mssql-tools18/bin/sqlcmd \
   -S localhost -U sa -P "LocalLLM@2024!" -No \
   -Q "SELECT COUNT(*) AS ResearcherCount FROM ResearchAnalytics.dbo.Researchers"
 ```
 
-### 📋 Managing the Database
+### 💾 Data Persistence
+
+Docker volumes preserve data across container rebuilds:
+
+| Volume | Default Name | Environment Variable | Purpose |
+|--------|-------------|---------------------|---------|
+| SQL Server | `local-llm-mssql-data` | `MSSQL_VOLUME_NAME` | Database files |
+| Redis | `local-llm-redis-data` | `REDIS_VOLUME_NAME` | Vector store data |
+
+> ⚠️ **Important**: Volumes are configured as `external: true`. Create them before first run:
+> ```bash
+> docker volume create local-llm-mssql-data
+> docker volume create local-llm-redis-data
+> ```
+
+### 📋 Managing the Services
 
 ```bash
-# View container logs
-docker compose logs -f mssql
+# View container status
+docker-compose -f docker/docker-compose.yml ps
 
-# Stop the database (preserves data)
-docker compose down
+# View container logs
+docker-compose -f docker/docker-compose.yml logs -f mssql
+
+# Stop all services (preserves data)
+docker-compose -f docker/docker-compose.yml down
 
 # Stop and DELETE all data (fresh start)
-docker compose down -v
+docker-compose -f docker/docker-compose.yml down -v
 
 # Restart with fresh data
-docker compose down -v
-docker compose up -d mssql
-docker compose --profile init up mssql-tools
+docker-compose -f docker/docker-compose.yml down -v
+docker volume create local-llm-mssql-data
+docker volume create local-llm-redis-data
+docker-compose -f docker/docker-compose.yml --env-file .env up -d
+docker-compose -f docker/docker-compose.yml --env-file .env --profile init up mssql-tools
 ```
 
 ---
@@ -257,6 +328,9 @@ LLM_PROVIDER=ollama
 OLLAMA_HOST=http://localhost:11434
 OLLAMA_MODEL=qwen2.5:7b-instruct
 
+# Embedding model for RAG
+EMBEDDING_MODEL=nomic-embed-text
+
 # Microsoft Foundry Local Configuration (alternative)
 FOUNDRY_ENDPOINT=http://127.0.0.1:55588
 FOUNDRY_MODEL=phi-4
@@ -275,15 +349,54 @@ SQL_USERNAME=sa
 SQL_PASSWORD=LocalLLM@2024!
 
 # =============================================================================
+# Docker Configuration
+# =============================================================================
+# Docker SA password (must match SQL_PASSWORD for local dev)
+MSSQL_SA_PASSWORD=LocalLLM@2024!
+
+# Docker volume names for data persistence
+MSSQL_VOLUME_NAME=local-llm-mssql-data
+REDIS_VOLUME_NAME=local-llm-redis-data
+
+# =============================================================================
+# Redis Configuration
+# =============================================================================
+REDIS_URL=redis://localhost:6379
+REDIS_PORT=6379
+REDIS_INSIGHT_PORT=8001  # Change if port 8001 is in use
+
+# =============================================================================
+# RAG Configuration
+# =============================================================================
+CHUNK_SIZE=500
+CHUNK_OVERLAP=50
+RAG_TOP_K=5
+
+# =============================================================================
 # MCP Configuration
 # =============================================================================
 MCP_MSSQL_PATH=/path/to/SQL-AI-samples/MssqlMcp/Node/dist/index.js
 MCP_MSSQL_READONLY=false
+MCP_CONFIG_PATH=mcp_config.json
+
+# =============================================================================
+# API Server Configuration
+# =============================================================================
+API_HOST=0.0.0.0
+API_PORT=8000
+
+# =============================================================================
+# Storage Configuration
+# =============================================================================
+UPLOAD_DIR=./data/uploads
+MAX_UPLOAD_SIZE_MB=100
 
 # =============================================================================
 # Application Settings
 # =============================================================================
 LOG_LEVEL=INFO
+DEBUG=false
+STREAMLIT_PORT=8501
 ```
 
 ### 🦙 LLM Provider Options
@@ -307,16 +420,16 @@ uv run python -m src.cli.chat --help
 uv run python -m src.cli.chat chat
 
 # With streaming responses
-uv run python -m src.cli.chat --stream
+uv run python -m src.cli.chat chat --stream
 
 # Use Foundry Local instead of Ollama
-uv run python -m src.cli.chat --provider foundry_local
+uv run python -m src.cli.chat chat --provider foundry_local
 
 # With read-only mode (safer for exploration)
 uv run python -m src.cli.chat --readonly
 
 # With debug output
-uv run python -m src.cli.chat --debug
+uv run python -m src.cli.chat chat --debug
 ```
 
 ### 🌐 Streamlit Web UI

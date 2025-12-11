@@ -79,7 +79,8 @@ echo "--- Environment File ---" && \
 | Ollama | `curl localhost:11434/api/tags` | JSON with models |
 | Foundry Local | `curl 127.0.0.1:55588/v1/models` | JSON with models |
 | Docker | `docker ps` | Containers running |
-| SQL Server | `docker logs local-llm-mssql` | No errors |
+| SQL Server | `docker logs local-agent-mssql` | No errors |
+| Redis | `docker exec local-agent-redis redis-cli PING` | PONG |
 | MCP Server | `node $MCP_MSSQL_PATH` | Server starts |
 | .env file | `cat .env` | Configuration exists |
 
@@ -262,27 +263,63 @@ pip show foundry-local-sdk
 
 ### Connection Issues
 
+#### Environment Variables Not Loading
+
+**Symptoms:**
+- Redis fails with "port 8001 already allocated"
+- Containers fail to start after configuring custom ports
+- Password mismatch errors even though `.env` looks correct
+
+**Cause:** Docker Compose looks for `.env` in the same directory as the compose file, not the working directory.
+
+**Solution:** Always include `--env-file .env` when running from project root:
+
+```bash
+# ✅ Correct
+docker-compose -f docker/docker-compose.yml --env-file .env up -d
+
+# ❌ Wrong - .env won't be loaded
+docker-compose -f docker/docker-compose.yml up -d
+```
+
 #### Container Not Starting
 
 **Symptoms:**
-- `docker compose up` fails
+- `docker-compose up` fails
 - Container immediately exits
 
 **Solutions:**
 
 ```bash
-# Check Docker logs
-docker logs local-llm-mssql
+# Check Docker logs (from project root)
+docker logs local-agent-mssql
 
 # Remove old container
-docker rm -f local-llm-mssql
+docker rm -f local-agent-mssql
 
-# Remove volume (WARNING: deletes data)
-docker volume rm local-llm-mssql-data
+# Check if volume exists (external volumes must be created first)
+docker volume ls | grep mssql
+docker volume create local-llm-mssql-data
 
 # Restart fresh
-cd docker
-docker compose up -d
+docker-compose -f docker/docker-compose.yml up -d
+```
+
+#### External Volume Not Found
+
+**Symptoms:**
+- `external volume "local-llm-mssql-data" not found`
+
+**Solutions:**
+
+```bash
+# Create external volumes (only needed once)
+docker volume create local-llm-mssql-data
+docker volume create local-llm-redis-data
+
+# Or use custom volume names in .env
+MSSQL_VOLUME_NAME=my-mssql-data
+REDIS_VOLUME_NAME=my-redis-data
 ```
 
 #### Connection Refused
@@ -307,9 +344,9 @@ netstat -ano | findstr 1433
 # Linux/Mac
 lsof -i :1433
 
-# Wait for container health
-docker compose ps
-docker inspect local-llm-mssql --format='{{.State.Health.Status}}'
+# Wait for container health (from project root)
+docker-compose -f docker/docker-compose.yml ps
+docker inspect local-agent-mssql --format='{{.State.Health.Status}}'
 ```
 
 ### Authentication Issues
@@ -324,12 +361,17 @@ docker inspect local-llm-mssql --format='{{.State.Health.Status}}'
 ```bash
 # Verify password matches
 cat .env | grep SQL_PASSWORD
-docker exec local-llm-mssql env | grep MSSQL_SA_PASSWORD
+docker exec local-agent-mssql env | grep MSSQL_SA_PASSWORD
 
-# Reset container with correct password
-cd docker
-docker compose down -v
-docker compose up -d
+# Note: SA password is stored in master database on first run
+# Changing .env after initial creation won't update the database password
+
+# To reset everything (WARNING: deletes all data)
+docker-compose -f docker/docker-compose.yml down -v
+docker volume rm local-llm-mssql-data
+docker volume create local-llm-mssql-data
+docker-compose -f docker/docker-compose.yml up -d
+docker-compose -f docker/docker-compose.yml --profile init up mssql-tools
 ```
 
 #### Windows Authentication Failed
@@ -761,13 +803,17 @@ curl -s http://127.0.0.1:55588/v1/models 2>/dev/null | head -c 200 || echo "  No
 
 echo ""
 echo "--- Docker Containers ---"
-docker ps --format "table {{.Names}}\t{{.Status}}" 2>/dev/null | grep -E "(NAMES|llm)"
+docker ps --format "table {{.Names}}\t{{.Status}}" 2>/dev/null | grep -E "(NAMES|agent)"
 
 echo ""
 echo "--- SQL Server ---"
-docker exec local-llm-mssql /opt/mssql-tools18/bin/sqlcmd \
+docker exec local-agent-mssql /opt/mssql-tools18/bin/sqlcmd \
   -S localhost -U sa -P "LocalLLM@2024!" -No \
   -Q "SELECT @@VERSION" 2>/dev/null | head -1 || echo "Not accessible"
+
+echo ""
+echo "--- Redis ---"
+docker exec local-agent-redis redis-cli PING 2>/dev/null || echo "Not accessible"
 
 echo ""
 echo "--- Configuration Summary ---"
@@ -785,7 +831,8 @@ echo "=== End Diagnostics ==="
 mkdir -p debug-logs
 
 # Docker logs
-docker logs local-llm-mssql > debug-logs/mssql.log 2>&1
+docker logs local-agent-mssql > debug-logs/mssql.log 2>&1
+docker logs local-agent-redis > debug-logs/redis.log 2>&1
 
 # Run agent with debug logging
 DEBUG=true LOG_LEVEL=DEBUG uv run python -m src.cli.chat 2>&1 | tee debug-logs/agent.log
@@ -840,4 +887,4 @@ DEBUG=true LOG_LEVEL=DEBUG uv run python -m src.cli.chat 2>&1 | tee debug-logs/a
 
 ---
 
-*Last Updated: December 2024*
+*Last Updated: December 2025* (Phase 2.1 - Added Redis, updated container names)

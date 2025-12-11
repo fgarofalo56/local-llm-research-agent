@@ -3,44 +3,99 @@
 #
 # Project name: local-agent-ai-stack (all containers nested under this name)
 #
-# Usage:
-#   docker compose up -d              # Start SQL Server only
-#   docker compose up -d agent-ui     # Start agent web UI
-#   docker compose run agent-cli      # Run interactive CLI
-#   docker compose --profile init up  # Initialize database
-#   docker compose down               # Stop all services
-#   docker compose down -v            # Stop and remove data volumes
+# =============================================================================
+# PROFILES - Choose what to start
+# =============================================================================
 #
-# Services:
-#   mssql       - SQL Server database (always starts)
-#   agent-ui    - Streamlit web interface (port 8501)
-#   agent-cli   - Interactive CLI chat (run manually)
-#   mssql-tools - Database initialization (profile: init)
-#   redis-stack - Redis with vector search (port 6379, RedisInsight on 8001)
-#   api         - FastAPI backend (port 8000)
+# Profile       | Services Started                    | Use Case
+# --------------|-------------------------------------|----------------------------------
+# (default)     | mssql, redis-stack, agent-ui        | Basic usage with web UI
+# --profile api | + api                               | Add FastAPI backend
+# --profile cli | + agent-cli                         | Add interactive CLI
+# --profile full| mssql, redis, agent-ui, api         | Everything (production-like)
+# --profile init| + mssql-tools                       | Database initialization
 #
-# Connection:
+# =============================================================================
+# QUICK START COMMANDS (run from project root with --env-file .env)
+# =============================================================================
+#
+# First time setup:
+#   docker volume create local-llm-mssql-data
+#   docker volume create local-llm-redis-data
+#   docker-compose -f docker/docker-compose.yml --env-file .env up -d
+#   docker-compose -f docker/docker-compose.yml --env-file .env --profile init up mssql-tools
+#
+# Start everything:
+#   docker-compose -f docker/docker-compose.yml --env-file .env --profile full up -d
+#
+# Start with API only:
+#   docker-compose -f docker/docker-compose.yml --env-file .env --profile api up -d
+#
+# Run CLI interactively:
+#   docker-compose -f docker/docker-compose.yml --env-file .env --profile cli run --rm agent-cli
+#
+# Stop all:
+#   docker-compose -f docker/docker-compose.yml down
+#
+# =============================================================================
+# SERVICES OVERVIEW
+# =============================================================================
+#
+# Service      | Container Name             | Port(s)         | Description
+# -------------|----------------------------|-----------------|------------------------
+# mssql        | local-agent-mssql          | 1433            | SQL Server 2022
+# redis-stack  | local-agent-redis          | 6379, 8001*     | Redis + Vector Search
+# agent-ui     | local-agent-streamlit-ui   | 8501            | Streamlit Web UI
+# api          | local-agent-api            | 8000            | FastAPI Backend
+# agent-cli    | local-agent-cli            | -               | Interactive CLI
+# mssql-tools  | local-agent-mssql-tools    | -               | DB Init (runs once)
+#
+# * RedisInsight port configurable via REDIS_INSIGHT_PORT
+#
+# =============================================================================
+# CONNECTION DETAILS
+# =============================================================================
+#
+# SQL Server:
 #   Server: localhost,1433
 #   Database: ResearchAnalytics
 #   User: sa
-#   Password: (see MSSQL_SA_PASSWORD below or .env)
+#   Password: (see MSSQL_SA_PASSWORD in .env)
 #
-# Port Configuration (via .env):
-#   REDIS_PORT=6379          # Redis server port
-#   REDIS_INSIGHT_PORT=8001  # RedisInsight GUI port (change if 8001 is in use)
-#   API_PORT=8000            # FastAPI backend port
-#   STREAMLIT_PORT=8501      # Streamlit UI port
+# Redis:
+#   URL: redis://localhost:6379
+#   RedisInsight GUI: http://localhost:8001 (or REDIS_INSIGHT_PORT)
 #
-# Data Persistence:
-#   Volumes are configured as EXTERNAL to preserve data across rebuilds.
-#   Default volume names: local-llm-mssql-data, local-llm-redis-data
-#   To use different volumes, set in .env:
-#     MSSQL_VOLUME_NAME=your-mssql-volume
-#     REDIS_VOLUME_NAME=your-redis-volume
+# Web Interfaces:
+#   Streamlit UI: http://localhost:8501
+#   FastAPI Docs: http://localhost:8000/docs
+#   API Health:   http://localhost:8000/health
 #
-#   IMPORTANT:
-#     - "docker compose down" preserves data (safe)
-#     - "docker compose down -v" DELETES all data (destructive)
+# =============================================================================
+# ENVIRONMENT VARIABLES (via .env)
+# =============================================================================
+#
+# Required:
+#   MSSQL_SA_PASSWORD      - SQL Server SA password
+#
+# Optional (with defaults):
+#   REDIS_PORT=6379        - Redis server port
+#   REDIS_INSIGHT_PORT=8001- RedisInsight GUI port
+#   API_PORT=8000          - FastAPI backend port
+#   STREAMLIT_PORT=8501    - Streamlit UI port
+#   OLLAMA_MODEL=qwen2.5:7b-instruct - LLM model to use
+#
+# =============================================================================
+# DATA PERSISTENCE
+# =============================================================================
+#
+# Volumes are EXTERNAL to preserve data across rebuilds:
+#   - local-llm-mssql-data (SQL Server data)
+#   - local-llm-redis-data (Redis data)
+#
+# IMPORTANT:
+#   - "docker compose down" preserves data (safe)
+#   - "docker compose down -v" DELETES all data (destructive)
 
 name: local-agent-ai-stack
 
@@ -62,7 +117,8 @@ services:
       # Mount init scripts (executed manually or via setup script)
       - ./init:/docker-entrypoint-initdb.d:ro
     healthcheck:
-      test: /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "$${MSSQL_SA_PASSWORD}" -No -Q "SELECT 1" || exit 1
+      # Note: Uses shell form to properly expand environment variable
+      test: /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "$$MSSQL_SA_PASSWORD" -No -Q "SELECT 1"
       interval: 10s
       timeout: 5s
       retries: 10
@@ -257,7 +313,8 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     profiles:
-      - api  # Only runs with: docker compose --profile api up
+      - api   # Runs with: docker compose --profile api up
+      - full  # Runs with: docker compose --profile full up
 
 volumes:
   mssql_data:

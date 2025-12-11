@@ -532,29 +532,36 @@ uv run ruff check .
 
 ### Docker Services
 
-```bash
-# Start all services (SQL Server + Redis Stack)
-cd docker
-docker compose up -d mssql redis-stack
+**⚠️ CRITICAL: When running from project root, ALWAYS include `--env-file .env`:**
 
-# Start with FastAPI container (alternative)
-docker compose up -d
+```bash
+# From project root - Start all services (SQL Server + Redis Stack)
+docker-compose -f docker/docker-compose.yml --env-file .env up -d
 
 # Initialize database (first time)
-docker compose --profile init up mssql-tools
+docker-compose -f docker/docker-compose.yml --env-file .env --profile init up mssql-tools
 
-# Or use Windows helper
-.\setup-database.bat
+# Start with FastAPI backend
+docker-compose -f docker/docker-compose.yml --env-file .env --profile api up -d
 
-# View Redis Stack GUI
-# Open http://localhost:8001 (RedisInsight)
+# Or from docker/ directory (no --env-file needed, but must copy .env there)
+cd docker
+docker compose up -d
+
+# Windows helper script
+cd docker && .\setup-database.bat
+
+# View Redis Stack GUI (port from REDIS_INSIGHT_PORT in .env, default 8001)
+# Open http://localhost:8008 (or your configured port)
 
 # Stop all services
-docker compose down
+docker-compose -f docker/docker-compose.yml down
 
 # Stop and remove data
-docker compose down -v
+docker-compose -f docker/docker-compose.yml down -v
 ```
+
+**Why `--env-file .env`?** Docker Compose looks for `.env` in the same directory as the compose file. Since `docker-compose.yml` is in `docker/` but `.env` is in project root, you must explicitly specify it.
 
 ### Database Migrations (Alembic)
 

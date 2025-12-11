@@ -13,7 +13,7 @@ from pydantic_ai import Agent
 
 from src.agent.prompts import get_system_prompt
 from src.mcp.client import MCPClientManager
-from src.models.chat import AgentResponse, ChatMessage, Conversation, ConversationTurn
+from src.models.chat import AgentResponse, ChatMessage, Conversation, ConversationTurn, TokenUsage
 from src.providers import LLMProvider, ProviderType, create_provider
 from src.utils.cache import CacheStats, ResponseCache, get_response_cache
 from src.utils.config import settings
@@ -234,15 +234,23 @@ class ResearchAgent:
         """
         Stream a response from the agent, yielding text chunks.
 
+        Uses run() internally to ensure tool calls are properly executed,
+        then yields the response in chunks for a streaming-like experience.
+
+        Token usage and duration are stored and can be retrieved via
+        get_last_response_stats() after streaming completes.
+
         Args:
             message: User message
 
         Yields:
-            Text chunks as they are generated
+            Text chunks (deltas) as they are generated
 
         Example:
             async for chunk in agent.chat_stream("What tables are available?"):
                 print(chunk, end="", flush=True)
+            stats = agent.get_last_response_stats()
+            print(f"Tokens: {stats['token_usage']}")
         """
         start_time = time.time()
         full_response = ""
@@ -254,12 +262,23 @@ class ResearchAgent:
             await self.rate_limiter.acquire()
 
             async with self.agent:
-                async with self.agent.run_stream(message) as stream:
-                    async for chunk in stream.stream_text():
-                        full_response += chunk
-                        yield chunk
+                # Use run() instead of run_stream() to ensure tool calls are executed
+                # run_stream() stops after first output which breaks tool execution
+                result = await self.agent.run(message)
+                full_response = result.output
+
+                # Capture token usage for later retrieval
+                self._last_token_usage = TokenUsage.from_pydantic_usage(result.usage())
+
+                # Simulate streaming by yielding chunks of the response
+                # This ensures tools execute while still providing a streaming-like UX
+                chunk_size = 20  # Characters per chunk
+                for i in range(0, len(full_response), chunk_size):
+                    chunk = full_response[i:i + chunk_size]
+                    yield chunk
 
             duration_ms = (time.time() - start_time) * 1000
+            self._last_duration_ms = duration_ms
 
             # Record conversation turn after streaming completes
             turn = ConversationTurn(
@@ -273,6 +292,7 @@ class ResearchAgent:
                 "agent_stream_completed",
                 duration_ms=round(duration_ms, 2),
                 response_length=len(full_response),
+                tokens=self._last_token_usage.total_tokens if self._last_token_usage else 0,
             )
 
         except Exception as e:
@@ -287,7 +307,7 @@ class ResearchAgent:
             message: User message
 
         Returns:
-            AgentResponse with content and metadata
+            AgentResponse with content, metadata, and token usage
         """
         start_time = time.time()
 
@@ -295,13 +315,15 @@ class ResearchAgent:
             async with self.agent:
                 result = await self.agent.run(message)
                 response_text = result.output
+                token_usage = TokenUsage.from_pydantic_usage(result.usage())
 
             duration_ms = (time.time() - start_time) * 1000
 
             return AgentResponse(
                 content=response_text,
                 duration_ms=duration_ms,
-                model=self.ollama_model,
+                model=self.provider.model_name,
+                token_usage=token_usage,
             )
 
         except Exception as e:
@@ -309,9 +331,20 @@ class ResearchAgent:
             return AgentResponse(
                 content="",
                 duration_ms=duration_ms,
-                model=self.ollama_model,
+                model=self.provider.model_name,
                 error=str(e),
             )
+
+    # Store last response metadata for access after streaming
+    _last_token_usage: TokenUsage | None = None
+    _last_duration_ms: float = 0.0
+
+    def get_last_response_stats(self) -> dict:
+        """Get statistics from the last response (useful after streaming)."""
+        return {
+            "token_usage": self._last_token_usage or TokenUsage(),
+            "duration_ms": self._last_duration_ms,
+        }
 
     def clear_history(self) -> None:
         """Clear conversation history."""

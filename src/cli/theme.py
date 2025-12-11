@@ -1,188 +1,206 @@
 """
 CLI Theme and Styling
 
-Defines the visual theme for the CLI interface with blue/white color scheme
-and Unicode icons for a modern, professional appearance.
+Modern, clean visual theme for the Agent AI CLI interface.
+Features a gradient color palette with cyan/blue accents.
 """
 
-from rich.console import Console
-from rich.theme import Theme
-from rich.style import Style
-from rich.panel import Panel
-from rich.text import Text
-from rich.table import Table
-from rich.box import ROUNDED, HEAVY, DOUBLE, MINIMAL, SIMPLE
-from rich import box
-from typing import Optional
+import random
 from datetime import datetime
 
+from rich.box import ROUNDED
+from rich.console import Console
+from rich.panel import Panel
+from rich.style import Style
+from rich.table import Table
+from rich.text import Text
+from rich.theme import Theme
 
 # =============================================================================
-# Color Palette - Blues and Whites
+# Color Palette - Modern Gradient (Cyan to Purple)
 # =============================================================================
 COLORS = {
-    # Primary blues
-    "primary": "#60A5FA",        # Bright blue
-    "primary_dark": "#3B82F6",   # Medium blue
-    "primary_darker": "#2563EB", # Deep blue
-    "accent": "#38BDF8",         # Sky blue
-    "accent_light": "#7DD3FC",   # Light sky blue
-
-    # Neutral/whites
-    "white": "#FFFFFF",
-    "gray_100": "#F3F4F6",
-    "gray_200": "#E5E7EB",
-    "gray_300": "#D1D5DB",
-    "gray_400": "#9CA3AF",
-    "gray_500": "#6B7280",
-    "gray_600": "#4B5563",
-
+    # Primary gradient
+    "primary": "#06B6D4",  # Cyan
+    "primary_dark": "#0891B2",  # Dark cyan
+    "primary_light": "#22D3EE",  # Light cyan
+    "accent": "#8B5CF6",  # Purple
+    "accent_light": "#A78BFA",  # Light purple
+    "accent_dark": "#7C3AED",  # Dark purple
+    # Gradient stops
+    "gradient_1": "#06B6D4",  # Cyan
+    "gradient_2": "#14B8A6",  # Teal
+    "gradient_3": "#8B5CF6",  # Purple
+    # Neutral tones
+    "white": "#F8FAFC",
+    "gray_100": "#F1F5F9",
+    "gray_200": "#E2E8F0",
+    "gray_300": "#CBD5E1",
+    "gray_400": "#94A3B8",
+    "gray_500": "#64748B",
+    "gray_600": "#475569",
+    "gray_700": "#334155",
+    "gray_800": "#1E293B",
     # Status colors
-    "success": "#34D399",        # Green
-    "warning": "#FBBF24",        # Yellow
-    "error": "#F87171",          # Red
-    "info": "#60A5FA",           # Blue
-
+    "success": "#10B981",  # Emerald
+    "warning": "#F59E0B",  # Amber
+    "error": "#EF4444",  # Red
+    "info": "#06B6D4",  # Cyan
     # Special
     "dim": "#64748B",
     "muted": "#94A3B8",
+    "highlight": "#FCD34D",  # Yellow highlight
 }
 
 
 # =============================================================================
-# Unicode Icons (CLI Compatible)
+# Unicode Icons (Modern CLI Compatible)
 # =============================================================================
 class Icons:
-    """Unicode icons that work in most modern terminals."""
+    """Modern Unicode icons for a clean interface."""
+
+    # Brand/Logo
+    LOGO = "\u25c8"  # Diamond with dot
+    BRAIN = "\u2609"  # Sun (represents AI/intelligence)
 
     # Status icons
-    CHECK = "\u2714"          # Heavy check mark
-    CROSS = "\u2718"          # Heavy ballot X
-    WARNING = "\u26A0"        # Warning sign
-    INFO = "\u2139"           # Information
-    CIRCLE = "\u25CF"         # Black circle
-    CIRCLE_EMPTY = "\u25CB"   # White circle
+    CHECK = "\u2713"  # Check mark
+    CROSS = "\u2717"  # Ballot X
+    WARNING = "\u25b2"  # Triangle up (warning)
+    INFO = "\u25cf"  # Filled circle
+    CIRCLE = "\u25cf"  # Black circle
+    CIRCLE_EMPTY = "\u25cb"  # White circle
+    DOT = "\u2022"  # Bullet
 
     # Navigation/Action
-    ARROW_RIGHT = "\u279C"    # Heavy round-tipped rightwards arrow
-    ARROW_DOWN = "\u25BC"     # Down-pointing triangle
-    BULLET = "\u2022"         # Bullet
-    STAR = "\u2605"           # Black star
-    SPARKLE = "\u2728"        # Sparkles
+    ARROW_RIGHT = "\u2192"  # Right arrow
+    ARROW_LEFT = "\u2190"  # Left arrow
+    CHEVRON = "\u203a"  # Single right angle quote
+    BULLET = "\u2022"  # Bullet
+    STAR = "\u2605"  # Black star
+    SPARKLE = "\u2727"  # White four pointed star
 
     # Chat/Communication
-    USER = "\u263A"           # Smiling face (simple)
-    ROBOT = "\u2699"          # Gear (representing AI)
-    CHAT = "\u25B6"           # Right-pointing triangle
-    THINKING = "\u2026"       # Ellipsis
+    USER = "\u25b8"  # Right-pointing triangle
+    ROBOT = "\u25c6"  # Black diamond
+    CHAT = "\u25b6"  # Right-pointing triangle
+    THINKING = "\u22ef"  # Midline horizontal ellipsis
 
     # Database/Data
-    DATABASE = "\u229E"       # Squared plus (grid-like)
-    TABLE = "\u25A6"          # Square with orthogonal crosshatch
-    SEARCH = "\u25B7"         # Right-pointing triangle outline
+    DATABASE = "\u25a3"  # White square containing black small square
+    TABLE = "\u2261"  # Identical to (three lines)
+    QUERY = "\u25b7"  # Right-pointing triangle outline
 
     # System
-    GEAR = "\u2699"           # Gear
-    LIGHTNING = "\u26A1"      # High voltage
-    CLOCK = "\u23F1"          # Stopwatch
-    FOLDER = "\u25A1"         # White square (folder-like)
+    GEAR = "\u2699"  # Gear
+    LIGHTNING = "\u2607"  # Lightning
+    CLOCK = "\u25f4"  # White circle with upper left quadrant
+    FOLDER = "\u25a1"  # White square
 
     # Decorative
-    DIAMOND = "\u25C6"        # Black diamond
-    SQUARE = "\u25A0"         # Black square
-    DOT = "\u00B7"            # Middle dot
-    PIPE = "\u2502"           # Box drawings light vertical
+    DIAMOND = "\u25c6"  # Black diamond
+    SQUARE = "\u25a0"  # Black square
+    PIPE = "\u2502"  # Box drawings light vertical
+    DASH = "\u2500"  # Box drawings light horizontal
 
 
 # =============================================================================
 # Rich Theme Configuration
 # =============================================================================
-THEME = Theme({
-    # Primary styles
-    "primary": Style(color=COLORS["primary"]),
-    "primary.bold": Style(color=COLORS["primary"], bold=True),
-    "accent": Style(color=COLORS["accent"]),
-    "accent.bold": Style(color=COLORS["accent"], bold=True),
+THEME = Theme(
+    {
+        # Primary styles
+        "primary": Style(color=COLORS["primary"]),
+        "primary.bold": Style(color=COLORS["primary"], bold=True),
+        "accent": Style(color=COLORS["accent"]),
+        "accent.bold": Style(color=COLORS["accent"], bold=True),
+        # Gradient styles
+        "gradient1": Style(color=COLORS["gradient_1"]),
+        "gradient2": Style(color=COLORS["gradient_2"]),
+        "gradient3": Style(color=COLORS["gradient_3"]),
+        # Text styles
+        "heading": Style(color=COLORS["white"], bold=True),
+        "subheading": Style(color=COLORS["gray_300"]),
+        "muted": Style(color=COLORS["gray_400"]),
+        "dim": Style(color=COLORS["dim"]),
+        # Status styles
+        "success": Style(color=COLORS["success"]),
+        "warning": Style(color=COLORS["warning"]),
+        "error": Style(color=COLORS["error"]),
+        "info": Style(color=COLORS["info"]),
+        # Chat styles
+        "user": Style(color=COLORS["primary_light"], bold=True),
+        "agent": Style(color=COLORS["accent"], bold=True),
+        "system": Style(color=COLORS["gray_400"], italic=True),
+        # UI elements
+        "border": Style(color=COLORS["gray_600"]),
+        "highlight": Style(color=COLORS["highlight"], bold=True),
+        "command": Style(color=COLORS["primary"]),
+    }
+)
 
-    # Text styles
-    "heading": Style(color=COLORS["white"], bold=True),
-    "subheading": Style(color=COLORS["gray_300"]),
-    "muted": Style(color=COLORS["gray_400"]),
-    "dim": Style(color=COLORS["dim"]),
 
-    # Status styles
-    "success": Style(color=COLORS["success"]),
-    "warning": Style(color=COLORS["warning"]),
-    "error": Style(color=COLORS["error"]),
-    "info": Style(color=COLORS["info"]),
-
-    # Chat styles
-    "user": Style(color=COLORS["accent_light"], bold=True),
-    "agent": Style(color=COLORS["primary"], bold=True),
-    "system": Style(color=COLORS["gray_400"], italic=True),
-
-    # UI elements
-    "border": Style(color=COLORS["primary_dark"]),
-    "highlight": Style(color=COLORS["accent"], bold=True),
-    "command": Style(color=COLORS["accent"]),
-})
-
-
-# Create themed console
 def create_console() -> Console:
     """Create a console instance with the custom theme."""
     return Console(theme=THEME, highlight=False)
 
 
 # =============================================================================
-# ASCII Art and Banners
+# ASCII Art Logo and Banners
 # =============================================================================
-BANNER_ART = f"""
-[primary]    ╭──────────────────────────────────────────────────────────╮[/]
-[primary]    │[/] [accent.bold]  _     _     __  __   ____                          [/] [primary]│[/]
-[primary]    │[/] [accent.bold] | |   | |   |  \/  | |  _ \ ___  ___  ___  __ _ _ __ [/] [primary]│[/]
-[primary]    │[/] [accent.bold] | |   | |   | |\/| | | |_) / _ \/ __|/ _ \/ _` | '__|[/] [primary]│[/]
-[primary]    │[/] [accent.bold] | |___| |___| |  | | |  _ <  __/\__ \  __/ (_| | |   [/] [primary]│[/]
-[primary]    │[/] [accent.bold] |_____|_____|_|  |_| |_| \_\___||___/\___|\__,_|_|   [/] [primary]│[/]
-[primary]    │[/]                                                        [primary]│[/]
-[primary]    │[/]  [white]Local LLM Research Analytics Agent[/]                     [primary]│[/]
-[primary]    │[/]  [muted]Query your SQL Server data using natural language[/]      [primary]│[/]
-[primary]    ╰──────────────────────────────────────────────────────────╯[/]
+
+# Clean, modern "Agent AI" ASCII art logo
+BANNER_ART = """
+[gradient1]    ___                    __     ___   ____[/]
+[gradient2]   /   | ____ ____  ____  / /_   /   | /  _/[/]
+[gradient2]  / /| |/ __ `/ _ \\/ __ \\/ __/  / /| | / /  [/]
+[gradient3] / ___ / /_/ /  __/ / / / /_   / ___ |/ /   [/]
+[gradient3]/_/  |_\\__, /\\___/_/ /_/\\__/  /_/  |_/___/  [/]
+[accent]       /____/[/]
 """
 
-BANNER_SIMPLE = f"""
-[primary]╭─────────────────────────────────────────────────────────────────╮[/]
-[primary]│[/]  [accent.bold]{Icons.DATABASE} LLM Research Agent[/]  [muted]v1.0[/]                               [primary]│[/]
-[primary]│[/]  [dim]Chat with your SQL Server data using natural language[/]       [primary]│[/]
-[primary]╰─────────────────────────────────────────────────────────────────╯[/]
-"""
+BANNER_SUBTITLE = "[dim]SQL Server Analytics with Local LLMs[/]"
+
+BANNER_SIMPLE = f"""[gradient1]{Icons.LOGO}[/] [bold white]Agent AI[/] [dim]v2.0[/]"""
 
 
 # =============================================================================
 # Styled Components
 # =============================================================================
-def styled_header(text: str, subtitle: Optional[str] = None) -> Panel:
+
+
+def print_banner(console: Console) -> None:
+    """Print the main application banner."""
+    console.print()
+    console.print(BANNER_ART)
+    console.print(f"    {BANNER_SUBTITLE}")
+    console.print()
+
+
+def styled_header(text: str, subtitle: str | None = None) -> Panel:
     """Create a styled header panel."""
     content = Text()
-    content.append(f"{Icons.DIAMOND} ", style=COLORS["accent"])
     content.append(text, style="bold white")
 
     if subtitle:
         content.append("\n")
-        content.append(f"  {subtitle}", style=COLORS["gray_400"])
+        content.append(subtitle, style=COLORS["gray_400"])
 
     return Panel(
         content,
-        border_style=COLORS["primary_dark"],
+        border_style=COLORS["gray_700"],
         box=ROUNDED,
         padding=(0, 2),
     )
 
 
-def styled_divider(char: str = "─", width: int = 60) -> Text:
-    """Create a styled divider line."""
+def styled_divider(width: int = 50) -> Text:
+    """Create a styled gradient divider line."""
     text = Text()
-    text.append(char * width, style=COLORS["gray_600"])
+    segment = width // 3
+    text.append(Icons.DASH * segment, style=COLORS["gradient_1"])
+    text.append(Icons.DASH * segment, style=COLORS["gradient_2"])
+    text.append(Icons.DASH * (width - 2 * segment), style=COLORS["gradient_3"])
     return text
 
 
@@ -191,16 +209,16 @@ def styled_status_indicator(status: str, message: str = "") -> Text:
     text = Text()
 
     if status == "success":
-        text.append(f" {Icons.CHECK} ", style=COLORS["success"])
+        text.append(f"{Icons.CHECK} ", style=COLORS["success"])
         text.append(message or "Ready", style=COLORS["success"])
     elif status == "error":
-        text.append(f" {Icons.CROSS} ", style=COLORS["error"])
+        text.append(f"{Icons.CROSS} ", style=COLORS["error"])
         text.append(message or "Error", style=COLORS["error"])
     elif status == "warning":
-        text.append(f" {Icons.WARNING} ", style=COLORS["warning"])
+        text.append(f"{Icons.WARNING} ", style=COLORS["warning"])
         text.append(message or "Warning", style=COLORS["warning"])
     else:  # info
-        text.append(f" {Icons.INFO} ", style=COLORS["info"])
+        text.append(f"{Icons.INFO} ", style=COLORS["info"])
         text.append(message or "Info", style=COLORS["info"])
 
     return text
@@ -208,23 +226,23 @@ def styled_status_indicator(status: str, message: str = "") -> Text:
 
 def user_prompt() -> str:
     """Get the styled user prompt string."""
-    return f"[{COLORS['accent_light']}]{Icons.USER} You[/]"
+    return f"[{COLORS['primary_light']}]{Icons.USER}[/]"
 
 
 def agent_prompt() -> Text:
     """Get the styled agent prompt."""
     text = Text()
-    text.append(f"{Icons.ROBOT} ", style=COLORS["primary"])
-    text.append("Agent", style=f"bold {COLORS['primary']}")
+    text.append(f"{Icons.ROBOT} ", style=COLORS["accent"])
+    text.append("Agent", style=f"bold {COLORS['accent']}")
     return text
 
 
 def command_hint(command: str, description: str) -> Text:
     """Create a styled command hint."""
     text = Text()
-    text.append(f"  {Icons.BULLET} ", style=COLORS["gray_500"])
-    text.append(command, style=f"bold {COLORS['accent']}")
-    text.append(f"  {Icons.DOT} ", style=COLORS["gray_600"])
+    text.append(f"  {Icons.CHEVRON} ", style=COLORS["gray_500"])
+    text.append(command, style=f"bold {COLORS['primary']}")
+    text.append("  ", style="")
     text.append(description, style=COLORS["gray_400"])
     return text
 
@@ -234,7 +252,7 @@ def create_status_table(show_header: bool = True) -> Table:
     table = Table(
         show_header=show_header,
         header_style=f"bold {COLORS['primary']}",
-        border_style=COLORS["gray_600"],
+        border_style=COLORS["gray_700"],
         box=ROUNDED,
         padding=(0, 1),
         expand=False,
@@ -242,29 +260,82 @@ def create_status_table(show_header: bool = True) -> Table:
     return table
 
 
-def create_data_table(title: Optional[str] = None) -> Table:
+def create_data_table(title: str | None = None) -> Table:
     """Create a styled data display table."""
     table = Table(
         title=title,
-        title_style=f"bold {COLORS['primary']}",
-        header_style=f"bold {COLORS['accent']}",
-        border_style=COLORS["gray_600"],
+        title_style=f"bold {COLORS['white']}",
+        header_style=f"bold {COLORS['primary']}",
+        border_style=COLORS["gray_700"],
         box=ROUNDED,
         padding=(0, 1),
     )
     return table
 
 
-def format_timestamp(dt: Optional[datetime] = None) -> str:
+def format_timestamp(dt: datetime | None = None) -> str:
     """Format a timestamp with styling."""
     if dt is None:
         dt = datetime.now()
     return f"[{COLORS['gray_500']}]{dt.strftime('%H:%M:%S')}[/]"
 
 
-def thinking_status() -> str:
+# Creative thinking/processing messages
+THINKING_MESSAGES = [
+    "Thinking",
+    "Processing",
+    "Analyzing query",
+    "Consulting the database",
+    "Crunching numbers",
+    "Brewing insights",
+    "Connecting neurons",
+    "Mining data",
+    "Weaving patterns",
+    "Decoding request",
+]
+
+QUERYING_MESSAGES = [
+    "Querying database",
+    "Running SQL",
+    "Fetching data",
+    "Executing query",
+    "Reading tables",
+    "Gathering results",
+    "Scanning records",
+]
+
+
+def thinking_status(querying: bool = False) -> str:
     """Get the thinking status message."""
-    return f"[bold {COLORS['primary']}]{Icons.THINKING} Thinking[/]"
+    if querying:
+        msg = random.choice(QUERYING_MESSAGES)
+        return f"[{COLORS['info']}]{Icons.DATABASE} {msg}[/]"
+    msg = random.choice(THINKING_MESSAGES)
+    return f"[{COLORS['accent']}]{Icons.THINKING} {msg}[/]"
+
+
+def format_token_usage(
+    prompt_tokens: int = 0,
+    completion_tokens: int = 0,
+    total_tokens: int = 0,
+    duration_ms: float = 0.0,
+) -> Text:
+    """Format token usage as styled text."""
+    text = Text()
+    text.append(f"\n[{COLORS['gray_600']}]{Icons.DASH * 40}[/]\n")
+    text.append(f"{Icons.LIGHTNING} ", style=COLORS["gray_500"])
+    text.append(f"{prompt_tokens:,}", style=COLORS["info"])
+    text.append(" in ", style=COLORS["gray_500"])
+    text.append(f"{Icons.ARROW_RIGHT} ", style=COLORS["gray_600"])
+    text.append(f"{completion_tokens:,}", style=COLORS["success"])
+    text.append(" out ", style=COLORS["gray_500"])
+    text.append(f"{Icons.DOT} ", style=COLORS["gray_600"])
+    text.append(f"{total_tokens:,}", style=COLORS["primary"])
+    text.append(" total", style=COLORS["gray_500"])
+    if duration_ms > 0:
+        text.append(f" {Icons.DOT} ", style=COLORS["gray_600"])
+        text.append(f"{duration_ms/1000:.1f}s", style=COLORS["gray_400"])
+    return text
 
 
 def success_message(text: str) -> Text:
@@ -302,37 +373,30 @@ def info_message(text: str) -> Text:
 # =============================================================================
 # Welcome and Help Panels
 # =============================================================================
+
+
 def create_welcome_panel(provider: str, model: str = "", readonly: bool = False) -> Panel:
-    """Create the welcome panel with provider info."""
+    """Create a minimal welcome panel with provider info."""
     provider_name = "Ollama" if provider == "ollama" else "Foundry Local"
 
     content = Text()
-    content.append(f"\n  {Icons.LIGHTNING} ", style=COLORS["accent"])
-    content.append("Provider: ", style=COLORS["gray_400"])
-    content.append(f"{provider_name}", style=f"bold {COLORS['accent']}")
+
+    # Status line
+    content.append(f"{Icons.CHECK} ", style=COLORS["success"])
+    content.append("Connected", style=COLORS["success"])
+    content.append(" to ", style=COLORS["gray_400"])
+    content.append(provider_name, style=f"bold {COLORS['primary']}")
 
     if model:
-        content.append(f"\n  {Icons.GEAR} ", style=COLORS["primary"])
-        content.append("Model: ", style=COLORS["gray_400"])
-        content.append(f"{model}", style=COLORS["primary"])
+        content.append(f" ({model})", style=COLORS["gray_500"])
 
     if readonly:
-        content.append(f"\n  {Icons.INFO} ", style=COLORS["warning"])
-        content.append("Mode: ", style=COLORS["gray_400"])
-        content.append("Read-only", style=COLORS["warning"])
-
-    content.append(f"\n\n  {Icons.BULLET} ", style=COLORS["gray_500"])
-    content.append("Type ", style=COLORS["gray_400"])
-    content.append("help", style=f"bold {COLORS['accent']}")
-    content.append(" for commands, ", style=COLORS["gray_400"])
-    content.append("quit", style=f"bold {COLORS['accent']}")
-    content.append(" to exit\n", style=COLORS["gray_400"])
+        content.append(f"\n{Icons.INFO} ", style=COLORS["warning"])
+        content.append("Read-only mode", style=COLORS["warning"])
 
     return Panel(
         content,
-        title=f"[bold {COLORS['white']}]{Icons.SPARKLE} Ready[/]",
-        title_align="left",
-        border_style=COLORS["primary_dark"],
+        border_style=COLORS["gray_700"],
         box=ROUNDED,
         padding=(0, 1),
     )
@@ -340,38 +404,48 @@ def create_welcome_panel(provider: str, model: str = "", readonly: bool = False)
 
 def create_help_panel() -> Panel:
     """Create the help commands panel."""
-    commands = [
-        ("quit", "q", "Exit the chat session"),
-        ("clear", "", "Clear conversation history"),
-        ("status", "", "Show connection status"),
-        ("cache", "", "Show cache statistics"),
-        ("cache-clear", "", "Clear response cache"),
-        ("export [fmt]", "", "Export conversation (json/csv/md)"),
-        ("history", "", "List saved sessions"),
-        ("history save", "", "Save current session"),
-        ("history load <id>", "", "Load a saved session"),
-        ("db", "", "List configured databases"),
-        ("db switch <name>", "", "Switch database"),
-        ("help", "", "Show this help"),
+    # Core commands (shown in pairs)
+    core_commands = [
+        ("quit", "Exit"),
+        ("clear", "Clear history"),
+        ("status", "Connection info"),
+        ("cache", "Cache stats"),
+        ("export", "Save conversation"),
+        ("history", "Past sessions"),
+    ]
+
+    # Model/Provider commands
+    config_commands = [
+        ("/provider <name>", "Switch provider (ollama, foundry_local)"),
+        ("/model <name>", "Switch model"),
+        ("/models", "List available models"),
     ]
 
     content = Text()
+    content.append("Commands\n", style=f"bold {COLORS['white']}")
 
-    for cmd, shortcut, desc in commands:
-        content.append(f"\n  {Icons.ARROW_RIGHT} ", style=COLORS["primary"])
-        content.append(cmd, style=f"bold {COLORS['accent']}")
-        if shortcut:
-            content.append(f" ({shortcut})", style=COLORS["gray_500"])
-        content.append("\n    ", style="")
-        content.append(desc, style=COLORS["gray_400"])
+    for i, (cmd, desc) in enumerate(core_commands):
+        if i > 0 and i % 2 == 0:
+            content.append("\n")
+        content.append(f"  {cmd}", style=f"bold {COLORS['primary']}")
+        content.append(f" {desc}", style=COLORS["gray_400"])
+        if i % 2 == 0 and i < len(core_commands) - 1:
+            content.append("  |  ", style=COLORS["gray_600"])
 
-    content.append("\n")
+    content.append("\n\n")
+    content.append("Config Commands\n", style=f"bold {COLORS['white']}")
+
+    for cmd, desc in config_commands:
+        content.append(f"\n  {cmd}", style=f"bold {COLORS['accent']}")
+        content.append(f"  {desc}", style=COLORS["gray_400"])
+
+    content.append("\n\n  ")
+    content.append("help", style=f"bold {COLORS['primary']}")
+    content.append(" Show commands", style=COLORS["gray_400"])
 
     return Panel(
         content,
-        title=f"[bold {COLORS['white']}]{Icons.INFO} Commands[/]",
-        title_align="left",
-        border_style=COLORS["gray_600"],
+        border_style=COLORS["gray_700"],
         box=ROUNDED,
         padding=(0, 1),
     )
@@ -382,14 +456,14 @@ def create_session_table() -> Table:
     table = Table(
         show_header=True,
         header_style=f"bold {COLORS['primary']}",
-        border_style=COLORS["gray_600"],
+        border_style=COLORS["gray_700"],
         box=ROUNDED,
         padding=(0, 1),
     )
-    table.add_column(f"{Icons.FOLDER} ID", style=COLORS["accent"], width=10)
+    table.add_column("ID", style=COLORS["primary"], width=10)
     table.add_column("Title", style=COLORS["white"], width=35)
     table.add_column("Turns", style=COLORS["gray_400"], justify="right", width=6)
-    table.add_column(f"{Icons.CLOCK} Updated", style=COLORS["gray_500"], width=14)
+    table.add_column("Updated", style=COLORS["gray_500"], width=14)
     return table
 
 
@@ -398,14 +472,14 @@ def create_database_table() -> Table:
     table = Table(
         show_header=True,
         header_style=f"bold {COLORS['primary']}",
-        border_style=COLORS["gray_600"],
+        border_style=COLORS["gray_700"],
         box=ROUNDED,
         padding=(0, 1),
     )
-    table.add_column(f"{Icons.DATABASE} Name", style=COLORS["accent"], width=12)
+    table.add_column("Name", style=COLORS["primary"], width=12)
     table.add_column("Host", style=COLORS["gray_300"], width=18)
     table.add_column("Database", style=COLORS["gray_300"], width=18)
-    table.add_column("Mode", style=COLORS["gray_400"], width=6)
+    table.add_column("Mode", style=COLORS["gray_400"], width=8)
     table.add_column("Active", width=8)
     return table
 
@@ -413,13 +487,15 @@ def create_database_table() -> Table:
 # =============================================================================
 # Chat Message Formatting
 # =============================================================================
+
+
 def format_user_message(message: str) -> Panel:
     """Format a user message with styling."""
     return Panel(
         message,
-        title=f"[{COLORS['accent_light']}]{Icons.USER} You[/]",
+        title=f"[{COLORS['primary_light']}]You[/]",
         title_align="left",
-        border_style=COLORS["accent"],
+        border_style=COLORS["gray_700"],
         box=ROUNDED,
         padding=(0, 1),
     )
@@ -428,25 +504,39 @@ def format_user_message(message: str) -> Panel:
 def format_agent_response_header() -> Text:
     """Format the agent response header."""
     text = Text()
-    text.append(f"\n{Icons.ROBOT} ", style=COLORS["primary"])
-    text.append("Agent", style=f"bold {COLORS['primary']}")
-    text.append(f"  {Icons.DOT}  ", style=COLORS["gray_600"])
+    text.append(f"\n{Icons.ROBOT} ", style=COLORS["accent"])
+    text.append("Agent", style=f"bold {COLORS['accent']}")
+    text.append("\n", style="")
     return text
 
 
 def format_goodbye() -> Panel:
     """Format the goodbye message."""
     content = Text()
-    content.append(f"\n  {Icons.STAR} ", style=COLORS["accent"])
-    content.append("Thank you for using LLM Research Agent!", style=COLORS["gray_300"])
-    content.append(f"\n  {Icons.BULLET} Session ended at {datetime.now().strftime('%H:%M:%S')}\n",
-                  style=COLORS["gray_500"])
+    content.append(f"{Icons.STAR} ", style=COLORS["accent"])
+    content.append("Session ended", style=COLORS["gray_300"])
+    content.append(f" at {datetime.now().strftime('%H:%M:%S')}", style=COLORS["gray_500"])
 
     return Panel(
         content,
-        title=f"[{COLORS['warning']}]{Icons.CHECK} Goodbye[/]",
-        title_align="left",
-        border_style=COLORS["gray_600"],
+        border_style=COLORS["gray_700"],
         box=ROUNDED,
         padding=(0, 1),
     )
+
+
+# =============================================================================
+# Quick Status Line
+# =============================================================================
+
+
+def format_status_line(provider: str, model: str, db: str = "ResearchAnalytics") -> Text:
+    """Create a compact status line for the prompt area."""
+    text = Text()
+    text.append(f"{Icons.CIRCLE} ", style=COLORS["success"])
+    text.append(provider, style=COLORS["primary"])
+    text.append(f" {Icons.DOT} ", style=COLORS["gray_600"])
+    text.append(model, style=COLORS["gray_400"])
+    text.append(f" {Icons.DOT} ", style=COLORS["gray_600"])
+    text.append(db, style=COLORS["gray_400"])
+    return text

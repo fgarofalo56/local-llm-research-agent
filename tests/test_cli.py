@@ -65,6 +65,7 @@ class TestCLICommands:
             patch("src.cli.chat.settings") as mock_settings,
         ):
             from src.providers import ProviderType
+            from src.utils.config import SqlAuthType
 
             mock_status = MagicMock()
             mock_status.provider_type = ProviderType.OLLAMA
@@ -77,6 +78,12 @@ class TestCLICommands:
             mock_settings.llm_provider = "ollama"
             mock_settings.mcp_mssql_path = "/path/to/mcp"
             mock_settings.mcp_mssql_readonly = False
+            mock_settings.sql_server_host = "localhost"
+            mock_settings.sql_database_name = "TestDB"
+            mock_settings.is_azure_sql = False
+            mock_settings.sql_auth_type = SqlAuthType.SQL_AUTH
+            mock_settings.sql_username = "sa"
+            mock_settings.azure_client_id = ""
 
             result = runner.invoke(app, ["status"])
 
@@ -97,8 +104,17 @@ class TestCLICommands:
         """Test successful query command."""
         mock_check.return_value = {"available": True}
 
+        # Create mock response object with token_usage
+        mock_response = MagicMock()
+        mock_response.content = "Query result: 5 tables found"
+        mock_response.token_usage = MagicMock()
+        mock_response.token_usage.prompt_tokens = 50
+        mock_response.token_usage.completion_tokens = 20
+        mock_response.token_usage.total_tokens = 70
+        mock_response.duration_ms = 1000.0
+
         mock_agent = MagicMock()
-        mock_agent.chat = AsyncMock(return_value="Query result: 5 tables found")
+        mock_agent.chat_with_details = AsyncMock(return_value=mock_response)
         mock_agent_cls.return_value = mock_agent
 
         with patch("src.cli.chat.settings") as mock_settings:
@@ -119,8 +135,18 @@ class TestCLICommands:
             yield "Streaming "
             yield "response."
 
+        # Create mock token_usage for get_last_response_stats
+        mock_token_usage = MagicMock()
+        mock_token_usage.prompt_tokens = 50
+        mock_token_usage.completion_tokens = 20
+        mock_token_usage.total_tokens = 70
+
         mock_agent = MagicMock()
         mock_agent.chat_stream = MagicMock(return_value=mock_stream())
+        mock_agent.get_last_response_stats = MagicMock(return_value={
+            "token_usage": mock_token_usage,
+            "duration_ms": 1000.0,
+        })
         mock_agent_cls.return_value = mock_agent
 
         with patch("src.cli.chat.settings") as mock_settings:

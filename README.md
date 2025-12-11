@@ -6,6 +6,8 @@
 
 ## ✨ Features
 
+### Core Features (Phase 1)
+
 | Feature | Status | Description |
 |---------|--------|-------------|
 | 🔒 **Fully Local** | ✅ | No cloud APIs - all processing on your machine |
@@ -18,15 +20,27 @@
 | 🦙 **Multiple LLM Providers** | ✅ | Ollama or Microsoft Foundry Local |
 | ⚡ **Streaming Responses** | ✅ | Real-time token streaming |
 
+### Backend & RAG Features (Phase 2.1)
+
+| Feature | Status | Description |
+|---------|--------|-------------|
+| 🚀 **FastAPI Backend** | ✅ | REST API with automatic OpenAPI docs |
+| 🧠 **RAG Pipeline** | ✅ | Document-augmented question answering |
+| 📦 **Redis Vector Store** | ✅ | Fast similarity search with Redis Stack |
+| 📄 **Document Processing** | ✅ | PDF/DOCX parsing with Docling |
+| 🗄️ **SQLAlchemy ORM** | ✅ | Database models with Alembic migrations |
+| 🔧 **Dynamic MCP** | ✅ | Configure MCP servers at runtime |
+
 ---
 
 ## 📑 Table of Contents
 
 - [Quick Start](#-quick-start)
-- [Docker Setup](#-docker-setup-sql-server-with-sample-data)
+- [Docker Setup](#-docker-setup-sql-server--redis-stack)
 - [MSSQL MCP Server Setup](#-mssql-mcp-server-setup)
 - [Configuration](#️-configuration)
-- [Running the Agent](#-running-the-agent)
+- [Running the Application](#-running-the-application)
+- [FastAPI Backend](#-fastapi-backend-phase-21)
 - [Testing the Agent](#-testing-the-agent)
 - [MCP Tools Reference](#-mcp-tools-reference)
 - [Architecture](#️-architecture)
@@ -80,9 +94,41 @@ ollama pull mistral:7b-instruct
 
 ---
 
-## 🐳 Docker Setup (SQL Server with Sample Data)
+## 🐳 Docker Setup (SQL Server + Redis Stack)
 
-The project includes a complete Docker setup with SQL Server 2022 and a pre-populated research analytics database.
+The project includes a complete Docker setup with SQL Server 2022, Redis Stack for vector search, and a pre-populated research analytics database. All services are nested under the `local-agent-ai-stack` project.
+
+### ⚠️ Critical: Environment File Requirement
+
+When running docker-compose from the **project root** (recommended), you **MUST** include `--env-file .env`:
+
+```bash
+# ✅ Correct - includes env file
+docker-compose -f docker/docker-compose.yml --env-file .env up -d
+
+# ❌ Wrong - will use default ports, may cause conflicts
+docker-compose -f docker/docker-compose.yml up -d
+```
+
+**Why?** Docker Compose looks for `.env` in the same directory as the compose file. Since `docker-compose.yml` is in the `docker/` subdirectory but `.env` is in the project root, you must explicitly specify the env file path.
+
+**What happens without it?**
+- Port configurations (like `REDIS_INSIGHT_PORT`) won't be loaded
+- Containers may fail to start due to port conflicts
+- Volume names may not be set correctly
+
+### 📦 Docker Services
+
+| Service | Container Name | Port | Profile | Purpose |
+|---------|---------------|------|---------|---------|
+| **mssql** | `local-agent-mssql` | 1433 | default | SQL Server 2022 database |
+| **redis-stack** | `local-agent-redis` | 6379, 8001* | default | Redis with vector search |
+| **mssql-tools** | `local-agent-mssql-tools` | - | `init` | Database initialization |
+| **agent-ui** | `local-agent-streamlit-ui` | 8501 | default | Streamlit web interface |
+| **agent-cli** | `local-agent-cli` | - | `cli` | Interactive CLI chat |
+| **api** | `local-agent-api` | 8000 | `api` | FastAPI backend |
+
+> *RedisInsight GUI port is configurable via `REDIS_INSIGHT_PORT` (default: 8001)
 
 ### 🗄️ Database Overview
 
@@ -101,7 +147,11 @@ The sample database (`ResearchAnalytics`) contains:
 
 Plus 3 useful views: `vw_ActiveProjects`, `vw_ResearcherPublications`, `vw_ProjectFunding`
 
-### 🚀 Starting the Database
+### 🚀 Starting the Services
+
+All docker-compose commands should be run from the **project root** using `-f docker/docker-compose.yml --env-file .env`:
+
+> ⚠️ **Important**: Always include `--env-file .env` when running docker-compose from the project root to ensure environment variables are properly loaded.
 
 #### Option 1: Quick Setup (Windows)
 
@@ -110,20 +160,57 @@ cd docker
 setup-database.bat
 ```
 
-#### Option 2: Manual Setup (All Platforms)
+#### Option 2: Core Services (SQL Server + Redis)
 
 ```bash
-cd docker
+# From project root - Start SQL Server and Redis
+docker-compose -f docker/docker-compose.yml --env-file .env up -d
 
-# Start SQL Server container
-docker compose up -d mssql
+# Wait for services to be healthy
+docker-compose -f docker/docker-compose.yml ps
 
-# Wait for SQL Server to be healthy
-docker compose ps
-
-# Run initialization scripts
-docker compose --profile init up mssql-tools
+# Initialize database with sample data (first time only)
+docker-compose -f docker/docker-compose.yml --env-file .env --profile init up mssql-tools
 ```
+
+#### Option 3: Full Stack (with FastAPI Backend)
+
+```bash
+# Start all services including the API
+docker-compose -f docker/docker-compose.yml --env-file .env --profile api up -d
+
+# This starts: SQL Server, Redis Stack, and FastAPI backend
+```
+
+#### Option 4: With Streamlit UI in Docker
+
+```bash
+# Core services + Streamlit UI
+docker-compose -f docker/docker-compose.yml --env-file .env up -d agent-ui
+
+# Core services + FastAPI + Streamlit
+docker-compose -f docker/docker-compose.yml --env-file .env --profile api up -d agent-ui
+```
+
+#### Option 5: Interactive CLI in Docker
+
+```bash
+# Run interactive CLI chat
+docker-compose -f docker/docker-compose.yml --env-file .env --profile cli run agent-cli
+```
+
+### 🔴 Redis Stack
+
+Redis Stack provides vector similarity search for the RAG pipeline.
+
+| Service | Default Port | Environment Variable | Purpose |
+|---------|--------------|---------------------|---------|
+| Redis | 6379 | `REDIS_PORT` | Vector store |
+| RedisInsight | 8001 | `REDIS_INSIGHT_PORT` | GUI management |
+
+Access RedisInsight at: http://localhost:8001 (or your configured port)
+
+> 💡 **Tip**: If port 8001 is in use, set `REDIS_INSIGHT_PORT=8008` (or any free port) in your `.env` file.
 
 ### 🔌 Connection Details
 
@@ -140,28 +227,48 @@ docker compose --profile init up mssql-tools
 # Using sqlcmd (if installed)
 sqlcmd -S localhost,1433 -U sa -P "LocalLLM@2024!" -d ResearchAnalytics -Q "SELECT COUNT(*) FROM Researchers"
 
-# Using Docker exec
-docker exec -it local-llm-mssql /opt/mssql-tools18/bin/sqlcmd \
+# Using Docker exec (note the new container name)
+docker exec -it local-agent-mssql /opt/mssql-tools18/bin/sqlcmd \
   -S localhost -U sa -P "LocalLLM@2024!" -No \
   -Q "SELECT COUNT(*) AS ResearcherCount FROM ResearchAnalytics.dbo.Researchers"
 ```
 
-### 📋 Managing the Database
+### 💾 Data Persistence
+
+Docker volumes preserve data across container rebuilds:
+
+| Volume | Default Name | Environment Variable | Purpose |
+|--------|-------------|---------------------|---------|
+| SQL Server | `local-llm-mssql-data` | `MSSQL_VOLUME_NAME` | Database files |
+| Redis | `local-llm-redis-data` | `REDIS_VOLUME_NAME` | Vector store data |
+
+> ⚠️ **Important**: Volumes are configured as `external: true`. Create them before first run:
+> ```bash
+> docker volume create local-llm-mssql-data
+> docker volume create local-llm-redis-data
+> ```
+
+### 📋 Managing the Services
 
 ```bash
-# View container logs
-docker compose logs -f mssql
+# View container status
+docker-compose -f docker/docker-compose.yml ps
 
-# Stop the database (preserves data)
-docker compose down
+# View container logs
+docker-compose -f docker/docker-compose.yml logs -f mssql
+
+# Stop all services (preserves data)
+docker-compose -f docker/docker-compose.yml down
 
 # Stop and DELETE all data (fresh start)
-docker compose down -v
+docker-compose -f docker/docker-compose.yml down -v
 
 # Restart with fresh data
-docker compose down -v
-docker compose up -d mssql
-docker compose --profile init up mssql-tools
+docker-compose -f docker/docker-compose.yml down -v
+docker volume create local-llm-mssql-data
+docker volume create local-llm-redis-data
+docker-compose -f docker/docker-compose.yml --env-file .env up -d
+docker-compose -f docker/docker-compose.yml --env-file .env --profile init up mssql-tools
 ```
 
 ---
@@ -221,10 +328,13 @@ LLM_PROVIDER=ollama
 OLLAMA_HOST=http://localhost:11434
 OLLAMA_MODEL=qwen2.5:7b-instruct
 
+# Embedding model for RAG
+EMBEDDING_MODEL=nomic-embed-text
+
 # Microsoft Foundry Local Configuration (alternative)
 FOUNDRY_ENDPOINT=http://127.0.0.1:55588
 FOUNDRY_MODEL=phi-4
-FOUNDRY_AUTO_START=false
+FOUNDRY_AUTO_START=true
 
 # =============================================================================
 # SQL Server Configuration
@@ -239,15 +349,54 @@ SQL_USERNAME=sa
 SQL_PASSWORD=LocalLLM@2024!
 
 # =============================================================================
+# Docker Configuration
+# =============================================================================
+# Docker SA password (must match SQL_PASSWORD for local dev)
+MSSQL_SA_PASSWORD=LocalLLM@2024!
+
+# Docker volume names for data persistence
+MSSQL_VOLUME_NAME=local-llm-mssql-data
+REDIS_VOLUME_NAME=local-llm-redis-data
+
+# =============================================================================
+# Redis Configuration
+# =============================================================================
+REDIS_URL=redis://localhost:6379
+REDIS_PORT=6379
+REDIS_INSIGHT_PORT=8001  # Change if port 8001 is in use
+
+# =============================================================================
+# RAG Configuration
+# =============================================================================
+CHUNK_SIZE=500
+CHUNK_OVERLAP=50
+RAG_TOP_K=5
+
+# =============================================================================
 # MCP Configuration
 # =============================================================================
 MCP_MSSQL_PATH=/path/to/SQL-AI-samples/MssqlMcp/Node/dist/index.js
 MCP_MSSQL_READONLY=false
+MCP_CONFIG_PATH=mcp_config.json
+
+# =============================================================================
+# API Server Configuration
+# =============================================================================
+API_HOST=0.0.0.0
+API_PORT=8000
+
+# =============================================================================
+# Storage Configuration
+# =============================================================================
+UPLOAD_DIR=./data/uploads
+MAX_UPLOAD_SIZE_MB=100
 
 # =============================================================================
 # Application Settings
 # =============================================================================
 LOG_LEVEL=INFO
+DEBUG=false
+STREAMLIT_PORT=8501
 ```
 
 ### 🦙 LLM Provider Options
@@ -259,7 +408,7 @@ LOG_LEVEL=INFO
 
 ---
 
-## 🚀 Running the Agent
+## 🚀 Running the Application
 
 ### ⌨️ CLI Interface
 
@@ -271,16 +420,16 @@ uv run python -m src.cli.chat --help
 uv run python -m src.cli.chat chat
 
 # With streaming responses
-uv run python -m src.cli.chat --stream
+uv run python -m src.cli.chat chat --stream
 
 # Use Foundry Local instead of Ollama
-uv run python -m src.cli.chat --provider foundry_local
+uv run python -m src.cli.chat chat --provider foundry_local
 
 # With read-only mode (safer for exploration)
 uv run python -m src.cli.chat --readonly
 
 # With debug output
-uv run python -m src.cli.chat --debug
+uv run python -m src.cli.chat chat --debug
 ```
 
 ### 🌐 Streamlit Web UI
@@ -293,6 +442,71 @@ uv run streamlit run src/ui/streamlit_app.py
 ```
 
 > 💡 **Tip**: The web UI includes a provider selector in the sidebar to switch between Ollama and Foundry Local.
+
+### 🚀 FastAPI Backend (Phase 2.1)
+
+```bash
+# Start the FastAPI server
+uv run uvicorn src.api.main:app --reload --host 0.0.0.0 --port 8000
+
+# Access points:
+# - API: http://localhost:8000
+# - Swagger UI: http://localhost:8000/docs
+# - ReDoc: http://localhost:8000/redoc
+```
+
+---
+
+## 📡 FastAPI Backend (Phase 2.1)
+
+The FastAPI backend provides a REST API for all agent operations, document management, and RAG search.
+
+### API Endpoints
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/health` | GET | Health check and service status |
+| `/api/health/metrics` | GET | System metrics (CPU, memory, etc.) |
+| `/api/documents` | GET/POST | List/upload documents |
+| `/api/documents/search` | POST | RAG vector search |
+| `/api/documents/schema/index` | POST | Index database schema |
+| `/api/conversations` | GET/POST | List/create conversations |
+| `/api/conversations/{id}` | GET/PATCH/DELETE | Manage conversation |
+| `/api/conversations/{id}/messages` | POST | Add message |
+| `/api/queries/history` | GET | Query execution history |
+| `/api/queries/saved` | GET/POST | Saved queries |
+| `/api/dashboards` | GET/POST | List/create dashboards |
+| `/api/dashboards/{id}/widgets` | POST | Add dashboard widget |
+| `/api/mcp` | GET | List MCP servers |
+| `/api/mcp/{name}/tools` | GET | List MCP server tools |
+| `/api/settings/theme` | GET/PUT | Theme configuration |
+| `/api/agent/chat` | POST | Send message to agent |
+
+### Running the Backend
+
+```bash
+# Development mode (with hot reload)
+uv run uvicorn src.api.main:app --reload --host 0.0.0.0 --port 8000
+
+# Production mode
+uv run uvicorn src.api.main:app --host 0.0.0.0 --port 8000 --workers 4
+
+# Via Docker
+cd docker && docker compose up -d api
+```
+
+### Database Migrations
+
+```bash
+# Generate new migration after model changes
+uv run alembic revision --autogenerate -m "Add new table"
+
+# Apply all pending migrations
+uv run alembic upgrade head
+
+# Rollback one migration
+uv run alembic downgrade -1
+```
 
 ---
 
@@ -373,37 +587,38 @@ Which researchers are assigned to multiple projects?
 ## 🏗️ Architecture
 
 ```
-+-------------------------------------------------------------+
-|                      User Interfaces                         |
-|  +------------------+              +----------------------+  |
-|  |  ⌨️ CLI (Typer)  |              |  🌐 Streamlit Web UI |  |
-|  +--------+---------+              +-----------+----------+  |
-+-----------|------------------------------------|-------------+
-            |                                    |
-            v                                    v
-+-------------------------------------------------------------+
-|                    🤖 Pydantic AI Agent                      |
-|  +-------------------------------------------------------+  |
-|  |  System Prompt + Tool Orchestration + Conversation    |  |
-|  +-------------------------------------------------------+  |
-+----------------------------+--------------------------------+
-                             |
-            +----------------+----------------+
-            v                                 v
-+--------------------+       +----------------------------------+
-|  🦙 LLM Provider   |       |         🔌 MCP Servers           |
-|  +--------------+  |       |  +----------------------------+ |
-|  | Ollama       |  |       |  |    MSSQL MCP Server        | |
-|  | Foundry Local|  |       |  |   (SQL Server Access)      | |
-|  +--------------+  |       |  +-------------+--------------+ |
-+--------------------+       |                |                |
-                             |                v                |
-                             |  +----------------------------+ |
-                             |  |   🗃️ SQL Server           | |
-                             |  |   (Docker Container)       | |
-                             |  |   ResearchAnalytics DB     | |
-                             |  +----------------------------+ |
-                             +----------------------------------+
++-----------------------------------------------------------------------------+
+|                           User Interfaces                                    |
+|  +------------------+  +----------------------+  +------------------------+  |
+|  |  ⌨️ CLI (Typer)  |  |  🌐 Streamlit Web UI |  |  🚀 FastAPI Backend    | |
+|  +--------+---------+  +-----------+----------+  +-----------+------------+  |
++-----------|-----------------------|--------------------------|---------------+
+            |                       |                          |
+            v                       v                          v
++-----------------------------------------------------------------------------+
+|                         🤖 Pydantic AI Agent                                |
+|  +-----------------------------------------------------------------------+  |
+|  |  System Prompt + Tool Orchestration + Conversation + RAG Context      |  |
+|  +-----------------------------------------------------------------------+  |
++------------------------------------+----------------------------------------+
+                                     |
+            +------------------------+------------------------+
+            |                        |                        |
+            v                        v                        v
++--------------------+  +----------------------------+  +---------------------+
+|  🦙 LLM Provider   |  |      🔌 MCP Servers        |  |  🧠 RAG Pipeline   |
+|  +--------------+  |  |  +----------------------+ |  |  +---------------+   |
+|  | Ollama       |  |  |  | MSSQL MCP Server     | |  |  | 📄 Docling    |   |
+|  | Foundry Local|  |  |  | (SQL Server Access)  | |  |  | 🔢 Embeddings |   |
+|  +--------------+  |  |  +----------------------+ |  |  | 🔍 Search     |   |
++--------------------+  +----------------------------+  |  +---------------+  |
+                                     |                  +----------+----------+
+                                     v                             |
+                        +----------------------------+             v
+                        |   🗃️ SQL Server           |  +---------------------+
+                        |   (Docker Container)       |  |  🔴 Redis Stack     |
+                        |   ResearchAnalytics DB     |  |   Vector Store      |
+                        +----------------------------+  +---------------------+
 ```
 
 ### 🔧 Tech Stack
@@ -417,6 +632,11 @@ Which researchers are assigned to multiple projects?
 | CLI | Typer + Rich | ⌨️ |
 | Database | SQL Server 2022 (Docker) | 🗃️ |
 | Validation | Pydantic v2 | ✅ |
+| **Backend API** | FastAPI + Uvicorn | 🚀 |
+| **ORM** | SQLAlchemy 2.0 + Alembic | 🗄️ |
+| **Vector Store** | Redis Stack | 🔴 |
+| **Embeddings** | Ollama (nomic-embed-text) | 🧠 |
+| **Doc Processing** | Docling | 📄 |
 
 ### 📁 Project Structure
 
@@ -424,19 +644,30 @@ Which researchers are assigned to multiple projects?
 local-llm-research-agent/
 ├── src/
 │   ├── agent/          # 🤖 Pydantic AI agent
+│   ├── api/            # 🚀 FastAPI backend (Phase 2.1)
+│   │   ├── models/     # SQLAlchemy ORM models
+│   │   └── routes/     # API endpoints
+│   ├── rag/            # 🧠 RAG pipeline (Phase 2.1)
+│   │   ├── embedder.py          # Ollama embeddings
+│   │   ├── redis_vector_store.py # Vector search
+│   │   ├── document_processor.py # Docling parsing
+│   │   └── schema_indexer.py    # DB schema indexing
 │   ├── providers/      # 🦙 LLM provider abstraction
 │   ├── mcp/            # 🔌 MCP client and config
 │   ├── cli/            # ⌨️ Command-line interface
 │   ├── ui/             # 🌐 Streamlit web interface
 │   ├── models/         # 📋 Pydantic data models
 │   └── utils/          # ⚙️ Configuration and logging
+├── alembic/            # 🗄️ Database migrations (Phase 2.1)
+├── data/               # 📁 Uploads and cache (Phase 2.1)
 ├── docker/
-│   ├── docker-compose.yml    # 🐳 SQL Server container
+│   ├── docker-compose.yml    # 🐳 SQL Server + Redis + API
+│   ├── Dockerfile.api        # FastAPI container
 │   └── init/                 # 🗃️ Database init scripts
 ├── tests/              # 🧪 Test suite
 ├── docs/               # 📚 Documentation
 ├── examples/           # 💡 Usage examples
-└── .github/            # 🔧 CI/CD workflows
+└── PRPs/               # 📋 Product Requirement Prompts
 ```
 
 ---
@@ -530,4 +761,4 @@ MIT License - see [LICENSE](LICENSE) file for details.
 
 ---
 
-*Last Updated: December 2024*
+*Last Updated: December 2025* (Phase 2.1 Backend + RAG)

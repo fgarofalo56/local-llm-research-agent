@@ -176,6 +176,59 @@ class Settings(BaseSettings):
         description="SQL Server SA password (used by docker-compose)"
     )
 
+    # ===== Phase 2.1 Settings =====
+    # Redis
+    redis_url: str = Field(
+        default="redis://localhost:6379",
+        description="Redis connection URL"
+    )
+
+    # Embeddings
+    embedding_model: str = Field(
+        default="nomic-embed-text",
+        description="Ollama model for generating embeddings"
+    )
+
+    # Storage
+    upload_dir: str = Field(
+        default="./data/uploads",
+        description="Directory for uploaded documents"
+    )
+    max_upload_size_mb: int = Field(
+        default=100,
+        description="Maximum file upload size in MB"
+    )
+
+    # RAG
+    chunk_size: int = Field(
+        default=500,
+        description="Document chunk size for RAG"
+    )
+    chunk_overlap: int = Field(
+        default=50,
+        description="Overlap between document chunks"
+    )
+    rag_top_k: int = Field(
+        default=5,
+        description="Number of chunks to retrieve for RAG"
+    )
+
+    # API
+    api_host: str = Field(
+        default="0.0.0.0",
+        description="API server bind address"
+    )
+    api_port: int = Field(
+        default=8000,
+        description="API server port"
+    )
+
+    # MCP Config Path
+    mcp_config_path: str = Field(
+        default="mcp_config.json",
+        description="Path to MCP server configuration file"
+    )
+
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"
@@ -225,6 +278,26 @@ class Settings(BaseSettings):
     def ollama_api_url(self) -> str:
         """Get the full Ollama API URL for OpenAI-compatible endpoint."""
         return f"{self.ollama_host}/v1"
+
+    @property
+    def database_url(self) -> str:
+        """Get sync database URL for SQLAlchemy."""
+        password = self.sql_password.replace("@", "%40")
+        return (
+            f"mssql+pyodbc://{self.sql_username}:{password}@"
+            f"{self.sql_server_host}:{self.sql_server_port}/{self.sql_database_name}"
+            f"?driver=ODBC+Driver+18+for+SQL+Server&TrustServerCertificate=yes"
+        )
+
+    @property
+    def database_url_async(self) -> str:
+        """Get async database URL for SQLAlchemy."""
+        password = self.sql_password.replace("@", "%40")
+        return (
+            f"mssql+aioodbc://{self.sql_username}:{password}@"
+            f"{self.sql_server_host}:{self.sql_server_port}/{self.sql_database_name}"
+            f"?driver=ODBC+Driver+18+for+SQL+Server&TrustServerCertificate=yes"
+        )
 
     @property
     def is_azure_sql(self) -> bool:

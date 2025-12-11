@@ -134,7 +134,16 @@ curl http://localhost:11434/api/tags
 
 ## 🗄️ Database Setup
 
-The project includes a Docker-based SQL Server with sample research analytics data.
+The project includes a Docker-based SQL Server and Redis Stack with sample research analytics data. All services run under the `local-agent-ai-stack` project.
+
+### Docker Services
+
+| Service | Container | Port | Purpose |
+|---------|-----------|------|---------|
+| **mssql** | `local-agent-mssql` | 1433 | SQL Server 2022 |
+| **redis-stack** | `local-agent-redis` | 6379, 8001 | Redis + Vector Search |
+| **agent-ui** | `local-agent-streamlit-ui` | 8501 | Web Interface |
+| **api** | `local-agent-api` | 8000 | FastAPI Backend |
 
 ### Quick Setup
 
@@ -151,31 +160,38 @@ chmod +x setup-database.sh
 ./setup-database.sh
 ```
 
-### Manual Setup
+### Manual Setup (from project root)
+
+> ⚠️ **Critical**: Always include `--env-file .env` when running docker-compose from the project root. Without it, environment variables like port configurations won't be loaded, causing containers to fail.
 
 ```bash
-cd docker
+# Create external volumes (first time only)
+docker volume create local-llm-mssql-data
+docker volume create local-llm-redis-data
 
-# Start SQL Server container
-docker compose up -d mssql
+# Start SQL Server and Redis containers
+docker-compose -f docker/docker-compose.yml --env-file .env up -d
 
 # Wait for healthy status (about 30 seconds)
-docker compose ps
+docker-compose -f docker/docker-compose.yml ps
 
 # Initialize database with sample data
-docker compose --profile init up mssql-tools
+docker-compose -f docker/docker-compose.yml --env-file .env --profile init up mssql-tools
 ```
 
 ### Verify Database
 
 ```bash
 # Check container is running
-docker ps | grep local-llm-mssql
+docker ps | grep local-agent-mssql
 
 # Test connection (using Docker)
-docker exec -it local-llm-mssql /opt/mssql-tools18/bin/sqlcmd \
+docker exec -it local-agent-mssql /opt/mssql-tools18/bin/sqlcmd \
   -S localhost -U sa -P "LocalLLM@2024!" -No \
   -Q "SELECT COUNT(*) AS Tables FROM ResearchAnalytics.INFORMATION_SCHEMA.TABLES"
+
+# Test Redis connection
+docker exec -it local-agent-redis redis-cli PING
 ```
 
 ### Database Connection Details
@@ -186,6 +202,7 @@ docker exec -it local-llm-mssql /opt/mssql-tools18/bin/sqlcmd \
 | Database | `ResearchAnalytics` |
 | Username | `sa` |
 | Password | `LocalLLM@2024!` |
+| Redis | `redis://localhost:6379` |
 
 ---
 
@@ -440,9 +457,10 @@ history delete abc12345
 Now that you're set up:
 
 1. **Explore the data** - Try different queries on the ResearchAnalytics database
-2. **Read the MCP tools reference** - [MSSQL MCP Tools](../reference/mssql_mcp_tools.md)
-3. **Configure for production** - [Configuration Guide](configuration.md)
-4. **Troubleshoot issues** - [Troubleshooting Guide](troubleshooting.md)
+2. **Learn Docker services** - [Docker Services Guide](docker-services.md) - Complete guide to all containers
+3. **Read the MCP tools reference** - [MSSQL MCP Tools](../reference/mssql_mcp_tools.md)
+4. **Configure for production** - [Configuration Guide](configuration.md)
+5. **Troubleshoot issues** - [Troubleshooting Guide](troubleshooting.md)
 
 ---
 
@@ -454,10 +472,12 @@ Now that you're set up:
 |-------|----------|
 | Ollama not connecting | Ensure Ollama is running: `curl http://localhost:11434` |
 | Foundry Local not found | Install SDK: `pip install foundry-local-sdk` |
-| Database connection refused | Check Docker container: `docker compose ps` |
+| Database connection refused | Check Docker container: `docker-compose -f docker/docker-compose.yml ps` |
 | MCP server not found | Verify `MCP_MSSQL_PATH` in `.env` |
 | Model not found | Pull model: `ollama pull qwen2.5:7b-instruct` |
 | Cache not working | Check `CACHE_ENABLED=true` in `.env` |
+| Port 8001 in use | Set `REDIS_INSIGHT_PORT=8008` in `.env` |
+| Volume not found | Create volumes: `docker volume create local-llm-mssql-data` |
 
 ### Need More Help?
 
@@ -465,4 +485,4 @@ See the full [Troubleshooting Guide](troubleshooting.md).
 
 ---
 
-*Last Updated: December 2024*
+*Last Updated: December 2025* (Phase 2.1 - Added Redis Stack, FastAPI, Data Persistence)

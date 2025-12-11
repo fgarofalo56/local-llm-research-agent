@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$comment": "MCP Server Configuration for Local LLM Research Analytics Tool",
-  
+
   "mcpServers": {
     "mssql": {
       "command": "node",
@@ -10,12 +10,16 @@
         "SERVER_NAME": "${SQL_SERVER_HOST}",
         "DATABASE_NAME": "${SQL_DATABASE_NAME}",
         "TRUST_SERVER_CERTIFICATE": "${SQL_TRUST_SERVER_CERTIFICATE:-true}",
-        "READONLY": "${MCP_MSSQL_READONLY:-false}"
+        "ENCRYPT": "${SQL_ENCRYPT:-true}",
+        "READONLY": "${MCP_MSSQL_READONLY:-false}",
+        "AUTH_TYPE": "${SQL_AUTH_TYPE:-sql}",
+        "SQL_USERNAME": "${SQL_USERNAME}",
+        "SQL_PASSWORD": "${SQL_PASSWORD}"
       },
       "description": "Microsoft SQL Server MCP Server for database operations"
     }
   },
-  
+
   "_documentation": {
     "mssql_tools": {
       "list_tables": "Lists all tables in the connected database",
@@ -27,11 +31,21 @@
       "drop_table": "Delete tables from the database",
       "create_index": "Create indexes for query optimization"
     },
+    "authentication_types": {
+      "sql": "SQL Server authentication with username and password",
+      "windows": "Windows integrated authentication (uses current Windows credentials)",
+      "azure_ad_interactive": "Azure AD with interactive browser login",
+      "azure_ad_default": "Azure AD using DefaultAzureCredential chain"
+    },
     "environment_variables": {
       "MCP_MSSQL_PATH": "Full path to the MSSQL MCP Server index.js file",
-      "SQL_SERVER_HOST": "SQL Server hostname (e.g., localhost, server.domain.com)",
+      "SQL_SERVER_HOST": "SQL Server hostname (e.g., localhost, server.database.windows.net)",
       "SQL_DATABASE_NAME": "Name of the database to connect to",
+      "SQL_AUTH_TYPE": "Authentication type: sql, windows, azure_ad_interactive, azure_ad_default",
+      "SQL_USERNAME": "SQL Server username (required for sql auth type)",
+      "SQL_PASSWORD": "SQL Server password (required for sql auth type)",
       "SQL_TRUST_SERVER_CERTIFICATE": "Set to 'true' for self-signed certificates",
+      "SQL_ENCRYPT": "Set to 'true' to encrypt connection (required for Azure)",
       "MCP_MSSQL_READONLY": "Set to 'true' to disable write operations"
     },
     "setup_instructions": [
@@ -40,9 +54,10 @@
       "2. Navigate to the Node.js implementation:",
       "   cd SQL-AI-samples/MssqlMcp/Node",
       "3. Install dependencies and build:",
-      "   npm install",
+      "   npm install && npm run build",
       "4. Set MCP_MSSQL_PATH to the dist/index.js location",
-      "5. Configure SQL Server connection in .env file"
+      "5. Configure SQL Server connection in .env file",
+      "6. Set SQL_AUTH_TYPE=sql for SQL Server authentication"
     ]
   }
 }

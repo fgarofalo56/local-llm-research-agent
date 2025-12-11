@@ -7,6 +7,7 @@ Supports both Ollama and Foundry Local as LLM providers.
 """
 
 import asyncio
+import random
 from typing import Any
 
 import streamlit as st
@@ -25,7 +26,6 @@ from src.utils.config import settings  # noqa: E402
 from src.utils.database_manager import get_database_manager  # noqa: E402
 from src.utils.export import (  # noqa: E402
     export_conversation_to_csv,
-    export_response_data,
     export_to_json,
     export_to_markdown,
     generate_export_filename,
@@ -34,6 +34,54 @@ from src.utils.health import (  # noqa: E402
     HealthStatus,
     run_health_checks,
 )
+
+# Creative thinking/processing messages
+THINKING_MESSAGES = [
+    "🤔 Thinking...",
+    "🧠 Processing...",
+    "🔍 Analyzing query...",
+    "📊 Crunching numbers...",
+    "💡 Brewing insights...",
+    "🔗 Connecting the dots...",
+    "📈 Mining data...",
+    "🌐 Weaving patterns...",
+    "⚡ Decoding request...",
+    "🎯 Focusing...",
+]
+
+QUERYING_MESSAGES = [
+    "📊 Querying database...",
+    "🗄️ Running SQL...",
+    "📥 Fetching data...",
+    "⚙️ Executing query...",
+    "📋 Reading tables...",
+    "🔎 Gathering results...",
+    "📑 Scanning records...",
+]
+
+
+def get_thinking_message(querying: bool = False) -> str:
+    """Get a random thinking/processing message."""
+    if querying:
+        return random.choice(QUERYING_MESSAGES)
+    return random.choice(THINKING_MESSAGES)
+
+
+def format_token_usage_streamlit(
+    prompt_tokens: int = 0,
+    completion_tokens: int = 0,
+    total_tokens: int = 0,
+    duration_ms: float = 0.0,
+) -> str:
+    """Format token usage for display in Streamlit."""
+    parts = [
+        f"⚡ **{prompt_tokens:,}** in",
+        f"→ **{completion_tokens:,}** out",
+        f"• **{total_tokens:,}** total",
+    ]
+    if duration_ms > 0:
+        parts.append(f"• {duration_ms/1000:.1f}s")
+    return " ".join(parts)
 
 
 def run_async(coro: Any) -> Any:
@@ -131,68 +179,124 @@ def render_sidebar() -> dict[str, Any]:
     with st.sidebar:
         st.header("⚙️ Configuration")
 
+        # Initialize session state for provider and model if not set
+        if "selected_provider" not in st.session_state:
+            st.session_state.selected_provider = settings.llm_provider
+        if "selected_model" not in st.session_state:
+            st.session_state.selected_model = (
+                settings.ollama_model
+                if settings.llm_provider == "ollama"
+                else settings.foundry_model
+            )
+        if "settings_applied" not in st.session_state:
+            st.session_state.settings_applied = True
+
         # Provider selection
         st.subheader("LLM Provider")
         provider_options = ["ollama", "foundry_local"]
         provider_labels = {"ollama": "Ollama", "foundry_local": "Foundry Local"}
 
-        provider_type = st.selectbox(
+        # Use session state for current selection
+        current_provider_index = (
+            provider_options.index(st.session_state.selected_provider)
+            if st.session_state.selected_provider in provider_options
+            else 0
+        )
+
+        new_provider = st.selectbox(
             "Provider",
             options=provider_options,
             format_func=lambda x: provider_labels.get(x, x),
-            index=provider_options.index(settings.llm_provider)
-            if settings.llm_provider in provider_options
-            else 0,
+            index=current_provider_index,
             help="Select the LLM inference provider",
+            key="provider_selector",
         )
 
         # Check provider status
-        status = check_provider_status(provider_type)
+        status = check_provider_status(new_provider)
 
         if status["available"]:
-            st.success(f"✅ {provider_labels[provider_type]}: Connected")
+            st.success(f"✅ {provider_labels[new_provider]}: Connected")
             if status.get("version"):
                 st.caption(f"Version: {status['version']}")
 
             # Model selection from available models
             available_models = status.get("models", [])
-            default_model = (
-                settings.ollama_model
-                if provider_type == "ollama"
-                else settings.foundry_model
-            )
+
+            # Determine current model index
+            current_model = st.session_state.selected_model
+            model_index = 0
+            if available_models:
+                # Try exact match first
+                if current_model in available_models:
+                    model_index = available_models.index(current_model)
+                else:
+                    # Try partial match
+                    for i, m in enumerate(available_models):
+                        if current_model in m or m in current_model:
+                            model_index = i
+                            break
 
             if available_models:
-                model_name = st.selectbox(
+                new_model = st.selectbox(
                     "Model",
                     options=available_models,
-                    index=next(
-                        (i for i, m in enumerate(available_models) if default_model in m),
-                        0,
-                    ),
+                    index=model_index,
                     help="Select the model to use",
+                    key="model_selector",
                 )
             else:
-                model_name = st.text_input(
+                new_model = st.text_input(
                     "Model",
-                    value=default_model,
+                    value=current_model,
                     help="Enter model name",
+                    key="model_input",
                 )
         else:
-            st.error(f"❌ {provider_labels[provider_type]}: Not available")
+            st.error(f"❌ {provider_labels[new_provider]}: Not available")
             if status.get("error"):
                 st.caption(f"Error: {status['error'][:100]}")
 
-            if provider_type == "ollama":
+            if new_provider == "ollama":
                 st.info("Start Ollama: `ollama serve`")
             else:
                 st.info("Install: `pip install foundry-local-sdk`")
 
-            model_name = (
+            new_model = (
                 settings.ollama_model
-                if provider_type == "ollama"
+                if new_provider == "ollama"
                 else settings.foundry_model
             )
+
+        # Check if settings have changed
+        settings_changed = (
+            new_provider != st.session_state.selected_provider
+            or new_model != st.session_state.selected_model
+        )
+
+        # Show Apply button if settings changed
+        if settings_changed:
+            st.session_state.settings_applied = False
+            st.warning("⚠️ Settings changed - click Apply to use new model")
+            if st.button("🔄 Apply Settings", use_container_width=True, type="primary"):
+                st.session_state.selected_provider = new_provider
+                st.session_state.selected_model = new_model
+                st.session_state.settings_applied = True
+                # Clear the cached agent so it will be recreated with new settings
+                get_agent.clear()
+                st.toast(f"Settings applied: {new_provider} / {new_model}", icon="✅")
+                st.rerun()
+
+        # Use the session state values (applied settings)
+        provider_type = st.session_state.selected_provider
+        model_name = st.session_state.selected_model
+
+        # Check availability of the applied provider (may differ from selected if not yet applied)
+        applied_status = check_provider_status(provider_type)
+        provider_available = applied_status["available"]
+
+        # Show current active settings
+        st.caption(f"**Active:** {provider_labels.get(provider_type, provider_type)} / {model_name}")
 
         st.divider()
 
@@ -424,7 +528,7 @@ def render_sidebar() -> dict[str, Any]:
             "streaming": streaming,
             "cache_enabled": cache_enabled,
             "explain_mode": explain_mode,
-            "provider_available": status["available"],
+            "provider_available": provider_available,
             "database": selected_db,
         }
 
@@ -463,25 +567,55 @@ def render_chat_interface(config: dict[str, Any]) -> None:
                     explain_mode=config.get("explain_mode", False),
                 )
 
+                token_usage = None
+                duration_ms = 0.0
+
                 if config.get("streaming", True):
                     # Streaming mode - display tokens as they arrive
+                    # Note: chat_stream now yields deltas (individual chunks)
                     response_placeholder = st.empty()
+                    status_placeholder = st.empty()
                     full_response = ""
+
+                    # Show creative thinking message
+                    status_placeholder.info(get_thinking_message())
 
                     async def stream_response():
                         nonlocal full_response
                         async for chunk in agent.chat_stream(prompt):
                             full_response += chunk
+                            # Clear the status message once we start receiving chunks
+                            status_placeholder.empty()
                             response_placeholder.markdown(full_response + "▌")
 
                     run_async(stream_response())
+                    status_placeholder.empty()
                     response_placeholder.markdown(full_response)
                     response = full_response
+
+                    # Get token usage from streaming
+                    stats = agent.get_last_response_stats()
+                    token_usage = stats.get("token_usage")
+                    duration_ms = stats.get("duration_ms", 0)
                 else:
-                    # Non-streaming mode - show spinner
-                    with st.spinner("Thinking..."):
-                        response = run_async(agent.chat(prompt))
+                    # Non-streaming mode - show creative spinner message
+                    with st.spinner(get_thinking_message()):
+                        detailed_response = run_async(agent.chat_with_details(prompt))
+                    response = detailed_response.content
                     st.markdown(response)
+
+                    # Get token usage from detailed response
+                    token_usage = detailed_response.token_usage
+                    duration_ms = detailed_response.duration_ms
+
+                # Display token usage below the response
+                if token_usage and token_usage.total_tokens > 0:
+                    st.caption(format_token_usage_streamlit(
+                        prompt_tokens=token_usage.prompt_tokens,
+                        completion_tokens=token_usage.completion_tokens,
+                        total_tokens=token_usage.total_tokens,
+                        duration_ms=duration_ms,
+                    ))
 
                 st.session_state.messages.append({"role": "assistant", "content": response})
 

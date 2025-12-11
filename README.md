@@ -42,6 +42,19 @@
 | 📁 **Document Manager** | ✅ | Upload and search RAG documents |
 | 🖥️ **MCP Server View** | ✅ | Monitor connected MCP servers |
 
+### Visualization & Dashboards (Phase 2.3)
+
+| Feature | Status | Description |
+|---------|--------|-------------|
+| 📊 **Recharts Integration** | ✅ | Bar, Line, Area, Pie, Scatter charts |
+| 🤖 **AI Chart Suggestions** | ✅ | Automatic chart type recommendations |
+| 📈 **KPI Cards** | ✅ | Single-value metric displays |
+| 🎛️ **Dashboard Builder** | ✅ | Create and manage custom dashboards |
+| 📌 **Widget Pinning** | ✅ | Pin query results to dashboards |
+| 🔄 **Drag & Drop Layout** | ✅ | react-grid-layout for positioning |
+| ⏱️ **Auto-Refresh** | ✅ | Per-widget refresh intervals |
+| 💾 **Persistence** | ✅ | Dashboard state saved to SQL Server |
+
 ---
 
 ## 📑 Table of Contents

@@ -24,7 +24,9 @@ This is a **100% local** smart chat agent for SQL Server data analytics research
 |-------|--------|-------------|
 | **Phase 1** | ✅ Complete | CLI + Streamlit + SQL Agent + Docker SQL Server |
 | **Phase 2.1** | ✅ Complete | Backend Infrastructure + RAG Pipeline + FastAPI |
-| **Phase 2.2** | 🚧 Next | React UI + Frontend Integration |
+| **Phase 2.2** | ✅ Complete | React UI + Frontend Integration + WebSocket Chat |
+| **Phase 2.3** | ✅ Complete | Dashboard Builder + Advanced Visualizations |
+| **Phase 2.4** | 🚧 Next | Exports + Power BI MCP Integration |
 
 ---
 
@@ -530,6 +532,29 @@ uv run ruff format .
 uv run ruff check .
 ```
 
+### React Frontend (Phase 2.2)
+
+```bash
+# Install frontend dependencies
+cd frontend && npm install
+
+# Run development server (port 5173)
+npm run dev
+
+# Build for production
+npm run build
+
+# Preview production build
+npm run preview
+
+# Lint frontend code
+npm run lint
+```
+
+**Frontend URLs:**
+- Development: http://localhost:5173
+- API Proxy: Requests to `/api/*` and `/ws/*` are proxied to FastAPI backend
+
 ### Docker Services
 
 **⚠️ CRITICAL: When running from project root, ALWAYS include `--env-file .env`:**
@@ -659,6 +684,7 @@ async def test_mssql_connection():
 
 | Service | Port | URL |
 |---------|------|-----|
+| React UI | 5173 | http://localhost:5173 |
 | FastAPI | 8000 | http://localhost:8000 |
 | Streamlit | 8501 | http://localhost:8501 |
 | RedisInsight | 8001 | http://localhost:8001 |
@@ -666,39 +692,67 @@ async def test_mssql_connection():
 
 ---
 
-## Phase 2.2 Preview (Upcoming)
+## Phase 2.2 Features (Implemented)
 
-### New Features
+### React Frontend
 
 | Feature | Description |
 |---------|-------------|
-| **React UI** | Modern full-stack UI (third deployment option) |
-| **Theming** | Dark/light mode, custom branding |
-| **Dashboard Builder** | Visual dashboard and widget configuration |
-| **Real-time Updates** | WebSocket-based chat streaming |
+| **React UI** | Modern full-stack UI with Vite, TypeScript, React 19 |
+| **Theming** | Dark/light/system mode with CSS variables |
+| **Chat Interface** | Real-time WebSocket chat with streaming responses |
+| **MCP Server Selection** | Select active MCP servers for agent tools |
+| **Conversation History** | View and manage past conversations |
+| **Document Management** | Upload and search documents for RAG |
+| **Query History** | Browse and favorite SQL queries |
 
-### New Structure (Phase 2.2 additions)
+### Frontend Tech Stack
+
+| Package | Version | Purpose |
+|---------|---------|---------|
+| React | 19.1.0 | UI framework |
+| Vite | 7.2.7 | Build tool |
+| TanStack Query | 5.90.12 | API state management |
+| Zustand | 5.0.9 | Client state management |
+| React Router | 7.10.1 | Routing |
+| Tailwind CSS | 3.4.15 | Styling |
+| Radix UI | - | Accessible components |
+| Lucide React | 0.513.0 | Icons |
+
+### Frontend Structure
 
 ```
-├── frontend/                    # React UI
+├── frontend/
 │   ├── src/
-│   │   ├── pages/
+│   │   ├── api/client.ts           # REST API client
 │   │   ├── components/
-│   │   └── contexts/
-│   └── package.json
+│   │   │   ├── chat/               # Chat components
+│   │   │   ├── layout/             # Layout (Sidebar, Header)
+│   │   │   └── ui/                 # Reusable UI components
+│   │   ├── contexts/ThemeContext.tsx
+│   │   ├── hooks/
+│   │   │   ├── useConversations.ts # React Query hooks
+│   │   │   └── useWebSocket.ts     # WebSocket connection
+│   │   ├── pages/                  # Route pages
+│   │   ├── stores/chatStore.ts     # Zustand state
+│   │   └── types/index.ts          # TypeScript interfaces
+│   ├── package.json
+│   ├── vite.config.ts
+│   └── tailwind.config.js
 ```
 
-### Execute Phase 2.2
+### WebSocket Endpoints
 
-```bash
-/execute-prp PRPs/phase2.2-react-frontend-prp.md
-```
+| Endpoint | Description |
+|----------|-------------|
+| `/ws/agent/{conversation_id}` | Real-time agent chat (top-level) |
+| `/api/agent/ws/{conversation_id}` | Agent WebSocket (router mount) |
 
 ---
 
-## ⚠️ CRITICAL CONSTRAINTS FOR PHASE 2.2
+## ⚠️ CRITICAL CONSTRAINTS FOR PHASE 2.3
 
-When executing Phase 2.2 PRP, ensure:
+When executing Phase 2.3 PRP, ensure:
 
 1. **DO NOT modify or delete** any existing files in:
    - `src/agent/research_agent.py`
@@ -706,17 +760,20 @@ When executing Phase 2.2 PRP, ensure:
    - `src/ui/streamlit_app.py`
    - `src/utils/config.py`
    - `src/mcp/client.py`
-   - `src/api/` (Phase 2.1 - extend only)
-   - `src/rag/` (Phase 2.1 - extend only)
+   - `src/api/` (extend only, don't break existing endpoints)
+   - `src/rag/` (extend only)
+   - `frontend/src/` (extend only, don't break existing components)
 
-2. **ADD NEW files** for Phase 2.2 features - do not replace existing implementations
+2. **ADD NEW files** for Phase 2.3 features - do not replace existing implementations
 
 3. **EXTEND, don't replace** - if modifying existing files, add new methods, don't rewrite existing ones
 
-4. **TEST existing interfaces** after each sub-phase:
+4. **TEST all interfaces** after each sub-phase:
    - `uv run python -m src.cli.chat` still works
    - `uv run streamlit run src/ui/streamlit_app.py` still works
    - `uv run uvicorn src.api.main:app` still works
+   - `cd frontend && npm run build` still builds
+   - `cd frontend && npm run dev` still runs
 
 ---
 

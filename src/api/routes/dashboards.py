@@ -1,12 +1,15 @@
 """
 Dashboards Routes
-Phase 2.1: Backend Infrastructure & RAG Pipeline
+Phase 2.1 & 2.3: Backend Infrastructure & Visualization
 
 Endpoints for dashboard and widget management.
 """
 
+import contextlib
+import json
 import secrets
 from datetime import datetime, timedelta
+from typing import Any
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException
@@ -23,19 +26,36 @@ logger = structlog.get_logger()
 
 
 # Widget Models
+class WidgetPosition(BaseModel):
+    """Position and size for a widget."""
+
+    x: int
+    y: int
+    w: int
+    h: int
+
+
+class WidgetChartConfig(BaseModel):
+    """Chart configuration for a widget."""
+
+    xKey: str | None = None
+    yKeys: list[str] | None = None
+    colors: list[str] | None = None
+
+
 class WidgetCreate(BaseModel):
     """Request model for creating a widget."""
 
     widget_type: str
     title: str
     query: str | None = None
-    chart_config: str | None = None  # JSON
-    position: str | None = None  # JSON {x, y, w, h}
+    chart_config: WidgetChartConfig | dict[str, Any] | None = None
+    position: WidgetPosition | dict[str, Any] | None = None
     refresh_interval: int | None = None
 
 
 class WidgetResponse(BaseModel):
-    """Response model for a widget."""
+    """Response model for a widget (raw JSON strings)."""
 
     id: int
     dashboard_id: int
@@ -50,6 +70,41 @@ class WidgetResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class WidgetListItem(BaseModel):
+    """Response model for widget list item with parsed JSON."""
+
+    id: int
+    dashboard_id: int
+    widget_type: str
+    title: str
+    query: str | None
+    chart_config: dict[str, Any] | None
+    position: dict[str, Any]
+    refresh_interval: int | None
+
+    class Config:
+        from_attributes = True
+
+
+class WidgetListResponse(BaseModel):
+    """Response model for widget list."""
+
+    widgets: list[WidgetListItem]
+
+
+class LayoutUpdateItem(BaseModel):
+    """Single widget layout update."""
+
+    id: int
+    position: WidgetPosition
+
+
+class LayoutUpdateRequest(BaseModel):
+    """Request model for batch layout update."""
+
+    widgets: list[LayoutUpdateItem]
 
 
 # Dashboard Models
@@ -254,7 +309,7 @@ async def create_share_link(
 
 
 # Widget Endpoints
-@router.post("/{dashboard_id}/widgets", response_model=WidgetResponse)
+@router.post("/{dashboard_id}/widgets", response_model=WidgetListItem)
 async def create_widget(
     dashboard_id: int,
     data: WidgetCreate,
@@ -265,13 +320,29 @@ async def create_widget(
     if not dashboard:
         raise HTTPException(status_code=404, detail="Dashboard not found")
 
+    # Convert chart_config to JSON string
+    chart_config_str = None
+    if data.chart_config:
+        if isinstance(data.chart_config, dict):
+            chart_config_str = json.dumps(data.chart_config)
+        else:
+            chart_config_str = json.dumps(data.chart_config.model_dump())
+
+    # Convert position to JSON string
+    position_str = json.dumps({"x": 0, "y": 0, "w": 4, "h": 3})  # Default
+    if data.position:
+        if isinstance(data.position, dict):
+            position_str = json.dumps(data.position)
+        else:
+            position_str = json.dumps(data.position.model_dump())
+
     widget = DashboardWidget(
         dashboard_id=dashboard_id,
         widget_type=data.widget_type,
         title=data.title,
         query=data.query,
-        chart_config=data.chart_config,
-        position=data.position,
+        chart_config=chart_config_str,
+        position=position_str,
         refresh_interval=data.refresh_interval,
     )
     db.add(widget)
@@ -281,7 +352,17 @@ async def create_widget(
     await db.commit()
     await db.refresh(widget)
 
-    return WidgetResponse.model_validate(widget)
+    # Return with parsed JSON
+    return WidgetListItem(
+        id=widget.id,
+        dashboard_id=widget.dashboard_id,
+        widget_type=widget.widget_type,
+        title=widget.title,
+        query=widget.query,
+        chart_config=json.loads(widget.chart_config) if widget.chart_config else None,
+        position=json.loads(widget.position) if widget.position else {"x": 0, "y": 0, "w": 4, "h": 3},
+        refresh_interval=widget.refresh_interval,
+    )
 
 
 @router.put("/{dashboard_id}/widgets/{widget_id}", response_model=WidgetResponse)
@@ -325,3 +406,76 @@ async def delete_widget(
     await db.commit()
 
     return {"status": "deleted", "widget_id": widget_id}
+
+
+# Additional Endpoints for Phase 2.3
+@router.get("/{dashboard_id}/widgets", response_model=WidgetListResponse)
+async def list_dashboard_widgets(
+    dashboard_id: int,
+    db: AsyncSession = Depends(get_db),
+):
+    """Get all widgets for a specific dashboard with parsed JSON fields."""
+    # Verify dashboard exists
+    dashboard = await db.get(Dashboard, dashboard_id)
+    if not dashboard:
+        raise HTTPException(status_code=404, detail="Dashboard not found")
+
+    query = select(DashboardWidget).where(DashboardWidget.dashboard_id == dashboard_id)
+    result = await db.execute(query)
+    widgets = result.scalars().all()
+
+    widget_list = []
+    for w in widgets:
+        # Parse JSON fields
+        chart_config = None
+        if w.chart_config:
+            try:
+                chart_config = json.loads(w.chart_config)
+            except json.JSONDecodeError:
+                chart_config = {}
+
+        position = {"x": 0, "y": 0, "w": 4, "h": 3}  # Default position
+        if w.position:
+            with contextlib.suppress(json.JSONDecodeError):
+                position = json.loads(w.position)
+
+        widget_list.append(
+            WidgetListItem(
+                id=w.id,
+                dashboard_id=w.dashboard_id,
+                widget_type=w.widget_type,
+                title=w.title,
+                query=w.query,
+                chart_config=chart_config,
+                position=position,
+                refresh_interval=w.refresh_interval,
+            )
+        )
+
+    return WidgetListResponse(widgets=widget_list)
+
+
+@router.put("/{dashboard_id}/layout")
+async def update_dashboard_layout(
+    dashboard_id: int,
+    data: LayoutUpdateRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    """Batch update widget positions for a dashboard."""
+    # Verify dashboard exists
+    dashboard = await db.get(Dashboard, dashboard_id)
+    if not dashboard:
+        raise HTTPException(status_code=404, detail="Dashboard not found")
+
+    updated_count = 0
+    for widget_update in data.widgets:
+        widget = await db.get(DashboardWidget, widget_update.id)
+        if widget and widget.dashboard_id == dashboard_id:
+            widget.position = json.dumps(widget_update.position.model_dump())
+            widget.updated_at = datetime.utcnow()
+            updated_count += 1
+
+    dashboard.updated_at = datetime.utcnow()
+    await db.commit()
+
+    return {"status": "updated", "widgets_updated": updated_count}

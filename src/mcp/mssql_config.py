@@ -9,7 +9,7 @@ Supports SQL Auth, Windows Auth, and Azure AD authentication.
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from src.utils.config import settings, SqlAuthType
+from src.utils.config import SqlAuthType, settings
 from src.utils.logger import get_logger
 
 logger = get_logger(__name__)

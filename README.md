@@ -31,6 +31,17 @@
 | 🗄️ **SQLAlchemy ORM** | ✅ | Database models with Alembic migrations |
 | 🔧 **Dynamic MCP** | ✅ | Configure MCP servers at runtime |
 
+### React UI Features (Phase 2.2)
+
+| Feature | Status | Description |
+|---------|--------|-------------|
+| ⚛️ **React Frontend** | ✅ | Modern UI with React 19 + Vite |
+| 🎨 **Dark/Light Theme** | ✅ | System-aware theming with CSS variables |
+| 🔌 **WebSocket Chat** | ✅ | Real-time streaming responses |
+| 📊 **Query History** | ✅ | Browse and favorite SQL queries |
+| 📁 **Document Manager** | ✅ | Upload and search RAG documents |
+| 🖥️ **MCP Server View** | ✅ | Monitor connected MCP servers |
+
 ---
 
 ## 📑 Table of Contents
@@ -41,6 +52,7 @@
 - [Configuration](#️-configuration)
 - [Running the Application](#-running-the-application)
 - [FastAPI Backend](#-fastapi-backend-phase-21)
+- [React Frontend](#️-react-frontend-phase-22)
 - [Testing the Agent](#-testing-the-agent)
 - [MCP Tools Reference](#-mcp-tools-reference)
 - [Architecture](#️-architecture)
@@ -507,6 +519,70 @@ uv run alembic upgrade head
 # Rollback one migration
 uv run alembic downgrade -1
 ```
+
+---
+
+## ⚛️ React Frontend (Phase 2.2)
+
+The React frontend provides a modern web interface for interacting with the research agent.
+
+### Features
+
+- **Real-time Chat** - WebSocket-based streaming responses from the agent
+- **Dark/Light Theme** - System-aware theming with manual override
+- **Conversation History** - Browse and continue past conversations
+- **MCP Server Selection** - Choose which tools the agent can use
+- **Document Management** - Upload and search documents for RAG
+- **Query History** - View and favorite SQL queries
+
+### Tech Stack
+
+| Package | Version | Purpose |
+|---------|---------|---------|
+| React | 19.1.0 | UI framework |
+| Vite | 7.2.7 | Build tool & dev server |
+| TanStack Query | 5.90.12 | Server state management |
+| Zustand | 5.0.9 | Client state management |
+| Tailwind CSS | 3.4.15 | Styling |
+| React Router | 7.10.1 | Routing |
+
+### Running the Frontend
+
+```bash
+# Navigate to frontend directory
+cd frontend
+
+# Install dependencies
+npm install
+
+# Start development server
+npm run dev
+# Open http://localhost:5173
+
+# Build for production
+npm run build
+
+# Preview production build
+npm run preview
+```
+
+### Pages
+
+| Route | Description |
+|-------|-------------|
+| `/chat` | Main chat interface with agent |
+| `/chat/:id` | Specific conversation |
+| `/documents` | Document upload and RAG search |
+| `/dashboards` | Analytics dashboards (coming soon) |
+| `/queries` | Query history and favorites |
+| `/mcp-servers` | MCP server status and tools |
+| `/settings` | Theme and app settings |
+
+### Development Notes
+
+- The frontend proxies API requests to `http://localhost:8000` (FastAPI backend)
+- WebSocket connections are proxied to `ws://localhost:8000`
+- Ensure the FastAPI backend is running before starting the frontend
 
 ---
 

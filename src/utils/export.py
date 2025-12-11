@@ -60,7 +60,7 @@ def extract_table_from_response(response: str) -> list[dict[str, Any]] | None:
             if line.strip():
                 values = [v.strip() for v in line.split('|') if v.strip()]
                 if len(values) == len(headers):
-                    row = dict(zip(headers, values))
+                    row = dict(zip(headers, values, strict=False))
                     rows.append(row)
 
         return rows if rows else None
@@ -152,7 +152,7 @@ def export_to_csv(
         output = StringIO()
         # Get all unique headers across all rows
         headers = list(dict.fromkeys(
-            key for row in data for key in row.keys()
+            key for row in data for key in row
         ))
 
         writer = csv.DictWriter(output, fieldnames=headers)

@@ -8,8 +8,8 @@ Supports multiple local LLM backends:
 
 from src.providers.base import LLMProvider, ProviderType
 from src.providers.factory import create_provider, get_available_providers
-from src.providers.ollama import OllamaProvider
 from src.providers.foundry import FoundryLocalProvider
+from src.providers.ollama import OllamaProvider
 
 __all__ = [
     "LLMProvider",

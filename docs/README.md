@@ -16,6 +16,7 @@
 | [API Reference](api/README.md) | Programmatic interface documentation |
 | [FastAPI Backend](api/fastapi.md) | REST API documentation (Phase 2.1) |
 | [RAG Pipeline](api/rag.md) | Document retrieval and vector search (Phase 2.1) |
+| [Exports Guide](guides/exports.md) | Export functionality documentation (Phase 2.4) |
 
 ---
 
@@ -194,6 +195,18 @@ The system architecture is documented in the [architecture diagram](diagrams/arc
 | Dashboard API | Stable | Dashboard and widget management |
 | Query History | Stable | Saved queries and favorites |
 
+### Phase 2.4 Features (Exports & Power BI)
+
+| Feature | Status | Description |
+|---------|--------|-------------|
+| PNG Export | Stable | High-resolution chart images |
+| PDF Export | Stable | Multi-page dashboard/chart reports |
+| CSV Export | Stable | Standard data export format |
+| Excel Export | Stable | Spreadsheets with auto-column widths |
+| Dashboard JSON | Stable | Import/export dashboard configs |
+| Chat Export | Stable | Conversation to Markdown/PDF |
+| Power BI Dialog | Stable | PBIX file creation interface |
+
 ---
 
 ## Authentication Options
@@ -233,4 +246,4 @@ Documentation contributions are welcome! Please follow the [Documentation Standa
 
 ---
 
-*Last Updated: December 2025* (Phase 2.1 Backend + RAG)
+*Last Updated: December 2025* (Phase 2.4 Exports & Power BI)

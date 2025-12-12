@@ -127,11 +127,13 @@ def mock_mcp_server():
     mock = MagicMock()
     mock.__aenter__ = AsyncMock(return_value=mock)
     mock.__aexit__ = AsyncMock(return_value=None)
-    mock.list_tools = AsyncMock(return_value=[
-        MagicMock(name="list_tables"),
-        MagicMock(name="describe_table"),
-        MagicMock(name="read_data"),
-    ])
+    mock.list_tools = AsyncMock(
+        return_value=[
+            MagicMock(name="list_tables"),
+            MagicMock(name="describe_table"),
+            MagicMock(name="read_data"),
+        ]
+    )
     return mock
 
 

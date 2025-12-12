@@ -143,10 +143,12 @@ class TestCLICommands:
 
         mock_agent = MagicMock()
         mock_agent.chat_stream = MagicMock(return_value=mock_stream())
-        mock_agent.get_last_response_stats = MagicMock(return_value={
-            "token_usage": mock_token_usage,
-            "duration_ms": 1000.0,
-        })
+        mock_agent.get_last_response_stats = MagicMock(
+            return_value={
+                "token_usage": mock_token_usage,
+                "duration_ms": 1000.0,
+            }
+        )
         mock_agent_cls.return_value = mock_agent
 
         with patch("src.cli.chat.settings") as mock_settings:
@@ -175,9 +177,7 @@ class TestChatCommand:
     @patch("src.cli.chat.print_welcome")
     @patch("src.cli.chat.print_status_sync")
     @patch("src.cli.chat.run_chat_loop")
-    def test_chat_command_invokes_loop(
-        self, mock_loop, mock_status, mock_welcome
-    ):
+    def test_chat_command_invokes_loop(self, mock_loop, mock_status, mock_welcome):
         """Test that chat command invokes the chat loop."""
         mock_loop.return_value = None
 
@@ -199,9 +199,7 @@ class TestChatLoopIntegration:
     @patch("src.cli.chat.settings")
     @patch("src.cli.chat.ResearchAgent")
     @patch("src.cli.chat.Prompt.ask")
-    async def test_chat_loop_quit(
-        self, mock_ask, mock_agent_cls, mock_settings, mock_check
-    ):
+    async def test_chat_loop_quit(self, mock_ask, mock_agent_cls, mock_settings, mock_check):
         """Test chat loop exits on quit."""
         mock_check.return_value = {"available": True}
         mock_settings.mcp_mssql_path = "/path/to/mcp"

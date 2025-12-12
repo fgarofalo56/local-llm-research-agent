@@ -93,6 +93,18 @@ class SavedQueryListResponse(BaseModel):
     total: int
 
 
+# Query Endpoints - "/" redirects to history for frontend compatibility
+@router.get("", response_model=QueryHistoryListResponse)
+async def list_queries(
+    skip: int = 0,
+    limit: int = 50,
+    is_favorite: bool = False,
+    db: AsyncSession = Depends(get_db),
+):
+    """List queries (alias for /history for frontend compatibility)."""
+    return await list_query_history(skip, limit, is_favorite, db)
+
+
 # Query History Endpoints
 @router.get("/history", response_model=QueryHistoryListResponse)
 async def list_query_history(

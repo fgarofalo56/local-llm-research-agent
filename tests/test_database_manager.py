@@ -216,9 +216,7 @@ class TestGetDatabaseManager:
 
     def test_with_nonexistent_file(self):
         """Test with nonexistent config file."""
-        manager = get_database_manager(
-            config_file=Path("/nonexistent/path/databases.json")
-        )
+        manager = get_database_manager(config_file=Path("/nonexistent/path/databases.json"))
 
         # Should work with defaults
         assert manager.get_database("default") is not None

@@ -1,11 +1,14 @@
 import { useEffect } from 'react';
 import { useParams } from 'react-router-dom';
+import { FileText, Download } from 'lucide-react';
 import { MessageList } from '@/components/chat/MessageList';
 import { ChatInput } from '@/components/chat/ChatInput';
 import { MCPServerSelector } from '@/components/chat/MCPServerSelector';
-import { useMessages, useCreateConversation } from '@/hooks/useConversations';
+import { Button } from '@/components/ui/Button';
+import { useMessages, useCreateConversation, useConversation } from '@/hooks/useConversations';
 import { useAgentWebSocket } from '@/hooks/useWebSocket';
 import { useChatStore } from '@/stores/chatStore';
+import { exportChatToMarkdown, exportChatToPdf } from '@/lib/exports/chatExport';
 
 export function ChatPage() {
   const { conversationId } = useParams<{ conversationId: string }>();
@@ -21,6 +24,9 @@ export function ChatPage() {
       setCurrentConversation(parsedId);
     }
   }, [parsedId, setCurrentConversation]);
+
+  // Fetch conversation details
+  const { data: conversation } = useConversation(currentConversationId);
 
   // Fetch messages
   const { data: messagesData } = useMessages(currentConversationId);
@@ -47,11 +53,37 @@ export function ChatPage() {
     }
   };
 
+  const handleExportMarkdown = () => {
+    if (conversation && messagesData?.messages) {
+      exportChatToMarkdown(conversation, messagesData.messages);
+    }
+  };
+
+  const handleExportPdf = () => {
+    if (conversation && messagesData?.messages) {
+      exportChatToPdf(conversation, messagesData.messages);
+    }
+  };
+
   return (
     <div className="flex h-full flex-col">
-      {/* MCP Server Selection */}
-      <div className="border-b p-4">
+      {/* Header with MCP Server Selection and Export */}
+      <div className="flex items-center justify-between border-b p-4">
         <MCPServerSelector />
+
+        {/* Export buttons - only show when we have a conversation */}
+        {currentConversationId && messagesData?.messages && messagesData.messages.length > 0 && (
+          <div className="flex gap-2">
+            <Button variant="ghost" size="sm" onClick={handleExportMarkdown}>
+              <FileText className="mr-2 h-4 w-4" />
+              Export MD
+            </Button>
+            <Button variant="ghost" size="sm" onClick={handleExportPdf}>
+              <Download className="mr-2 h-4 w-4" />
+              Export PDF
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* Messages */}

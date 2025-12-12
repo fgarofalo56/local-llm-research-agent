@@ -379,6 +379,7 @@ Update theme configuration.
 | Endpoint | Method | Description |
 |----------|--------|-------------|
 | `/api/agent/chat` | POST | Send message to agent |
+| `/api/agent/powerbi-export` | POST | Export to Power BI format |
 
 #### POST `/api/agent/chat`
 
@@ -402,6 +403,28 @@ Send a message to the research agent.
   ],
   "tokens_used": 150,
   "rag_context": ["Schema: Researchers table..."]
+}
+```
+
+#### POST `/api/agent/powerbi-export` (Phase 2.4)
+
+Export query results to Power BI format.
+
+**Request:**
+```json
+{
+  "query": "SELECT * FROM Sales WHERE Year = 2025",
+  "table_name": "SalesData",
+  "report_name": "Annual Sales Report"
+}
+```
+
+**Response:**
+```json
+{
+  "status": "success",
+  "file_path": "/exports/annual-sales.pbix",
+  "message": "Power BI file created successfully"
 }
 ```
 
@@ -468,4 +491,4 @@ MAX_UPLOAD_SIZE_MB=50
 
 ---
 
-*Last Updated: December 2025* (Phase 2.1)
+*Last Updated: December 2025* (Phase 2.4 - Added Power BI export endpoint)*

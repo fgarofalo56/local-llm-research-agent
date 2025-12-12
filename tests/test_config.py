@@ -60,7 +60,9 @@ class TestSettings:
         for model in supported_models:
             with patch.dict(os.environ, {"OLLAMA_MODEL": model}, clear=False):
                 settings = Settings()
-                assert settings.validate_ollama_model() is True, f"Model {model} should be supported"
+                assert settings.validate_ollama_model() is True, (
+                    f"Model {model} should be supported"
+                )
 
     def test_validate_ollama_model_unsupported(self):
         """Test model validation for unsupported models."""
@@ -73,7 +75,9 @@ class TestSettings:
         for model in unsupported_models:
             with patch.dict(os.environ, {"OLLAMA_MODEL": model}, clear=False):
                 settings = Settings()
-                assert settings.validate_ollama_model() is False, f"Model {model} should not be supported"
+                assert settings.validate_ollama_model() is False, (
+                    f"Model {model} should not be supported"
+                )
 
     def test_get_mcp_env_basic(self):
         """Test MCP environment variable generation."""

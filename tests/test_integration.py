@@ -21,9 +21,7 @@ class TestAgentWithOllamaProvider:
     @patch("src.agent.research_agent.MCPClientManager")
     @patch("src.providers.ollama.OllamaProvider.check_connection")
     @patch("src.agent.research_agent.Agent")
-    async def test_agent_chat_with_ollama(
-        self, mock_agent_cls, mock_check_conn, mock_mcp_cls
-    ):
+    async def test_agent_chat_with_ollama(self, mock_agent_cls, mock_check_conn, mock_mcp_cls):
         """Test complete chat flow with Ollama provider."""
         # Setup MCP mock
         mock_mcp = MagicMock()
@@ -37,7 +35,9 @@ class TestAgentWithOllamaProvider:
 
         # Setup agent mock
         mock_result = MagicMock()
-        mock_result.output = "The database has 5 tables: Users, Orders, Products, Categories, Reviews."
+        mock_result.output = (
+            "The database has 5 tables: Users, Orders, Products, Categories, Reviews."
+        )
 
         mock_agent_instance = MagicMock()
         mock_agent_instance.__aenter__ = AsyncMock(return_value=mock_agent_instance)
@@ -100,9 +100,7 @@ class TestAgentWithFoundryProvider:
     @patch("src.agent.research_agent.MCPClientManager")
     @patch("src.providers.foundry.FoundryLocalProvider.check_connection")
     @patch("src.agent.research_agent.Agent")
-    async def test_agent_chat_with_foundry(
-        self, mock_agent_cls, mock_check_conn, mock_mcp_cls
-    ):
+    async def test_agent_chat_with_foundry(self, mock_agent_cls, mock_check_conn, mock_mcp_cls):
         """Test complete chat flow with Foundry Local provider."""
         # Setup MCP mock
         mock_mcp = MagicMock()
@@ -252,9 +250,7 @@ class TestErrorHandling:
         mock_agent_instance = MagicMock()
         mock_agent_instance.__aenter__ = AsyncMock(return_value=mock_agent_instance)
         mock_agent_instance.__aexit__ = AsyncMock(return_value=None)
-        mock_agent_instance.run = AsyncMock(
-            side_effect=Exception("MCP server not responding")
-        )
+        mock_agent_instance.run = AsyncMock(side_effect=Exception("MCP server not responding"))
         mock_agent_cls.return_value = mock_agent_instance
 
         agent = ResearchAgent()

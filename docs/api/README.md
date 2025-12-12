@@ -14,6 +14,9 @@ This section documents the programmatic interfaces for integrating with and exte
 - [MCP Client API](mcp-client.md) - MCP server integration
 - [Models API](models.md) - Data models and schemas
 - [Utilities API](utilities.md) - Helper functions and utilities
+- [FastAPI Backend](fastapi.md) - REST API documentation (Phase 2.1)
+- [RAG Pipeline](rag.md) - Document retrieval and vector search (Phase 2.1)
+- [Export APIs](#export-apis) - Export functionality (Phase 2.4)
 
 ---
 
@@ -240,6 +243,47 @@ from src.mcp.client import MCPClientManager
 manager = MCPClientManager()
 # Configure additional servers via mcp_config.json
 ```
+
+---
+
+## Export APIs
+
+### Power BI Export Endpoint (Phase 2.4)
+
+```http
+POST /api/agent/powerbi-export
+Content-Type: application/json
+
+{
+  "query": "SELECT * FROM Sales WHERE Year = 2025",
+  "table_name": "SalesData",
+  "report_name": "Annual Sales Report"
+}
+```
+
+**Response:**
+```json
+{
+  "status": "success",
+  "file_path": "/exports/annual-sales.pbix",
+  "message": "Power BI file created successfully"
+}
+```
+
+### Frontend Export Libraries
+
+The React frontend includes export utilities in `frontend/src/lib/exports/`:
+
+| Module | Functions | Purpose |
+|--------|-----------|---------|
+| `pngExport.ts` | `exportToPng`, `elementToDataUrl` | Chart to PNG |
+| `pdfExport.ts` | `exportToPdf`, `exportDashboardToPdf` | PDF generation |
+| `csvExport.ts` | `exportToCsv` | CSV data export |
+| `excelExport.ts` | `exportToExcel`, `exportMultipleSheetsToExcel` | Excel files |
+| `jsonExport.ts` | `exportDashboardToJson`, `importDashboardFromJson` | Dashboard config |
+| `chatExport.ts` | `exportChatToMarkdown`, `exportChatToPdf` | Chat exports |
+
+See [Exports Guide](../guides/exports.md) for detailed usage.
 
 ---
 

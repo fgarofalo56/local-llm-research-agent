@@ -360,9 +360,7 @@ async def create_widget(
         title=widget.title,
         query=widget.query,
         chart_config=json.loads(widget.chart_config) if widget.chart_config else None,
-        position=json.loads(widget.position)
-        if widget.position
-        else {"x": 0, "y": 0, "w": 4, "h": 3},
+        position=json.loads(widget.position) if widget.position else {"x": 0, "y": 0, "w": 4, "h": 3},
         refresh_interval=widget.refresh_interval,
     )
 

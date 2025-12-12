@@ -197,12 +197,10 @@ async def agent_websocket(
                     agent = create_research_agent()
                 except Exception as e:
                     logger.error("agent_creation_error", error=str(e))
-                    await websocket.send_json(
-                        {
-                            "type": "error",
-                            "error": f"Failed to create agent: {str(e)}",
-                        }
-                    )
+                    await websocket.send_json({
+                        "type": "error",
+                        "error": f"Failed to create agent: {str(e)}",
+                    })
                     continue
 
                 # Stream response
@@ -210,32 +208,28 @@ async def agent_websocket(
                 try:
                     async for chunk in agent.chat_stream(content):
                         full_response += chunk
-                        await websocket.send_json(
-                            {
-                                "type": "chunk",
-                                "content": chunk,
-                            }
-                        )
+                        await websocket.send_json({
+                            "type": "chunk",
+                            "content": chunk,
+                        })
 
                     # Get token usage after streaming
                     stats = agent.get_last_response_stats()
                     token_usage = stats.get("token_usage")
 
                     # Send completion message
-                    await websocket.send_json(
-                        {
-                            "type": "complete",
-                            "message": {
-                                "id": 0,  # Would be set by database in full implementation
-                                "conversation_id": conversation_id,
-                                "role": "assistant",
-                                "content": full_response,
-                                "tool_calls": None,
-                                "tokens_used": token_usage.total_tokens if token_usage else None,
-                                "created_at": None,
-                            },
-                        }
-                    )
+                    await websocket.send_json({
+                        "type": "complete",
+                        "message": {
+                            "id": 0,  # Would be set by database in full implementation
+                            "conversation_id": conversation_id,
+                            "role": "assistant",
+                            "content": full_response,
+                            "tool_calls": None,
+                            "tokens_used": token_usage.total_tokens if token_usage else None,
+                            "created_at": None,
+                        },
+                    })
 
                     logger.info(
                         "websocket_response_sent",
@@ -246,21 +240,17 @@ async def agent_websocket(
 
                 except ResearchAgentError as e:
                     logger.error("agent_chat_error", error=str(e))
-                    await websocket.send_json(
-                        {
-                            "type": "error",
-                            "error": str(e),
-                        }
-                    )
+                    await websocket.send_json({
+                        "type": "error",
+                        "error": str(e),
+                    })
 
     except WebSocketDisconnect:
         logger.info("websocket_disconnected", conversation_id=conversation_id)
     except Exception as e:
         logger.error("websocket_error", error=str(e))
         with contextlib.suppress(Exception):
-            await websocket.send_json(
-                {
-                    "type": "error",
-                    "error": str(e),
-                }
-            )
+            await websocket.send_json({
+                "type": "error",
+                "error": str(e),
+            })

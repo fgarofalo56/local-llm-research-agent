@@ -6,6 +6,5 @@ export { AreaChartComponent } from './AreaChartComponent';
 export { ScatterChartComponent } from './ScatterChartComponent';
 export { KPICard } from './KPICard';
 export { DataTable } from './DataTable';
-export { ChartRenderer } from './ChartRenderer';
+export { ChartRenderer, useChartSuggestion } from './ChartRenderer';
 export type { ChartConfig } from './ChartRenderer';
-export { useChartSuggestion } from '@/hooks/useChartSuggestion';

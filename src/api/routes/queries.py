@@ -272,17 +272,7 @@ async def execute_query(
         )
 
     # Check for dangerous keywords
-    dangerous_keywords = [
-        "DROP",
-        "DELETE",
-        "TRUNCATE",
-        "INSERT",
-        "UPDATE",
-        "ALTER",
-        "CREATE",
-        "EXEC",
-        "EXECUTE",
-    ]
+    dangerous_keywords = ["DROP", "DELETE", "TRUNCATE", "INSERT", "UPDATE", "ALTER", "CREATE", "EXEC", "EXECUTE"]
     for keyword in dangerous_keywords:
         if keyword in query_upper:
             raise HTTPException(

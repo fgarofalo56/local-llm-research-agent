@@ -80,7 +80,7 @@ def format_token_usage_streamlit(
         f"• **{total_tokens:,}** total",
     ]
     if duration_ms > 0:
-        parts.append(f"• {duration_ms/1000:.1f}s")
+        parts.append(f"• {duration_ms / 1000:.1f}s")
     return " ".join(parts)
 
 
@@ -112,6 +112,7 @@ def check_provider_status(provider_type: str) -> dict:
     Returns:
         Dict with status info
     """
+
     async def _check():
         try:
             ptype = ProviderType(provider_type)
@@ -263,9 +264,7 @@ def render_sidebar() -> dict[str, Any]:
                 st.info("Install: `pip install foundry-local-sdk`")
 
             new_model = (
-                settings.ollama_model
-                if new_provider == "ollama"
-                else settings.foundry_model
+                settings.ollama_model if new_provider == "ollama" else settings.foundry_model
             )
 
         # Check if settings have changed
@@ -296,7 +295,9 @@ def render_sidebar() -> dict[str, Any]:
         provider_available = applied_status["available"]
 
         # Show current active settings
-        st.caption(f"**Active:** {provider_labels.get(provider_type, provider_type)} / {model_name}")
+        st.caption(
+            f"**Active:** {provider_labels.get(provider_type, provider_type)} / {model_name}"
+        )
 
         st.divider()
 
@@ -307,10 +308,7 @@ def render_sidebar() -> dict[str, Any]:
 
         # Create database options
         db_options = [db["name"] for db in databases]
-        db_labels = {
-            db["name"]: f"{db['name']} ({db['database']})"
-            for db in databases
-        }
+        db_labels = {db["name"]: f"{db['name']} ({db['database']})" for db in databases}
 
         # Find current active database index
         active_db = db_manager.active_name or "default"
@@ -508,9 +506,7 @@ def render_sidebar() -> dict[str, Any]:
 
                         icon = status_icons.get(health.status, ":grey_question:")
                         color = status_colors.get(health.status, "gray")
-                        st.markdown(
-                            f"**Overall:** {icon} :{color}[{health.status.value.upper()}]"
-                        )
+                        st.markdown(f"**Overall:** {icon} :{color}[{health.status.value.upper()}]")
 
                         # Component statuses
                         for comp in health.components:
@@ -610,12 +606,14 @@ def render_chat_interface(config: dict[str, Any]) -> None:
 
                 # Display token usage below the response
                 if token_usage and token_usage.total_tokens > 0:
-                    st.caption(format_token_usage_streamlit(
-                        prompt_tokens=token_usage.prompt_tokens,
-                        completion_tokens=token_usage.completion_tokens,
-                        total_tokens=token_usage.total_tokens,
-                        duration_ms=duration_ms,
-                    ))
+                    st.caption(
+                        format_token_usage_streamlit(
+                            prompt_tokens=token_usage.prompt_tokens,
+                            completion_tokens=token_usage.completion_tokens,
+                            total_tokens=token_usage.total_tokens,
+                            duration_ms=duration_ms,
+                        )
+                    )
 
                 st.session_state.messages.append({"role": "assistant", "content": response})
 
@@ -666,9 +664,7 @@ def main() -> None:
 
     # Check prerequisites
     if not config["provider_available"]:
-        provider_name = (
-            "Ollama" if config["provider_type"] == "ollama" else "Foundry Local"
-        )
+        provider_name = "Ollama" if config["provider_type"] == "ollama" else "Foundry Local"
         if config["provider_type"] == "ollama":
             st.error(
                 f"⚠️ **{provider_name} is not running**\n\n"

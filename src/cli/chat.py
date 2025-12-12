@@ -589,13 +589,17 @@ async def run_chat_loop(
                 parts = command.split()
                 if len(parts) < 2:
                     console.print(info_message("Usage: /provider <ollama|foundry_local>"))
-                    console.print(f"  {Icons.BULLET} [{COLORS['gray_400']}]Current: {effective_provider}[/]")
+                    console.print(
+                        f"  {Icons.BULLET} [{COLORS['gray_400']}]Current: {effective_provider}[/]"
+                    )
                     continue
 
                 new_provider = parts[1].lower()
                 if new_provider not in ("ollama", "foundry_local"):
                     console.print(error_message(f"Unknown provider: {new_provider}"))
-                    console.print(f"  {Icons.BULLET} [{COLORS['gray_400']}]Available: ollama, foundry_local[/]")
+                    console.print(
+                        f"  {Icons.BULLET} [{COLORS['gray_400']}]Available: ollama, foundry_local[/]"
+                    )
                     continue
 
                 # Check if the new provider is available
@@ -603,7 +607,9 @@ async def run_chat_loop(
                 if not new_status["available"]:
                     console.print(error_message(f"Provider not available: {new_provider}"))
                     if new_status.get("error"):
-                        console.print(f"  {Icons.BULLET} [{COLORS['gray_400']}]{new_status['error']}[/]")
+                        console.print(
+                            f"  {Icons.BULLET} [{COLORS['gray_400']}]{new_status['error']}[/]"
+                        )
                     continue
 
                 # Create new agent with the new provider
@@ -618,7 +624,9 @@ async def run_chat_loop(
                         explain_mode=explain_mode,
                     )
                     console.print(success_message(f"Switched to {new_provider}"))
-                    console.print(f"  {Icons.BULLET} [{COLORS['gray_400']}]Model: {agent.provider.model_name}[/]")
+                    console.print(
+                        f"  {Icons.BULLET} [{COLORS['gray_400']}]Model: {agent.provider.model_name}[/]"
+                    )
                 except Exception as e:
                     console.print(error_message(f"Failed to switch provider: {e}"))
                 continue
@@ -637,26 +645,40 @@ async def run_chat_loop(
                     models = await list_provider_models(prov)
                     if models:
                         for m in models[:15]:  # Limit to 15 models
-                            is_current = (prov == effective_provider and m == agent.provider.model_name)
+                            is_current = (
+                                prov == effective_provider and m == agent.provider.model_name
+                            )
                             if is_current:
-                                console.print(f"  {Icons.STAR} [{COLORS['success']}]{m}[/] (active)")
+                                console.print(
+                                    f"  {Icons.STAR} [{COLORS['success']}]{m}[/] (active)"
+                                )
                             else:
                                 console.print(f"  {Icons.BULLET} [{COLORS['gray_300']}]{m}[/]")
                         if len(models) > 15:
-                            console.print(f"  [{COLORS['gray_500']}]... and {len(models) - 15} more[/]")
+                            console.print(
+                                f"  [{COLORS['gray_500']}]... and {len(models) - 15} more[/]"
+                            )
                     else:
-                        console.print(f"  [{COLORS['gray_500']}]Not available or no models found[/]")
+                        console.print(
+                            f"  [{COLORS['gray_500']}]Not available or no models found[/]"
+                        )
 
                 console.print()
                 continue
 
             # Handle /model command - switch model
-            if command.startswith("/model "):  # Note: space after /model to differentiate from /models
+            if command.startswith(
+                "/model "
+            ):  # Note: space after /model to differentiate from /models
                 parts = command.split(maxsplit=1)
                 if len(parts) < 2:
                     console.print(info_message("Usage: /model <model_name>"))
-                    console.print(f"  {Icons.BULLET} [{COLORS['gray_400']}]Current: {agent.provider.model_name}[/]")
-                    console.print(f"  {Icons.BULLET} [{COLORS['gray_400']}]Use '/models' to list available models[/]")
+                    console.print(
+                        f"  {Icons.BULLET} [{COLORS['gray_400']}]Current: {agent.provider.model_name}[/]"
+                    )
+                    console.print(
+                        f"  {Icons.BULLET} [{COLORS['gray_400']}]Use '/models' to list available models[/]"
+                    )
                     continue
 
                 new_model = parts[1].strip()
@@ -679,9 +701,15 @@ async def run_chat_loop(
             # Handle /model with no args - show current model info
             if command == "/model":
                 console.print(info_message("Usage: /model <model_name>"))
-                console.print(f"  {Icons.BULLET} [{COLORS['gray_400']}]Current provider: {effective_provider}[/]")
-                console.print(f"  {Icons.BULLET} [{COLORS['gray_400']}]Current model: {agent.provider.model_name}[/]")
-                console.print(f"  {Icons.BULLET} [{COLORS['gray_400']}]Use '/models' to list available models[/]")
+                console.print(
+                    f"  {Icons.BULLET} [{COLORS['gray_400']}]Current provider: {effective_provider}[/]"
+                )
+                console.print(
+                    f"  {Icons.BULLET} [{COLORS['gray_400']}]Current model: {agent.provider.model_name}[/]"
+                )
+                console.print(
+                    f"  {Icons.BULLET} [{COLORS['gray_400']}]Use '/models' to list available models[/]"
+                )
                 continue
 
             # Send to agent
@@ -700,12 +728,14 @@ async def run_chat_loop(
                 stats = agent.get_last_response_stats()
                 token_usage = stats.get("token_usage")
                 if token_usage and token_usage.total_tokens > 0:
-                    console.print(format_token_usage(
-                        prompt_tokens=token_usage.prompt_tokens,
-                        completion_tokens=token_usage.completion_tokens,
-                        total_tokens=token_usage.total_tokens,
-                        duration_ms=stats.get("duration_ms", 0),
-                    ))
+                    console.print(
+                        format_token_usage(
+                            prompt_tokens=token_usage.prompt_tokens,
+                            completion_tokens=token_usage.completion_tokens,
+                            total_tokens=token_usage.total_tokens,
+                            duration_ms=stats.get("duration_ms", 0),
+                        )
+                    )
             else:
                 # Non-streaming mode - show spinner while waiting
                 with console.status(thinking_status(), spinner="dots"):
@@ -714,12 +744,14 @@ async def run_chat_loop(
 
                 # Display token usage
                 if detailed_response.token_usage and detailed_response.token_usage.total_tokens > 0:
-                    console.print(format_token_usage(
-                        prompt_tokens=detailed_response.token_usage.prompt_tokens,
-                        completion_tokens=detailed_response.token_usage.completion_tokens,
-                        total_tokens=detailed_response.token_usage.total_tokens,
-                        duration_ms=detailed_response.duration_ms,
-                    ))
+                    console.print(
+                        format_token_usage(
+                            prompt_tokens=detailed_response.token_usage.prompt_tokens,
+                            completion_tokens=detailed_response.token_usage.completion_tokens,
+                            total_tokens=detailed_response.token_usage.total_tokens,
+                            duration_ms=detailed_response.duration_ms,
+                        )
+                    )
 
         except KeyboardInterrupt:
             console.print()
@@ -975,12 +1007,14 @@ def query(
                 stats = agent.get_last_response_stats()
                 token_usage = stats.get("token_usage")
                 if token_usage and token_usage.total_tokens > 0:
-                    console.print(format_token_usage(
-                        prompt_tokens=token_usage.prompt_tokens,
-                        completion_tokens=token_usage.completion_tokens,
-                        total_tokens=token_usage.total_tokens,
-                        duration_ms=stats.get("duration_ms", 0),
-                    ))
+                    console.print(
+                        format_token_usage(
+                            prompt_tokens=token_usage.prompt_tokens,
+                            completion_tokens=token_usage.completion_tokens,
+                            total_tokens=token_usage.total_tokens,
+                            duration_ms=stats.get("duration_ms", 0),
+                        )
+                    )
             else:
                 with console.status(thinking_status(), spinner="dots"):
                     detailed_response = await agent.chat_with_details(message)
@@ -988,12 +1022,14 @@ def query(
 
                 # Display token usage
                 if detailed_response.token_usage and detailed_response.token_usage.total_tokens > 0:
-                    console.print(format_token_usage(
-                        prompt_tokens=detailed_response.token_usage.prompt_tokens,
-                        completion_tokens=detailed_response.token_usage.completion_tokens,
-                        total_tokens=detailed_response.token_usage.total_tokens,
-                        duration_ms=detailed_response.duration_ms,
-                    ))
+                    console.print(
+                        format_token_usage(
+                            prompt_tokens=detailed_response.token_usage.prompt_tokens,
+                            completion_tokens=detailed_response.token_usage.completion_tokens,
+                            total_tokens=detailed_response.token_usage.total_tokens,
+                            duration_ms=detailed_response.duration_ms,
+                        )
+                    )
         except Exception as e:
             console.print(error_message(f"Error: {e}"))
             raise typer.Exit(1)

@@ -55,8 +55,12 @@ class SessionMetadata(BaseModel):
         return cls(
             session_id=data.get("session_id", str(uuid4())[:8]),
             title=data.get("title", "Untitled Session"),
-            created_at=datetime.fromisoformat(data["created_at"]) if "created_at" in data else datetime.now(),
-            updated_at=datetime.fromisoformat(data["updated_at"]) if "updated_at" in data else datetime.now(),
+            created_at=datetime.fromisoformat(data["created_at"])
+            if "created_at" in data
+            else datetime.now(),
+            updated_at=datetime.fromisoformat(data["updated_at"])
+            if "updated_at" in data
+            else datetime.now(),
             turn_count=data.get("turn_count", 0),
             total_duration_ms=data.get("total_duration_ms", 0),
             provider=data.get("provider", ""),

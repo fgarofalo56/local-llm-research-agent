@@ -14,8 +14,7 @@ import typer
 from rich.console import Console
 
 app = typer.Typer(
-    name="llm-research",
-    help="Local LLM Research Analytics Tool - Chat with your SQL Server data"
+    name="llm-research", help="Local LLM Research Analytics Tool - Chat with your SQL Server data"
 )
 console = Console()
 
@@ -25,6 +24,7 @@ def cli():
     """Start the CLI chat interface."""
     try:
         from src.cli.chat import main as chat_main
+
         chat_main()
     except ImportError as e:
         console.print(f"[red]Error loading CLI module: {e}[/]")
@@ -41,8 +41,7 @@ def ui():
     console.print("[green]Starting Streamlit UI...[/]")
     try:
         subprocess.run(
-            [sys.executable, "-m", "streamlit", "run", "src/ui/streamlit_app.py"],
-            check=True
+            [sys.executable, "-m", "streamlit", "run", "src/ui/streamlit_app.py"], check=True
         )
     except subprocess.CalledProcessError as e:
         console.print(f"[red]Error starting Streamlit: {e}[/]")

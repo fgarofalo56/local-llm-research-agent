@@ -62,7 +62,9 @@ class FoundryLocalProvider(LLMProvider):
             auto_start: Whether to auto-start Foundry Local using SDK (default from settings)
         """
         self._model_name = (model_name or settings.foundry_model).strip()
-        self._endpoint = (endpoint or settings.foundry_endpoint or FOUNDRY_DEFAULT_ENDPOINT).rstrip("/")
+        self._endpoint = (endpoint or settings.foundry_endpoint or FOUNDRY_DEFAULT_ENDPOINT).rstrip(
+            "/"
+        )
         self._api_key = api_key or "foundry-local"  # Placeholder for local usage
         self._timeout = timeout
         self._manager = None
@@ -156,7 +158,9 @@ class FoundryLocalProvider(LLMProvider):
                     for m_id in model_ids:
                         m_lower = m_id.lower()
                         # Check if model ID starts with our requested model name
-                        if m_lower.startswith(model_lower) or m_lower.startswith(model_lower.replace("-", "")):
+                        if m_lower.startswith(model_lower) or m_lower.startswith(
+                            model_lower.replace("-", "")
+                        ):
                             matched_model = m_id
                             break
 

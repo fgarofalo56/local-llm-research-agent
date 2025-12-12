@@ -171,14 +171,16 @@ class DatabaseManager:
         """
         result = []
         for name, config in self._databases.items():
-            result.append({
-                "name": name,
-                "host": config.host,
-                "database": config.database,
-                "readonly": config.readonly,
-                "active": name == self._active_db,
-                "description": config.description,
-            })
+            result.append(
+                {
+                    "name": name,
+                    "host": config.host,
+                    "database": config.database,
+                    "readonly": config.readonly,
+                    "active": name == self._active_db,
+                    "description": config.description,
+                }
+            )
         return result
 
     def get_database(self, name: str) -> DatabaseConfig | None:

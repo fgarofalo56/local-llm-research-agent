@@ -1,16 +1,18 @@
 """
 Queries Routes
-Phase 2.1: Backend Infrastructure & RAG Pipeline
+Phase 2.1 & 2.3: Backend Infrastructure & Visualization
 
-Endpoints for query history and saved queries.
+Endpoints for query history, saved queries, and query execution.
 """
 
+import time
 from datetime import datetime
+from typing import Any
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
-from sqlalchemy import select
+from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.deps import get_db
@@ -18,6 +20,22 @@ from src.api.models.database import QueryHistory, SavedQuery
 
 router = APIRouter()
 logger = structlog.get_logger()
+
+
+# Query Execution Models (Phase 2.3)
+class QueryExecuteRequest(BaseModel):
+    """Request model for executing a SQL query."""
+
+    query: str
+
+
+class QueryExecuteResponse(BaseModel):
+    """Response model for query execution result."""
+
+    data: list[dict[str, Any]]
+    columns: list[str]
+    row_count: int
+    execution_time_ms: int
 
 
 # Query History Models
@@ -232,3 +250,59 @@ async def delete_saved_query(
     await db.commit()
 
     return {"status": "deleted", "query_id": query_id}
+
+
+# Query Execution Endpoint (Phase 2.3)
+@router.post("/execute", response_model=QueryExecuteResponse)
+async def execute_query(
+    data: QueryExecuteRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    """Execute a SQL query and return results.
+
+    This endpoint allows executing arbitrary SELECT queries against the database.
+    For security, only SELECT statements are allowed.
+    """
+    # Basic SQL injection prevention - only allow SELECT statements
+    query_upper = data.query.strip().upper()
+    if not query_upper.startswith("SELECT"):
+        raise HTTPException(
+            status_code=400,
+            detail="Only SELECT statements are allowed for direct execution",
+        )
+
+    # Check for dangerous keywords
+    dangerous_keywords = ["DROP", "DELETE", "TRUNCATE", "INSERT", "UPDATE", "ALTER", "CREATE", "EXEC", "EXECUTE"]
+    for keyword in dangerous_keywords:
+        if keyword in query_upper:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Query contains forbidden keyword: {keyword}",
+            )
+
+    start_time = time.time()
+    try:
+        result = await db.execute(text(data.query))
+        rows = result.fetchall()
+        columns = list(result.keys())
+
+        # Convert rows to list of dicts
+        data_list = [dict(zip(columns, row, strict=False)) for row in rows]
+
+        execution_time = int((time.time() - start_time) * 1000)
+
+        await logger.ainfo(
+            "query_executed",
+            row_count=len(data_list),
+            execution_time_ms=execution_time,
+        )
+
+        return QueryExecuteResponse(
+            data=data_list,
+            columns=columns,
+            row_count=len(data_list),
+            execution_time_ms=execution_time,
+        )
+    except Exception as e:
+        await logger.aerror("query_execution_failed", error=str(e))
+        raise HTTPException(status_code=400, detail=str(e))

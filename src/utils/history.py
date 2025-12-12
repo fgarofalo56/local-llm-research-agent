@@ -9,7 +9,6 @@ previous conversations.
 import json
 from datetime import datetime
 from pathlib import Path
-from typing import Any
 from uuid import uuid4
 
 from pydantic import BaseModel, Field
@@ -280,9 +279,8 @@ class HistoryManager:
                 metadata = SessionMetadata.from_dict(data.get("metadata", {}))
 
                 # Filter by tags if specified
-                if tags:
-                    if not any(tag in metadata.tags for tag in tags):
-                        continue
+                if tags and not any(tag in metadata.tags for tag in tags):
+                    continue
 
                 sessions.append(metadata)
             except Exception as e:

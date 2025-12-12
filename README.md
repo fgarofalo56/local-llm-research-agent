@@ -31,6 +31,30 @@
 | 🗄️ **SQLAlchemy ORM** | ✅ | Database models with Alembic migrations |
 | 🔧 **Dynamic MCP** | ✅ | Configure MCP servers at runtime |
 
+### React UI Features (Phase 2.2)
+
+| Feature | Status | Description |
+|---------|--------|-------------|
+| ⚛️ **React Frontend** | ✅ | Modern UI with React 19 + Vite |
+| 🎨 **Dark/Light Theme** | ✅ | System-aware theming with CSS variables |
+| 🔌 **WebSocket Chat** | ✅ | Real-time streaming responses |
+| 📊 **Query History** | ✅ | Browse and favorite SQL queries |
+| 📁 **Document Manager** | ✅ | Upload and search RAG documents |
+| 🖥️ **MCP Server View** | ✅ | Monitor connected MCP servers |
+
+### Visualization & Dashboards (Phase 2.3)
+
+| Feature | Status | Description |
+|---------|--------|-------------|
+| 📊 **Recharts Integration** | ✅ | Bar, Line, Area, Pie, Scatter charts |
+| 🤖 **AI Chart Suggestions** | ✅ | Automatic chart type recommendations |
+| 📈 **KPI Cards** | ✅ | Single-value metric displays |
+| 🎛️ **Dashboard Builder** | ✅ | Create and manage custom dashboards |
+| 📌 **Widget Pinning** | ✅ | Pin query results to dashboards |
+| 🔄 **Drag & Drop Layout** | ✅ | react-grid-layout for positioning |
+| ⏱️ **Auto-Refresh** | ✅ | Per-widget refresh intervals |
+| 💾 **Persistence** | ✅ | Dashboard state saved to SQL Server |
+
 ---
 
 ## 📑 Table of Contents
@@ -41,6 +65,8 @@
 - [Configuration](#️-configuration)
 - [Running the Application](#-running-the-application)
 - [FastAPI Backend](#-fastapi-backend-phase-21)
+- [React Frontend](#️-react-frontend-phase-22)
+- [Dashboards & Visualization](#-dashboards--visualization-phase-23)
 - [Testing the Agent](#-testing-the-agent)
 - [MCP Tools Reference](#-mcp-tools-reference)
 - [Architecture](#️-architecture)
@@ -153,14 +179,34 @@ All docker-compose commands should be run from the **project root** using `-f do
 
 > ⚠️ **Important**: Always include `--env-file .env` when running docker-compose from the project root to ensure environment variables are properly loaded.
 
-#### Option 1: Quick Setup (Windows)
+#### Option 1: Full Stack Development (Recommended)
+
+Use the convenience scripts to start all services at once:
+
+**Windows:**
+```bash
+start-dev.bat
+```
+
+**Linux/Mac:**
+```bash
+./start-dev.sh
+```
+
+This starts:
+- SQL Server (Docker) on port 1433
+- Redis Stack (Docker) on ports 6379, 8001
+- FastAPI Backend on port 8000
+- React Frontend on port 5173
+
+#### Option 2: Quick Database Setup (Windows)
 
 ```bash
 cd docker
 setup-database.bat
 ```
 
-#### Option 2: Core Services (SQL Server + Redis)
+#### Option 3: Core Services Only (SQL Server + Redis)
 
 ```bash
 # From project root - Start SQL Server and Redis
@@ -173,7 +219,7 @@ docker-compose -f docker/docker-compose.yml ps
 docker-compose -f docker/docker-compose.yml --env-file .env --profile init up mssql-tools
 ```
 
-#### Option 3: Full Stack (with FastAPI Backend)
+#### Option 4: Full Stack via Docker (with FastAPI Backend)
 
 ```bash
 # Start all services including the API
@@ -182,7 +228,7 @@ docker-compose -f docker/docker-compose.yml --env-file .env --profile api up -d
 # This starts: SQL Server, Redis Stack, and FastAPI backend
 ```
 
-#### Option 4: With Streamlit UI in Docker
+#### Option 5: With Streamlit UI in Docker
 
 ```bash
 # Core services + Streamlit UI
@@ -192,7 +238,7 @@ docker-compose -f docker/docker-compose.yml --env-file .env up -d agent-ui
 docker-compose -f docker/docker-compose.yml --env-file .env --profile api up -d agent-ui
 ```
 
-#### Option 5: Interactive CLI in Docker
+#### Option 6: Interactive CLI in Docker
 
 ```bash
 # Run interactive CLI chat
@@ -510,6 +556,119 @@ uv run alembic downgrade -1
 
 ---
 
+## ⚛️ React Frontend (Phase 2.2)
+
+The React frontend provides a modern web interface for interacting with the research agent.
+
+### Features
+
+- **Real-time Chat** - WebSocket-based streaming responses from the agent
+- **Dark/Light Theme** - System-aware theming with manual override
+- **Conversation History** - Browse and continue past conversations
+- **MCP Server Selection** - Choose which tools the agent can use
+- **Document Management** - Upload and search documents for RAG
+- **Query History** - View and favorite SQL queries
+
+### Tech Stack
+
+| Package | Version | Purpose |
+|---------|---------|---------|
+| React | 19.1.0 | UI framework |
+| Vite | 7.2.7 | Build tool & dev server |
+| TanStack Query | 5.90.12 | Server state management |
+| Zustand | 5.0.9 | Client state management |
+| Tailwind CSS | 3.4.15 | Styling |
+| React Router | 7.10.1 | Routing |
+
+### Running the Frontend
+
+```bash
+# Navigate to frontend directory
+cd frontend
+
+# Install dependencies
+npm install
+
+# Start development server
+npm run dev
+# Open http://localhost:5173
+
+# Build for production
+npm run build
+
+# Preview production build
+npm run preview
+```
+
+### Pages
+
+| Route | Description |
+|-------|-------------|
+| `/chat` | Main chat interface with agent |
+| `/chat/:id` | Specific conversation |
+| `/documents` | Document upload and RAG search |
+| `/dashboards` | Analytics dashboards with widgets |
+| `/queries` | Query history and favorites |
+| `/mcp-servers` | MCP server status and tools |
+| `/settings` | Theme and app settings |
+
+### Development Notes
+
+- The frontend proxies API requests to `http://localhost:8000` (FastAPI backend)
+- WebSocket connections are proxied to `ws://localhost:8000`
+- Ensure the FastAPI backend is running before starting the frontend
+
+---
+
+## 📊 Dashboards & Visualization (Phase 2.3)
+
+The dashboard system allows you to create custom analytics views with interactive charts and KPI cards.
+
+### Features
+
+| Feature | Description |
+|---------|-------------|
+| **Dashboard CRUD** | Create, edit, and delete dashboards |
+| **Widget Pinning** | Pin query results directly to dashboards |
+| **Chart Types** | Bar, Line, Area, Pie, Scatter charts via Recharts |
+| **KPI Cards** | Single-value metrics with formatting |
+| **Drag & Drop** | Resize and reposition widgets with react-grid-layout |
+| **Auto-Refresh** | Per-widget refresh intervals (30s, 1m, 5m, etc.) |
+| **Persistence** | Dashboard layout saved to SQL Server |
+
+### API Endpoints
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/dashboards` | GET/POST | List/create dashboards |
+| `/api/dashboards/{id}` | GET/PUT/DELETE | Manage dashboard |
+| `/api/dashboards/{id}/widgets` | GET/POST | List/add widgets |
+| `/api/dashboards/{id}/widgets/{wid}` | PUT/DELETE | Update/remove widget |
+| `/api/dashboards/{id}/layout` | PUT | Batch update positions |
+| `/api/dashboards/{id}/share` | POST | Create share link |
+| `/api/queries/execute` | POST | Execute SQL for widgets |
+
+### Widget Types
+
+| Type | Description | Best For |
+|------|-------------|----------|
+| `bar` | Vertical bar chart | Comparisons, categories |
+| `line` | Line chart with points | Time series, trends |
+| `area` | Filled area chart | Volumes, accumulation |
+| `pie` | Pie/donut chart | Proportions, distributions |
+| `scatter` | Scatter plot | Correlations, clusters |
+| `kpi` | Single value card | Key metrics, counts |
+
+### Usage
+
+1. **Create Dashboard**: Navigate to `/dashboards` and click "New Dashboard"
+2. **Add Widget**: Run a query in chat, then click "Pin to Dashboard"
+3. **Arrange Layout**: Drag widgets to reposition, resize using corners
+4. **Configure Refresh**: Set auto-refresh interval per widget
+5. **Share**: Generate shareable link with expiration
+
+---
+
 ## 🧪 Testing the Agent
 
 ### Sample Queries to Try
@@ -761,4 +920,4 @@ MIT License - see [LICENSE](LICENSE) file for details.
 
 ---
 
-*Last Updated: December 2025* (Phase 2.1 Backend + RAG)
+*Last Updated: December 2025* (Phase 2.3 Visualization & Dashboards)

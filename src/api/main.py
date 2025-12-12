@@ -8,7 +8,7 @@ Main entry point for the FastAPI backend API.
 from contextlib import asynccontextmanager
 
 import structlog
-from fastapi import FastAPI
+from fastapi import FastAPI, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
 
 from src.api.deps import init_services, shutdown_services
@@ -22,6 +22,7 @@ from src.api.routes import (
     queries,
     settings,
 )
+from src.api.routes.agent import agent_websocket
 
 logger = structlog.get_logger()
 
@@ -79,7 +80,15 @@ async def root():
     """Root endpoint returning API information."""
     return {
         "message": "Local LLM Research Analytics API",
-        "version": "2.1.0",
+        "version": "2.2.0",
         "docs": "/docs",
         "health": "/api/health",
     }
+
+
+# Top-level WebSocket route for easier frontend access
+# This provides /ws/agent/{id} in addition to /api/agent/ws/{id}
+@app.websocket("/ws/agent/{conversation_id}")
+async def websocket_agent(websocket: WebSocket, conversation_id: int):
+    """WebSocket endpoint for agent chat at /ws/agent/{conversation_id}."""
+    await agent_websocket(websocket, conversation_id)

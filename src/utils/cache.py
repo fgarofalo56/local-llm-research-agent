@@ -9,7 +9,7 @@ max size and time-to-live settings.
 import hashlib
 import time
 from collections import OrderedDict
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Generic, TypeVar
 
 from src.utils.logger import get_logger

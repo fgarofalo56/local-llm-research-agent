@@ -119,6 +119,8 @@ class TestMSSQLMCPConfig:
             mcp_path=str(mcp_file),
             server_name="localhost",
             database_name="testdb",
+            username="sa",
+            password="TestPassword123!",
         )
 
         errors = config.validate()
@@ -191,7 +193,7 @@ class TestMSSQLMCPConfig:
 
         # Should not raise any errors
         config.log_config()
-        config.log_config(_mask_credentials=True)
+        config.log_config(mask_credentials=True)
 
 
 class TestMSSQLToolInfo:

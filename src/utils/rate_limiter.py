@@ -7,9 +7,10 @@ Helps prevent overloading local LLM providers and manage resource usage.
 
 import asyncio
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from functools import wraps
-from typing import Any, Callable, TypeVar
+from typing import Any, TypeVar
 
 from src.utils.config import settings
 from src.utils.logger import get_logger

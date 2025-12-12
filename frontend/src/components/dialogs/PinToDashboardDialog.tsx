@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import * as Dialog from '@radix-ui/react-dialog';
 import { X, Pin, BarChart3, LineChart, PieChart, Table, TrendingUp, ScatterChart as ScatterIcon } from 'lucide-react';
@@ -49,15 +49,6 @@ export function PinToDashboardDialog({
   const [chartType, setChartType] = useState<ChartType>(suggestedType);
   const [refreshInterval, setRefreshInterval] = useState<string>('');
 
-  // Reset state when dialog opens
-  useEffect(() => {
-    if (open) {
-      setTitle('');
-      setChartType(suggestedType);
-      setRefreshInterval('');
-    }
-  }, [open, suggestedType]);
-
   // Fetch dashboards
   const { data: dashboardsData, isLoading } = useQuery({
     queryKey: ['dashboards'],
@@ -65,19 +56,34 @@ export function PinToDashboardDialog({
     enabled: open,
   });
 
-  // Set default dashboard
-  useEffect(() => {
-    if (dashboardsData?.dashboards && dashboardsData.dashboards.length > 0 && !selectedDashboard) {
-      const defaultDash = dashboardsData.dashboards.find(d => d.is_default)
-        || dashboardsData.dashboards[0];
-      setSelectedDashboard(defaultDash.id);
+  // Compute default dashboard from query data (no effect needed)
+  const effectiveDashboard = selectedDashboard
+    ?? (dashboardsData?.dashboards?.find(d => d.is_default)?.id
+      || dashboardsData?.dashboards?.[0]?.id
+      || null);
+
+  // Update selected dashboard when user changes it
+  const handleDashboardChange = useCallback((id: number) => {
+    setSelectedDashboard(id);
+  }, []);
+
+  // Handle open/close state changes - reset form when opening
+  const handleOpenChange = useCallback((isOpen: boolean) => {
+    if (isOpen) {
+      // Reset form state when dialog opens
+      setTitle('');
+      setChartType(suggestedType);
+      setRefreshInterval('');
+      setSelectedDashboard(null);
+    } else {
+      onClose();
     }
-  }, [dashboardsData, selectedDashboard]);
+  }, [suggestedType, onClose]);
 
   // Pin widget mutation
   const pinMutation = useMutation({
     mutationFn: async () => {
-      if (!selectedDashboard) return;
+      if (!effectiveDashboard) return;
 
       const widgetData: WidgetCreate = {
         widget_type: chartTypeToWidgetType(chartType),
@@ -88,7 +94,7 @@ export function PinToDashboardDialog({
         refresh_interval: refreshInterval ? parseInt(refreshInterval) : null,
       };
 
-      return api.post(`/dashboards/${selectedDashboard}/widgets`, widgetData);
+      return api.post(`/dashboards/${effectiveDashboard}/widgets`, widgetData);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['dashboard-widgets'] });
@@ -99,7 +105,7 @@ export function PinToDashboardDialog({
   const chartTypes = getAvailableChartTypes();
 
   return (
-    <Dialog.Root open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
+    <Dialog.Root open={open} onOpenChange={handleOpenChange}>
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 bg-black/50 z-50" />
         <Dialog.Content className="fixed left-1/2 top-1/2 z-50 w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-lg border bg-card p-6 shadow-lg">
@@ -130,8 +136,8 @@ export function PinToDashboardDialog({
               ) : dashboardsData?.dashboards && dashboardsData.dashboards.length > 0 ? (
                 <select
                   className="w-full rounded-md border bg-background px-3 py-2 text-sm"
-                  value={selectedDashboard || ''}
-                  onChange={(e) => setSelectedDashboard(parseInt(e.target.value))}
+                  value={effectiveDashboard || ''}
+                  onChange={(e) => handleDashboardChange(parseInt(e.target.value))}
                 >
                   {dashboardsData.dashboards.map((dash) => (
                     <option key={dash.id} value={dash.id}>
@@ -210,7 +216,7 @@ export function PinToDashboardDialog({
               onClick={() => pinMutation.mutate()}
               disabled={
                 !title.trim() ||
-                !selectedDashboard ||
+                !effectiveDashboard ||
                 pinMutation.isPending ||
                 (dashboardsData?.dashboards?.length || 0) === 0
               }

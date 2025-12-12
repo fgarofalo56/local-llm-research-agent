@@ -334,7 +334,7 @@ def format_token_usage(
     text.append(" total", style=COLORS["gray_500"])
     if duration_ms > 0:
         text.append(f" {Icons.DOT} ", style=COLORS["gray_600"])
-        text.append(f"{duration_ms/1000:.1f}s", style=COLORS["gray_400"])
+        text.append(f"{duration_ms / 1000:.1f}s", style=COLORS["gray_400"])
     return text
 
 

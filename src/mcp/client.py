@@ -64,8 +64,7 @@ class MCPClientManager:
 
         if self.config_path is None or not self.config_path.exists():
             raise FileNotFoundError(
-                "MCP configuration file not found. "
-                "Create mcp_config.json or provide config_path."
+                "MCP configuration file not found. Create mcp_config.json or provide config_path."
             )
 
         logger.info("loading_mcp_config", path=str(self.config_path))

@@ -97,6 +97,7 @@ class ResearchAgent:
         elif ollama_host or ollama_model:
             # Legacy: explicit Ollama configuration
             from src.providers.ollama import OllamaProvider
+
             self.provider = OllamaProvider(
                 model_name=ollama_model or settings.ollama_model,
                 host=ollama_host or settings.ollama_host,
@@ -274,7 +275,7 @@ class ResearchAgent:
                 # This ensures tools execute while still providing a streaming-like UX
                 chunk_size = 20  # Characters per chunk
                 for i in range(0, len(full_response), chunk_size):
-                    chunk = full_response[i:i + chunk_size]
+                    chunk = full_response[i : i + chunk_size]
                     yield chunk
 
             duration_ms = (time.time() - start_time) * 1000

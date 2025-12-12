@@ -351,7 +351,9 @@ async def run_health_checks(
         overall = HealthStatus.HEALTHY
     elif all(s == HealthStatus.UNHEALTHY for s in statuses):
         overall = HealthStatus.UNHEALTHY
-    elif any(s == HealthStatus.UNHEALTHY for s in statuses) or any(s == HealthStatus.DEGRADED for s in statuses):
+    elif any(s == HealthStatus.UNHEALTHY for s in statuses) or any(
+        s == HealthStatus.DEGRADED for s in statuses
+    ):
         overall = HealthStatus.DEGRADED
     else:
         overall = HealthStatus.UNKNOWN

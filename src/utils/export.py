@@ -42,7 +42,7 @@ def extract_table_from_response(response: str) -> list[dict[str, Any]] | None:
     # Header row: | col1 | col2 | col3 |
     # Separator:  |------|------|------|
     # Data rows:  | val1 | val2 | val3 |
-    table_pattern = r'\|(.+)\|\n\|[-:\s|]+\|\n((?:\|.+\|\n?)+)'
+    table_pattern = r"\|(.+)\|\n\|[-:\s|]+\|\n((?:\|.+\|\n?)+)"
     match = re.search(table_pattern, response)
 
     if not match:
@@ -51,14 +51,14 @@ def extract_table_from_response(response: str) -> list[dict[str, Any]] | None:
     try:
         # Parse header
         header_text = match.group(1)
-        headers = [h.strip() for h in header_text.split('|') if h.strip()]
+        headers = [h.strip() for h in header_text.split("|") if h.strip()]
 
         # Parse data rows
         data_text = match.group(2)
         rows = []
-        for line in data_text.strip().split('\n'):
+        for line in data_text.strip().split("\n"):
             if line.strip():
-                values = [v.strip() for v in line.split('|') if v.strip()]
+                values = [v.strip() for v in line.split("|") if v.strip()]
                 if len(values) == len(headers):
                     row = dict(zip(headers, values, strict=False))
                     rows.append(row)
@@ -151,9 +151,7 @@ def export_to_csv(
     try:
         output = StringIO()
         # Get all unique headers across all rows
-        headers = list(dict.fromkeys(
-            key for row in data for key in row
-        ))
+        headers = list(dict.fromkeys(key for row in data for key in row))
 
         writer = csv.DictWriter(output, fieldnames=headers)
         writer.writeheader()
@@ -229,20 +227,22 @@ def export_to_markdown(
 
         for i, turn in enumerate(conversation.turns, 1):
             timestamp = turn.user_message.timestamp.strftime("%H:%M:%S")
-            lines.extend([
-                f"## Turn {i} ({timestamp})",
-                "",
-                "**User:**",
-                turn.user_message.content,
-                "",
-                "**Assistant:**",
-                turn.assistant_message.content,
-                "",
-                f"*Response time: {turn.duration_ms:.0f}ms*",
-                "",
-                "---",
-                "",
-            ])
+            lines.extend(
+                [
+                    f"## Turn {i} ({timestamp})",
+                    "",
+                    "**User:**",
+                    turn.user_message.content,
+                    "",
+                    "**Assistant:**",
+                    turn.assistant_message.content,
+                    "",
+                    f"*Response time: {turn.duration_ms:.0f}ms*",
+                    "",
+                    "---",
+                    "",
+                ]
+            )
 
         md_str = "\n".join(lines)
 

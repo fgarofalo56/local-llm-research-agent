@@ -34,199 +34,117 @@ class Settings(BaseSettings):
 
     # LLM Provider Selection
     llm_provider: str = Field(
-        default="ollama",
-        description="LLM provider to use: 'ollama' or 'foundry_local'"
+        default="ollama", description="LLM provider to use: 'ollama' or 'foundry_local'"
     )
 
     # Ollama Configuration
-    ollama_host: str = Field(
-        default="http://localhost:11434",
-        description="Ollama server URL"
-    )
+    ollama_host: str = Field(default="http://localhost:11434", description="Ollama server URL")
     ollama_model: str = Field(
-        default="qwen2.5:7b-instruct",
-        description="Ollama model for inference"
+        default="qwen2.5:7b-instruct", description="Ollama model for inference"
     )
 
     # Foundry Local Configuration
     foundry_endpoint: str = Field(
-        default="http://127.0.0.1:55588",
-        description="Foundry Local API endpoint"
+        default="http://127.0.0.1:55588", description="Foundry Local API endpoint"
     )
-    foundry_model: str = Field(
-        default="phi-4",
-        description="Foundry Local model alias"
-    )
+    foundry_model: str = Field(default="phi-4", description="Foundry Local model alias")
     foundry_auto_start: bool = Field(
-        default=False,
-        description="Auto-start Foundry Local using SDK"
+        default=False, description="Auto-start Foundry Local using SDK"
     )
 
     # SQL Server Configuration
-    sql_server_host: str = Field(
-        default="localhost",
-        description="SQL Server hostname"
-    )
-    sql_server_port: int = Field(
-        default=1433,
-        description="SQL Server port"
-    )
-    sql_database_name: str = Field(
-        default="master",
-        description="Database name"
-    )
+    sql_server_host: str = Field(default="localhost", description="SQL Server hostname")
+    sql_server_port: int = Field(default=1433, description="SQL Server port")
+    sql_database_name: str = Field(default="master", description="Database name")
     sql_trust_server_certificate: bool = Field(
-        default=True,
-        description="Trust self-signed certificates"
+        default=True, description="Trust self-signed certificates"
     )
     sql_encrypt: bool = Field(
-        default=True,
-        description="Encrypt connection (required for Azure SQL)"
+        default=True, description="Encrypt connection (required for Azure SQL)"
     )
 
     # SQL Authentication Type
     sql_auth_type: SqlAuthType = Field(
         default=SqlAuthType.SQL_AUTH,
-        description="Authentication type: sql, windows, azure_ad_interactive, azure_ad_service_principal, azure_ad_managed_identity, azure_ad_default"
+        description="Authentication type: sql, windows, azure_ad_interactive, azure_ad_service_principal, azure_ad_managed_identity, azure_ad_default",
     )
 
     # SQL Server Authentication (for sql auth type)
-    sql_username: str = Field(
-        default="",
-        description="SQL Server username (for SQL auth)"
-    )
-    sql_password: str = Field(
-        default="",
-        description="SQL Server password (for SQL auth)"
-    )
+    sql_username: str = Field(default="", description="SQL Server username (for SQL auth)")
+    sql_password: str = Field(default="", description="SQL Server password (for SQL auth)")
 
     # Azure AD Service Principal Authentication
     azure_tenant_id: str = Field(
-        default="",
-        description="Azure tenant ID (for service principal auth)"
+        default="", description="Azure tenant ID (for service principal auth)"
     )
     azure_client_id: str = Field(
         default="",
-        description="Azure client/application ID (for service principal or managed identity)"
+        description="Azure client/application ID (for service principal or managed identity)",
     )
     azure_client_secret: str = Field(
-        default="",
-        description="Azure client secret (for service principal auth)"
+        default="", description="Azure client secret (for service principal auth)"
     )
 
     # MCP Configuration
-    mcp_mssql_path: str = Field(
-        default="",
-        description="Path to MSSQL MCP Server index.js"
-    )
-    mcp_mssql_readonly: bool = Field(
-        default=False,
-        description="Enable read-only mode for safety"
-    )
-    mcp_debug: bool = Field(
-        default=False,
-        description="Enable MCP debug logging"
-    )
+    mcp_mssql_path: str = Field(default="", description="Path to MSSQL MCP Server index.js")
+    mcp_mssql_readonly: bool = Field(default=False, description="Enable read-only mode for safety")
+    mcp_debug: bool = Field(default=False, description="Enable MCP debug logging")
 
     # Application Configuration
-    log_level: str = Field(
-        default="INFO",
-        description="Logging level"
-    )
-    streamlit_port: int = Field(
-        default=8501,
-        description="Streamlit server port"
-    )
-    debug: bool = Field(
-        default=False,
-        description="Enable debug mode"
-    )
+    log_level: str = Field(default="INFO", description="Logging level")
+    streamlit_port: int = Field(default=8501, description="Streamlit server port")
+    debug: bool = Field(default=False, description="Enable debug mode")
 
     # Cache Configuration
     cache_enabled: bool = Field(
-        default=True,
-        description="Enable response caching for repeated queries"
+        default=True, description="Enable response caching for repeated queries"
     )
-    cache_max_size: int = Field(
-        default=100,
-        description="Maximum number of cached responses"
-    )
+    cache_max_size: int = Field(default=100, description="Maximum number of cached responses")
     cache_ttl_seconds: int = Field(
-        default=3600,
-        description="Cache time-to-live in seconds (0 = no expiration)"
+        default=3600, description="Cache time-to-live in seconds (0 = no expiration)"
     )
 
     # Rate Limiting Configuration
     rate_limit_enabled: bool = Field(
-        default=False,
-        description="Enable rate limiting for LLM API calls"
+        default=False, description="Enable rate limiting for LLM API calls"
     )
-    rate_limit_rpm: int = Field(
-        default=60,
-        description="Maximum requests per minute"
-    )
+    rate_limit_rpm: int = Field(default=60, description="Maximum requests per minute")
     rate_limit_burst: int = Field(
-        default=10,
-        description="Maximum burst size (requests allowed before throttling)"
+        default=10, description="Maximum burst size (requests allowed before throttling)"
     )
 
     # Docker/SA Password (for docker-compose compatibility)
     mssql_sa_password: str = Field(
-        default="",
-        description="SQL Server SA password (used by docker-compose)"
+        default="", description="SQL Server SA password (used by docker-compose)"
     )
 
     # ===== Phase 2.1 Settings =====
     # Redis
-    redis_url: str = Field(
-        default="redis://localhost:6379",
-        description="Redis connection URL"
-    )
+    redis_url: str = Field(default="redis://localhost:6379", description="Redis connection URL")
 
     # Embeddings
     embedding_model: str = Field(
-        default="nomic-embed-text",
-        description="Ollama model for generating embeddings"
+        default="nomic-embed-text", description="Ollama model for generating embeddings"
     )
 
     # Storage
     upload_dir: str = Field(
-        default="./data/uploads",
-        description="Directory for uploaded documents"
+        default="./data/uploads", description="Directory for uploaded documents"
     )
-    max_upload_size_mb: int = Field(
-        default=100,
-        description="Maximum file upload size in MB"
-    )
+    max_upload_size_mb: int = Field(default=100, description="Maximum file upload size in MB")
 
     # RAG
-    chunk_size: int = Field(
-        default=500,
-        description="Document chunk size for RAG"
-    )
-    chunk_overlap: int = Field(
-        default=50,
-        description="Overlap between document chunks"
-    )
-    rag_top_k: int = Field(
-        default=5,
-        description="Number of chunks to retrieve for RAG"
-    )
+    chunk_size: int = Field(default=500, description="Document chunk size for RAG")
+    chunk_overlap: int = Field(default=50, description="Overlap between document chunks")
+    rag_top_k: int = Field(default=5, description="Number of chunks to retrieve for RAG")
 
     # API
-    api_host: str = Field(
-        default="0.0.0.0",
-        description="API server bind address"
-    )
-    api_port: int = Field(
-        default=8000,
-        description="API server port"
-    )
+    api_host: str = Field(default="0.0.0.0", description="API server bind address")
+    api_port: int = Field(default=8000, description="API server port")
 
     # MCP Config Path
     mcp_config_path: str = Field(
-        default="mcp_config.json",
-        description="Path to MCP server configuration file"
+        default="mcp_config.json", description="Path to MCP server configuration file"
     )
 
     class Config:
@@ -349,7 +267,9 @@ class Settings(BaseSettings):
             if not self.azure_client_id:
                 errors.append("AZURE_CLIENT_ID is required for service principal authentication")
             if not self.azure_client_secret:
-                errors.append("AZURE_CLIENT_SECRET is required for service principal authentication")
+                errors.append(
+                    "AZURE_CLIENT_SECRET is required for service principal authentication"
+                )
 
         elif self.sql_auth_type == SqlAuthType.AZURE_AD_MANAGED_IDENTITY:
             # Client ID is optional for system-assigned managed identity
@@ -366,7 +286,9 @@ class Settings(BaseSettings):
         elif self.sql_auth_type == SqlAuthType.WINDOWS_AUTH:
             # No additional config required - uses current Windows credentials
             if self.sql_username or self.sql_password:
-                errors.append("SQL_USERNAME and SQL_PASSWORD should be empty for Windows authentication")
+                errors.append(
+                    "SQL_USERNAME and SQL_PASSWORD should be empty for Windows authentication"
+                )
 
         # Azure SQL requires encryption
         if self.is_azure_sql and not self.sql_encrypt:
@@ -422,7 +344,9 @@ class Settings(BaseSettings):
             SqlAuthType.SQL_AUTH: f"SQL Server ({self.sql_username or 'no user'})",
             SqlAuthType.WINDOWS_AUTH: "Windows Integrated",
             SqlAuthType.AZURE_AD_INTERACTIVE: "Azure AD Interactive",
-            SqlAuthType.AZURE_AD_SERVICE_PRINCIPAL: f"Azure AD Service Principal ({self.azure_client_id[:8]}...)" if self.azure_client_id else "Azure AD Service Principal",
+            SqlAuthType.AZURE_AD_SERVICE_PRINCIPAL: f"Azure AD Service Principal ({self.azure_client_id[:8]}...)"
+            if self.azure_client_id
+            else "Azure AD Service Principal",
             SqlAuthType.AZURE_AD_MANAGED_IDENTITY: "Azure Managed Identity",
             SqlAuthType.AZURE_AD_DEFAULT: "Azure AD (Default Credential)",
         }

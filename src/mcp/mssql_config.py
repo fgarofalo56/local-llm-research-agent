@@ -85,7 +85,9 @@ class MSSQLMCPConfig:
             SqlAuthType.SQL_AUTH: f"SQL Server ({self.username or 'no user'})",
             SqlAuthType.WINDOWS_AUTH: "Windows Integrated",
             SqlAuthType.AZURE_AD_INTERACTIVE: "Azure AD Interactive",
-            SqlAuthType.AZURE_AD_SERVICE_PRINCIPAL: f"Azure AD SP ({self.azure_client_id[:8]}...)" if self.azure_client_id else "Azure AD SP",
+            SqlAuthType.AZURE_AD_SERVICE_PRINCIPAL: f"Azure AD SP ({self.azure_client_id[:8]}...)"
+            if self.azure_client_id
+            else "Azure AD SP",
             SqlAuthType.AZURE_AD_MANAGED_IDENTITY: "Azure Managed Identity",
             SqlAuthType.AZURE_AD_DEFAULT: "Azure AD Default",
         }
@@ -126,11 +128,15 @@ class MSSQLMCPConfig:
             if not self.azure_client_id:
                 errors.append("AZURE_CLIENT_ID is required for service principal authentication")
             if not self.azure_client_secret:
-                errors.append("AZURE_CLIENT_SECRET is required for service principal authentication")
+                errors.append(
+                    "AZURE_CLIENT_SECRET is required for service principal authentication"
+                )
 
         elif self.auth_type == SqlAuthType.WINDOWS_AUTH:
             if self.username or self.password:
-                errors.append("SQL_USERNAME and SQL_PASSWORD should be empty for Windows authentication")
+                errors.append(
+                    "SQL_USERNAME and SQL_PASSWORD should be empty for Windows authentication"
+                )
 
         # Azure SQL requires encryption
         if self.is_azure_sql and not self.encrypt:

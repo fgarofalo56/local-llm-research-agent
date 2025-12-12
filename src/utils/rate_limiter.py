@@ -51,14 +51,10 @@ class RateLimitStats:
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         avg_wait = (
-            self.total_wait_time_ms / self.throttled_requests
-            if self.throttled_requests > 0
-            else 0
+            self.total_wait_time_ms / self.throttled_requests if self.throttled_requests > 0 else 0
         )
         throttle_rate = (
-            (self.throttled_requests / self.total_requests * 100)
-            if self.total_requests > 0
-            else 0
+            (self.throttled_requests / self.total_requests * 100) if self.total_requests > 0 else 0
         )
         return {
             "total_requests": self.total_requests,
@@ -227,8 +223,8 @@ def get_rate_limiter(
 
     if _rate_limiter is None:
         rpm = requests_per_minute or getattr(settings, "rate_limit_rpm", 60)
-        is_enabled = enabled if enabled is not None else getattr(
-            settings, "rate_limit_enabled", False
+        is_enabled = (
+            enabled if enabled is not None else getattr(settings, "rate_limit_enabled", False)
         )
         _rate_limiter = TokenBucketRateLimiter(
             requests_per_minute=rpm,
@@ -261,12 +257,14 @@ def rate_limited(
         async def call_llm_with_timeout(message: str) -> str:
             ...
     """
+
     def decorator(fn: Callable[..., T]) -> Callable[..., T]:
         @wraps(fn)
         async def wrapper(*args: Any, **kwargs: Any) -> T:
             limiter = get_rate_limiter()
             await limiter.acquire(timeout=timeout)
             return await fn(*args, **kwargs)
+
         return wrapper
 
     if func is not None:

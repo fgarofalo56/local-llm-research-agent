@@ -99,8 +99,3 @@ export function ChartRenderer({ data, config, autoSuggest = true }: ChartRendere
       return <DataTable data={data} />;
   }
 }
-
-// Export suggestion info for UI use
-export function useChartSuggestion(data: Record<string, unknown>[]) {
-  return useMemo(() => suggestChartType(data), [data]);
-}

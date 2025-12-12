@@ -151,9 +151,7 @@ def export_to_csv(
     try:
         output = StringIO()
         # Get all unique headers across all rows
-        headers = list(dict.fromkeys(
-            key for row in data for key in row
-        ))
+        headers = list(dict.fromkeys(key for row in data for key in row))
 
         writer = csv.DictWriter(output, fieldnames=headers)
         writer.writeheader()

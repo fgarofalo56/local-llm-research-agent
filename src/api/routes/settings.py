@@ -1,12 +1,15 @@
 """
 Settings Routes
 Phase 2.1: Backend Infrastructure & RAG Pipeline
+Phase 2.4: Enhanced provider and model configuration
 
-Endpoints for application settings and themes.
+Endpoints for application settings, themes, and LLM provider configuration.
 """
 
+import time
 from datetime import datetime
 
+import httpx
 import structlog
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
@@ -204,3 +207,260 @@ async def delete_theme(
     await db.commit()
 
     return {"status": "deleted", "theme": theme_name}
+
+
+# ================= Provider & Model Endpoints =================
+
+
+class ProviderInfo(BaseModel):
+    """Information about an LLM provider."""
+
+    id: str
+    name: str
+    display_name: str
+    icon: str
+    available: bool
+    error: str | None = None
+    version: str | None = None
+
+
+class ModelInfo(BaseModel):
+    """Information about an available model."""
+
+    name: str
+    size: str | None = None
+    modified_at: str | None = None
+    family: str | None = None
+    parameter_size: str | None = None
+    quantization_level: str | None = None
+
+
+class ProviderModelsResponse(BaseModel):
+    """Response model for provider models."""
+
+    provider: str
+    models: list[ModelInfo]
+    error: str | None = None
+
+
+class ConnectionTestResult(BaseModel):
+    """Result of a provider connection test."""
+
+    success: bool
+    provider: str
+    model: str | None = None
+    message: str
+    latency_ms: float | None = None
+    version: str | None = None
+    error: str | None = None
+
+
+@router.get("/providers", response_model=list[ProviderInfo])
+async def list_providers():
+    """List all available LLM providers with their status."""
+    settings = get_settings()
+    providers = []
+
+    # Check Ollama
+    ollama_info = ProviderInfo(
+        id="ollama",
+        name="ollama",
+        display_name="Ollama",
+        icon="🦙",
+        available=False,
+    )
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.get(
+                f"{settings.ollama_host}/api/version",
+                timeout=5.0,
+            )
+            if response.status_code == 200:
+                data = response.json()
+                ollama_info.available = True
+                ollama_info.version = data.get("version", "unknown")
+    except Exception as e:
+        ollama_info.error = str(e)[:100]
+    providers.append(ollama_info)
+
+    # Check Foundry Local
+    foundry_info = ProviderInfo(
+        id="foundry_local",
+        name="foundry_local",
+        display_name="Foundry Local",
+        icon="🔧",
+        available=False,
+    )
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.get(
+                f"{settings.foundry_endpoint}/v1/models",
+                timeout=5.0,
+            )
+            if response.status_code == 200:
+                foundry_info.available = True
+                foundry_info.version = "local"
+    except Exception as e:
+        foundry_info.error = str(e)[:100]
+    providers.append(foundry_info)
+
+    return providers
+
+
+@router.get("/providers/{provider_id}/models", response_model=ProviderModelsResponse)
+async def list_provider_models(provider_id: str):
+    """List available models for a specific provider."""
+    settings = get_settings()
+    models = []
+
+    if provider_id == "ollama":
+        try:
+            async with httpx.AsyncClient() as client:
+                response = await client.get(
+                    f"{settings.ollama_host}/api/tags",
+                    timeout=10.0,
+                )
+                response.raise_for_status()
+                data = response.json()
+
+                for model in data.get("models", []):
+                    models.append(
+                        ModelInfo(
+                            name=model.get("name", ""),
+                            size=_format_size(model.get("size", 0)),
+                            modified_at=model.get("modified_at"),
+                            family=model.get("details", {}).get("family"),
+                            parameter_size=model.get("details", {}).get("parameter_size"),
+                            quantization_level=model.get("details", {}).get("quantization_level"),
+                        )
+                    )
+        except Exception as e:
+            return ProviderModelsResponse(
+                provider=provider_id,
+                models=[],
+                error=str(e)[:200],
+            )
+
+    elif provider_id == "foundry_local":
+        try:
+            async with httpx.AsyncClient() as client:
+                response = await client.get(
+                    f"{settings.foundry_endpoint}/v1/models",
+                    timeout=10.0,
+                )
+                response.raise_for_status()
+                data = response.json()
+
+                for model in data.get("data", []):
+                    models.append(
+                        ModelInfo(
+                            name=model.get("id", ""),
+                            family=model.get("owned_by"),
+                        )
+                    )
+        except Exception as e:
+            return ProviderModelsResponse(
+                provider=provider_id,
+                models=[],
+                error=str(e)[:200],
+            )
+    else:
+        raise HTTPException(status_code=404, detail=f"Unknown provider: {provider_id}")
+
+    return ProviderModelsResponse(provider=provider_id, models=models)
+
+
+class ConnectionTestRequest(BaseModel):
+    """Request model for connection test."""
+
+    provider: str
+    model: str | None = None
+
+
+@router.post("/providers/test", response_model=ConnectionTestResult)
+async def test_provider_connection(request: ConnectionTestRequest):
+    """Test connection to a provider with optional model."""
+    settings = get_settings()
+    start_time = time.time()
+
+    if request.provider == "ollama":
+        try:
+            async with httpx.AsyncClient() as client:
+                # First check version
+                version_response = await client.get(
+                    f"{settings.ollama_host}/api/version",
+                    timeout=5.0,
+                )
+                version = None
+                if version_response.status_code == 200:
+                    version = version_response.json().get("version")
+
+                # If model specified, try a simple generation
+                if request.model:
+                    response = await client.post(
+                        f"{settings.ollama_host}/api/generate",
+                        json={
+                            "model": request.model,
+                            "prompt": "Hi",
+                            "stream": False,
+                            "options": {"num_predict": 1},
+                        },
+                        timeout=30.0,
+                    )
+                    response.raise_for_status()
+
+                latency = (time.time() - start_time) * 1000
+                return ConnectionTestResult(
+                    success=True,
+                    provider=request.provider,
+                    model=request.model,
+                    message=f"Connected to Ollama{f' with model {request.model}' if request.model else ''}",
+                    latency_ms=round(latency, 2),
+                    version=version,
+                )
+        except Exception as e:
+            return ConnectionTestResult(
+                success=False,
+                provider=request.provider,
+                model=request.model,
+                message="Connection failed",
+                error=str(e)[:200],
+            )
+
+    elif request.provider == "foundry_local":
+        try:
+            async with httpx.AsyncClient() as client:
+                response = await client.get(
+                    f"{settings.foundry_endpoint}/v1/models",
+                    timeout=5.0,
+                )
+                response.raise_for_status()
+
+                latency = (time.time() - start_time) * 1000
+                return ConnectionTestResult(
+                    success=True,
+                    provider=request.provider,
+                    model=request.model,
+                    message="Connected to Foundry Local",
+                    latency_ms=round(latency, 2),
+                )
+        except Exception as e:
+            return ConnectionTestResult(
+                success=False,
+                provider=request.provider,
+                model=request.model,
+                message="Connection failed",
+                error=str(e)[:200],
+            )
+
+    else:
+        raise HTTPException(status_code=404, detail=f"Unknown provider: {request.provider}")
+
+
+def _format_size(size_bytes: int) -> str:
+    """Format file size in human-readable format."""
+    for unit in ["B", "KB", "MB", "GB"]:
+        if size_bytes < 1024:
+            return f"{size_bytes:.1f} {unit}"
+        size_bytes /= 1024
+    return f"{size_bytes:.1f} TB"

@@ -356,19 +356,96 @@ List tools available on an MCP server.
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
-| `/api/settings/theme` | GET | Get theme config |
-| `/api/settings/theme` | PUT | Update theme |
+| `/api/settings` | GET | Get application settings |
+| `/api/settings/themes` | GET | List all themes |
+| `/api/settings/themes` | POST | Create custom theme |
+| `/api/settings/themes/{name}` | PUT | Update theme |
+| `/api/settings/themes/{name}/activate` | POST | Activate a theme |
+| `/api/settings/themes/{name}` | DELETE | Delete custom theme |
+| `/api/settings/providers` | GET | List LLM providers with status |
+| `/api/settings/providers/{id}/models` | GET | List models for a provider |
+| `/api/settings/providers/test` | POST | Test provider connection |
 
-#### PUT `/api/settings/theme`
+#### GET `/api/settings/providers` (Phase 2.4)
 
-Update theme configuration.
+List available LLM providers with their connection status.
+
+**Response:**
+```json
+[
+  {
+    "id": "ollama",
+    "name": "ollama",
+    "display_name": "Ollama",
+    "icon": "🦙",
+    "available": true,
+    "error": null,
+    "version": "0.13.2"
+  },
+  {
+    "id": "foundry_local",
+    "name": "foundry_local",
+    "display_name": "Foundry Local",
+    "icon": "🔧",
+    "available": false,
+    "error": "Connection refused",
+    "version": null
+  }
+]
+```
+
+#### GET `/api/settings/providers/{id}/models` (Phase 2.4)
+
+List available models for a specific provider.
+
+**Response:**
+```json
+{
+  "provider": "ollama",
+  "models": [
+    {
+      "name": "qwen3:30b",
+      "size": "17.3 GB",
+      "modified_at": "2025-12-09T15:06:56Z",
+      "family": "qwen3moe",
+      "parameter_size": "30.5B",
+      "quantization_level": "Q4_K_M"
+    },
+    {
+      "name": "nomic-embed-text:latest",
+      "size": "261.6 MB",
+      "modified_at": "2025-12-11T13:16:59Z",
+      "family": "nomic-bert",
+      "parameter_size": "137M",
+      "quantization_level": "F16"
+    }
+  ],
+  "error": null
+}
+```
+
+#### POST `/api/settings/providers/test` (Phase 2.4)
+
+Test connection to a provider with optional model verification.
 
 **Request:**
 ```json
 {
-  "mode": "dark",
-  "primary_color": "#1976d2",
-  "font_family": "Inter"
+  "provider": "ollama",
+  "model": "qwen3:30b"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "provider": "ollama",
+  "model": "qwen3:30b",
+  "message": "Connected to Ollama with model qwen3:30b",
+  "latency_ms": 10.8,
+  "version": "0.13.2",
+  "error": null
 }
 ```
 

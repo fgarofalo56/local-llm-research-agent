@@ -251,3 +251,88 @@ async def delete_document(
     await db.commit()
 
     return {"status": "deleted", "document_id": document_id}
+
+
+@router.post("/{document_id}/reprocess", response_model=DocumentResponse)
+async def reprocess_document(
+    document_id: int,
+    background_tasks: BackgroundTasks,
+    db: AsyncSession = Depends(get_db),
+    vector_store=Depends(get_vector_store_optional),
+):
+    """Reprocess a failed document."""
+    document = await db.get(Document, document_id)
+    if not document:
+        raise HTTPException(status_code=404, detail="Document not found")
+
+    if document.processing_status not in ("failed", "completed"):
+        raise HTTPException(
+            status_code=400,
+            detail=f"Cannot reprocess document with status '{document.processing_status}'",
+        )
+
+    settings = get_settings()
+
+    # Check file still exists
+    file_path = Path(settings.upload_dir) / document.filename
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail="Document file not found on disk")
+
+    # Delete existing embeddings if any
+    if vector_store:
+        try:
+            await vector_store.delete_document(str(document_id))
+        except Exception:
+            pass  # May not exist
+
+    # Reset status
+    document.processing_status = "pending"
+    document.error_message = None
+    document.chunk_count = None
+    document.processed_at = None
+    await db.commit()
+    await db.refresh(document)
+
+    # Process in background
+    if vector_store:
+        background_tasks.add_task(
+            process_document_task,
+            document.id,
+            file_path,
+            settings.chunk_size,
+            settings.chunk_overlap,
+        )
+
+    return DocumentResponse.model_validate(document)
+
+
+class DocumentTagsUpdate(BaseModel):
+    """Request model for updating document tags."""
+
+    tags: list[str]
+
+
+@router.patch("/{document_id}/tags", response_model=DocumentResponse)
+async def update_document_tags(
+    document_id: int,
+    data: DocumentTagsUpdate,
+    db: AsyncSession = Depends(get_db),
+):
+    """Update tags for a document.
+
+    Note: This endpoint is a placeholder. The Document model would need a 'tags'
+    column (JSON/Text) to fully support this feature. For now, it validates
+    the document exists but doesn't persist tags.
+    """
+    document = await db.get(Document, document_id)
+    if not document:
+        raise HTTPException(status_code=404, detail="Document not found")
+
+    # TODO: Add tags column to Document model in a future migration
+    # document.tags = json.dumps(data.tags)
+    # await db.commit()
+    # await db.refresh(document)
+
+    logger.info("document_tags_update", document_id=document_id, tags=data.tags)
+
+    return DocumentResponse.model_validate(document)

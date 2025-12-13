@@ -35,7 +35,8 @@ database_url = (
 )
 
 # Override the URL from config
-config.set_main_option("sqlalchemy.url", database_url)
+# Note: Double %% needed for configparser interpolation
+config.set_main_option("sqlalchemy.url", database_url.replace("%", "%%"))
 
 # Interpret the config file for Python logging
 if config.config_file_name is not None:

@@ -190,8 +190,8 @@ services:
       SQL_USERNAME: sa
       SQL_PASSWORD: "${MSSQL_SA_PASSWORD:-LocalLLM@2024!}"
       SQL_TRUST_SERVER_CERTIFICATE: "true"
-      # MCP Configuration
-      MCP_MSSQL_PATH: /opt/mssql-mcp/dist/index.js
+      # MCP Configuration - use Python-based MCP server (supports SQL auth)
+      MCP_MSSQL_PATH: python-mcp
       MCP_MSSQL_READONLY: "${MCP_MSSQL_READONLY:-false}"
       # Application settings
       LOG_LEVEL: "${LOG_LEVEL:-INFO}"
@@ -226,8 +226,8 @@ services:
       SQL_USERNAME: sa
       SQL_PASSWORD: "${MSSQL_SA_PASSWORD:-LocalLLM@2024!}"
       SQL_TRUST_SERVER_CERTIFICATE: "true"
-      # MCP Configuration
-      MCP_MSSQL_PATH: /opt/mssql-mcp/dist/index.js
+      # MCP Configuration - use Python-based MCP server (supports SQL auth)
+      MCP_MSSQL_PATH: python-mcp
       MCP_MSSQL_READONLY: "${MCP_MSSQL_READONLY:-false}"
       # Application settings
       LOG_LEVEL: "${LOG_LEVEL:-INFO}"
@@ -294,8 +294,8 @@ services:
       SQL_TRUST_SERVER_CERTIFICATE: "true"
       # Redis
       REDIS_URL: "redis://redis-stack:6379"
-      # MCP Configuration
-      MCP_MSSQL_PATH: /opt/mssql-mcp/dist/index.js
+      # MCP Configuration - use Python-based MCP server (supports SQL auth)
+      MCP_MSSQL_PATH: "python-mcp"
       MCP_MSSQL_READONLY: "${MCP_MSSQL_READONLY:-false}"
       MCP_CONFIG_PATH: "/app/mcp_config.json"
       # RAG Settings

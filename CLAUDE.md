@@ -201,7 +201,12 @@ local-llm-research-agent/
 │   │
 │   ├── ui/
 │   │   ├── __init__.py
-│   │   └── streamlit_app.py     # Streamlit web UI
+│   │   ├── streamlit_app.py     # Streamlit main chat interface
+│   │   └── pages/               # Streamlit multi-page app
+│   │       ├── __init__.py
+│   │       ├── 1_Documents.py   # Document upload & RAG management
+│   │       ├── 2_MCP_Servers.py # MCP server configuration
+│   │       └── 3_Settings.py    # Provider & app settings
 │   │
 │   ├── models/
 │   │   ├── __init__.py
@@ -672,11 +677,15 @@ async def test_mssql_connection():
 | Route | Description |
 |-------|-------------|
 | `/api/health` | Health checks, metrics, service status |
-| `/api/documents` | Document upload, RAG search, schema indexing |
+| `/api/documents` | Document upload, listing, delete |
+| `/api/documents/{id}/reprocess` | Reprocess failed/completed documents |
+| `/api/documents/{id}/tags` | Update document tags (placeholder) |
 | `/api/conversations` | Chat history CRUD |
 | `/api/queries` | Query history, saved queries, favorites |
 | `/api/dashboards` | Dashboard and widget management |
 | `/api/mcp` | MCP server status, tool listing |
+| `/api/mcp/{id}/enable` | Enable MCP server |
+| `/api/mcp/{id}/disable` | Disable MCP server |
 | `/api/settings` | Theme config, app settings |
 | `/api/agent` | Agent chat endpoint |
 
@@ -689,6 +698,27 @@ async def test_mssql_connection():
 | Streamlit | 8501 | http://localhost:8501 |
 | RedisInsight | 8001 | http://localhost:8001 |
 | SQL Server | 1433 | localhost:1433 |
+
+### Streamlit Multi-Page App
+
+The Streamlit UI is a multi-page application with the following pages:
+
+| Page | File | Description |
+|------|------|-------------|
+| **Chat** | `streamlit_app.py` | Main chat interface with RAG toggle, provider selection, response actions |
+| **Documents** | `pages/1_Documents.py` | Upload files, view processing status, reprocess failed, delete documents |
+| **MCP Servers** | `pages/2_MCP_Servers.py` | List servers, enable/disable, add custom servers (stdio/http), delete |
+| **Settings** | `pages/3_Settings.py` | LLM provider config, model parameters, system prompt, themes |
+
+#### Streamlit Features
+
+- **RAG Integration Toggle**: Enable/disable document context for chat queries
+- **Provider Selection**: Switch between Ollama and Foundry Local providers
+- **Model Selection**: Dynamic model list from active provider
+- **Response Actions**: Copy response, like/dislike feedback buttons
+- **Document Upload**: Drag-and-drop file upload with processing status
+- **MCP Server Management**: Full CRUD for MCP server configurations
+- **Theme Configuration**: Switch between available themes via API
 
 ---
 
@@ -815,33 +845,128 @@ frontend/src/
 
 ---
 
-## ⚠️ CRITICAL CONSTRAINTS FOR PHASE 2.4
+## Phase 2.4 Features (Implemented)
 
-When executing Phase 2.4 PRP (Exports & Power BI), ensure:
+### Export System
 
-1. **DO NOT modify or delete** any existing files in:
-   - `src/agent/research_agent.py`
-   - `src/cli/chat.py`
-   - `src/ui/streamlit_app.py`
-   - `src/utils/config.py`
-   - `src/mcp/client.py`
-   - `src/api/` (extend only, don't break existing endpoints)
-   - `src/rag/` (extend only)
-   - `frontend/src/components/charts/` (extend only)
-   - `frontend/src/components/dashboard/` (extend only)
-   - `frontend/src/pages/DashboardsPage.tsx` (extend only)
+| Feature | Description |
+|---------|-------------|
+| **PNG Export** | High-resolution chart images (2x scale) |
+| **PDF Export** | Multi-page dashboard/chart reports with titles |
+| **CSV Export** | Standard data export format |
+| **Excel Export** | Spreadsheets with auto-calculated column widths |
+| **JSON Export** | Dashboard configuration import/export |
+| **Chat Export** | Conversation to Markdown or PDF |
+| **Power BI Dialog** | Integration dialog for PBIX export |
 
-2. **ADD NEW files** for Phase 2.4 features - do not replace existing implementations
+### Export Components
 
-3. **EXTEND, don't replace** - if modifying existing files, add new methods, don't rewrite existing ones
+```
+frontend/src/
+├── components/
+│   └── export/
+│       ├── ExportMenu.tsx        # Unified export dropdown
+│       └── PowerBIDialog.tsx     # Power BI export modal
+├── lib/
+│   └── exports/
+│       ├── pngExport.ts          # html2canvas PNG export
+│       ├── pdfExport.ts          # jspdf PDF generation
+│       ├── csvExport.ts          # CSV file export
+│       ├── excelExport.ts        # xlsx spreadsheet export
+│       ├── jsonExport.ts         # Dashboard JSON import/export
+│       └── chatExport.ts         # Conversation export
+```
 
-4. **TEST all interfaces** after each sub-phase:
-   - `uv run python -m src.cli.chat` still works
-   - `uv run streamlit run src/ui/streamlit_app.py` still works
-   - `uv run uvicorn src.api.main:app` still works
-   - `cd frontend && npm run build` still builds
-   - `cd frontend && npm run dev` still runs
-   - Dashboard page loads and displays widgets correctly
+### React Frontend Enhancements (Phase 2.4)
+
+| Feature | Description |
+|---------|-------------|
+| **Settings Page** | Theme selector, provider config, model selection, connection testing |
+| **Chat Page** | Model parameters panel, token counter, system prompt, RAG controls |
+| **Message List** | Enhanced markdown formatting, copy/rate actions, source citations |
+| **State Persistence** | Settings persisted via zustand middleware |
+
+### Settings Page Features
+
+| Component | Description |
+|-----------|-------------|
+| **ThemeSelector** | Light/dark/system mode with icons |
+| **ProviderSelector** | Dropdown with provider availability status |
+| **ModelSelector** | Dynamic model list from API with refresh |
+| **ConnectionTestButton** | Test connection with latency display |
+| **Dual Provider Config** | Primary and secondary provider settings |
+
+### Chat Page Features
+
+| Component | Description |
+|-----------|-------------|
+| **TokenCounter** | Prompt/completion/total/remaining with color coding |
+| **ChatModelSelector** | In-chat model switching dropdown |
+| **ModelParametersPanel** | Temperature, top_p, max_tokens sliders |
+| **SystemPromptConfig** | Custom system prompt textarea |
+| **RAGSettings** | Enable toggle, hybrid search toggle, topK slider |
+
+### Message List Features
+
+| Feature | Description |
+|---------|-------------|
+| **Rich Markdown** | remark-gfm with syntax highlighting |
+| **Copy Button** | Copy response to clipboard |
+| **Rating Buttons** | Thumbs up/down with toggle behavior |
+| **Source Citations** | Display RAG sources with links |
+
+### New API Endpoints (Phase 2.4)
+
+| Route | Description |
+|-------|-------------|
+| `GET /api/settings/providers` | List available providers with status |
+| `GET /api/settings/providers/{id}/models` | List models for a provider |
+| `POST /api/settings/providers/test` | Test provider connection |
+
+### Frontend Dependencies Added (Phase 2.4)
+
+| Package | Purpose |
+|---------|---------|
+| `html2canvas` | DOM to canvas for PNG export |
+| `jspdf` | PDF document generation |
+| `xlsx` | Excel file creation |
+| `file-saver` | Cross-browser file downloads |
+| `remark-gfm` | GitHub-flavored markdown |
+| `@radix-ui/react-slider` | Slider components |
+
+### Chat Store State (chatStore.ts)
+
+```typescript
+interface ChatState {
+  // Model configuration
+  selectedProvider: string;
+  selectedModel: string;
+  modelParameters: {
+    temperature: number;
+    topP: number;
+    maxTokens: number;
+  };
+  systemPrompt: string;
+
+  // Token tracking
+  tokenCount: {
+    prompt: number;
+    completion: number;
+    total: number;
+    contextWindowSize: number;
+  };
+
+  // RAG settings
+  ragSettings: {
+    enabled: boolean;
+    hybridSearch: boolean;
+    topK: number;
+  };
+
+  // Message ratings
+  messageRatings: Record<number, 'up' | 'down' | null>;
+}
+```
 
 ---
 

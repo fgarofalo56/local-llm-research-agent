@@ -457,8 +457,7 @@ async def start_foundry_local(request: FoundryStartRequest):
                     model=models[0] if models else None,
                 )
         except Exception as e:
-            # Ignore connection errors - Foundry may not be running yet
-            # This is expected behavior, we'll try to start it next
+            # Ignore connection errors - Foundry may not be running yet, will attempt to start it next
             logger.debug("foundry_health_check_failed", error=str(e))
 
     # If running in Docker, we can't start Foundry - provide instructions
@@ -513,8 +512,7 @@ async def start_foundry_local(request: FoundryStartRequest):
                         model=model,
                     )
             except Exception as e:
-                # Ignore connection errors after startup - service may still be initializing
-                # Will return "may be starting" response below to prompt user to retry
+                # Ignore connection errors after startup - service may still be initializing, will prompt retry below
                 logger.debug("foundry_startup_check_failed", error=str(e))
 
         return FoundryStartResponse(

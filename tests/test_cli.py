@@ -11,7 +11,8 @@ from typer.testing import CliRunner
 
 from src.cli.chat import app
 
-runner = CliRunner()
+# Disable colors in CLI output to avoid ANSI escape codes breaking string assertions
+runner = CliRunner(env={"NO_COLOR": "1", "TERM": "dumb"})
 
 
 @pytest.mark.unit

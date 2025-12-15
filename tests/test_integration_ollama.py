@@ -47,6 +47,16 @@ def ollama_available() -> bool:
         return False
 
 
+def mcp_available() -> bool:
+    """Check if MCP_MSSQL_PATH is configured and exists."""
+    from pathlib import Path
+
+    mcp_path = os.environ.get("MCP_MSSQL_PATH", "")
+    if not mcp_path:
+        return False
+    return Path(mcp_path).exists()
+
+
 def get_available_model() -> str | None:
     """Get an available model from Ollama."""
     ollama_host = os.environ.get("OLLAMA_HOST", "http://localhost:11434")
@@ -79,12 +89,15 @@ def get_available_model() -> str | None:
     return None
 
 
-# Skip entire module if Ollama is not available
+# Skip entire module if Ollama or MCP is not available
 pytestmark = [
     pytest.mark.requires_ollama,
     pytest.mark.integration,
     pytest.mark.skipif(
         not ollama_available(), reason="Ollama is not available at the configured host"
+    ),
+    pytest.mark.skipif(
+        not mcp_available(), reason="MCP_MSSQL_PATH is not configured or does not exist"
     ),
 ]
 

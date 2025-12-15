@@ -163,13 +163,19 @@ class TestFoundryLocalProvider:
         assert model is not None
 
     @pytest.mark.asyncio
-    @patch("httpx.AsyncClient.get")
-    async def test_check_connection_success(self, mock_get):
+    @patch("httpx.AsyncClient")
+    async def test_check_connection_success(self, mock_client_cls):
         """Test successful connection check."""
         mock_response = MagicMock()
         mock_response.status_code = 200
-        mock_response.json.return_value = {"models": [{"id": "phi-4"}]}
-        mock_get.return_value = mock_response
+        mock_response.raise_for_status = MagicMock()
+        mock_response.json.return_value = {"data": [{"id": "phi-4"}]}
+
+        mock_client = AsyncMock()
+        mock_client.get = AsyncMock(return_value=mock_response)
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock(return_value=None)
+        mock_client_cls.return_value = mock_client
 
         provider = FoundryLocalProvider()
         status = await provider.check_connection()
@@ -177,10 +183,14 @@ class TestFoundryLocalProvider:
         assert status.available is True
 
     @pytest.mark.asyncio
-    @patch("httpx.AsyncClient.get")
-    async def test_check_connection_failure(self, mock_get):
+    @patch("httpx.AsyncClient")
+    async def test_check_connection_failure(self, mock_client_cls):
         """Test failed connection check."""
-        mock_get.side_effect = Exception("Connection refused")
+        mock_client = AsyncMock()
+        mock_client.get = AsyncMock(side_effect=Exception("Connection refused"))
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock(return_value=None)
+        mock_client_cls.return_value = mock_client
 
         provider = FoundryLocalProvider()
         status = await provider.check_connection()
@@ -188,18 +198,24 @@ class TestFoundryLocalProvider:
         assert status.available is False
 
     @pytest.mark.asyncio
-    @patch("httpx.AsyncClient.get")
-    async def test_list_models(self, mock_get):
+    @patch("httpx.AsyncClient")
+    async def test_list_models(self, mock_client_cls):
         """Test listing available models."""
         mock_response = MagicMock()
         mock_response.status_code = 200
+        mock_response.raise_for_status = MagicMock()
         mock_response.json.return_value = {
             "data": [
                 {"id": "phi-4"},
                 {"id": "phi-3-mini"},
             ]
         }
-        mock_get.return_value = mock_response
+
+        mock_client = AsyncMock()
+        mock_client.get = AsyncMock(return_value=mock_response)
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock(return_value=None)
+        mock_client_cls.return_value = mock_client
 
         provider = FoundryLocalProvider()
         models = await provider.list_models()

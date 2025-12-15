@@ -101,10 +101,28 @@ jobs:
           PYTHONPATH: ${{ github.workspace }}
         run: |
           echo "=== PYTHONPATH: $PYTHONPATH ==="
+          echo "=== Directory structure of src ==="
+          ls -la src/
+          echo "=== Directory structure of src/models ==="
+          ls -la src/models/ || echo "src/models/ not found!"
+          echo "=== Checking __init__.py files ==="
+          cat src/__init__.py
+          echo "---"
+          cat src/models/__init__.py || echo "src/models/__init__.py not found!"
+          echo "=== Python path ==="
           uv run python -c "import sys; print('Python path:'); print('\\n'.join(sys.path))"
-          uv run python -c "import src; print('src package found at:', src.__file__)"
+          echo "=== Trying imports ==="
+          uv run python -c "import src; print('src found at:', src.__file__)"
+          uv run python -c "
+import sys
+import os
+src_path = os.path.join(sys.path[0], 'src')
+print('src directory exists:', os.path.isdir(src_path))
+print('src/models exists:', os.path.isdir(os.path.join(src_path, 'models')))
+print('src/models/__init__.py exists:', os.path.isfile(os.path.join(src_path, 'models', '__init__.py')))
+print('Contents of src:', os.listdir(src_path) if os.path.isdir(src_path) else 'N/A')
+"
           uv run python -c "import src.models; print('src.models found at:', src.models.__file__)"
-          uv run python -c "from src.models.chat import ChatMessage; print('ChatMessage imported OK')"
 
       - name: Run tests
         env:

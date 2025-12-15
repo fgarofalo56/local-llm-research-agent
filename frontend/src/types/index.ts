@@ -29,6 +29,7 @@ export interface Document {
   chunk_count: number | null;
   processing_status: 'pending' | 'processing' | 'completed' | 'failed';
   error_message: string | null;
+  tags: string[];
   created_at: string;
   processed_at: string | null;
 }

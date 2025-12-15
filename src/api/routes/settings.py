@@ -6,6 +6,7 @@ Phase 2.4: Enhanced provider and model configuration
 Endpoints for application settings, themes, and LLM provider configuration.
 """
 
+import os
 import time
 from datetime import datetime
 
@@ -375,6 +376,228 @@ class ConnectionTestRequest(BaseModel):
 
     provider: str
     model: str | None = None
+
+
+class FoundryStartRequest(BaseModel):
+    """Request model for starting Foundry Local."""
+
+    model: str | None = None
+
+
+class FoundryStartResponse(BaseModel):
+    """Response model for Foundry start operation."""
+
+    success: bool
+    message: str
+    endpoint: str | None = None
+    model: str | None = None
+    error: str | None = None
+
+
+class FoundryModelListResponse(BaseModel):
+    """Response model for Foundry model list from CLI."""
+
+    success: bool
+    models: list[dict]
+    error: str | None = None
+
+
+def _is_running_in_docker() -> bool:
+    """Check if we're running inside a Docker container."""
+    # Check for .dockerenv file
+    if os.path.exists("/.dockerenv"):
+        return True
+    # Check cgroup
+    try:
+        with open("/proc/1/cgroup", "r") as f:
+            return "docker" in f.read()
+    except Exception:
+        pass
+    return False
+
+
+@router.post("/providers/foundry/start", response_model=FoundryStartResponse)
+async def start_foundry_local(request: FoundryStartRequest):
+    """
+    Start Foundry Local with a specified model.
+
+    Note: When running in Docker, Foundry must be started on the host machine.
+    This endpoint will check if Foundry is accessible and provide instructions.
+    """
+    import asyncio
+    import shutil
+
+    settings = get_settings()
+    model = request.model or "phi-4"
+
+    # First, check if Foundry is already running on the host
+    async with httpx.AsyncClient() as client:
+        try:
+            response = await client.get(
+                f"{settings.foundry_endpoint}/v1/models",
+                timeout=5.0,
+            )
+            if response.status_code == 200:
+                data = response.json()
+                models = [m.get("id", "") for m in data.get("data", [])]
+                return FoundryStartResponse(
+                    success=True,
+                    message=f"Foundry Local is already running with {len(models)} model(s)",
+                    endpoint=settings.foundry_endpoint,
+                    model=models[0] if models else None,
+                )
+        except Exception:
+            pass
+
+    # If running in Docker, we can't start Foundry - provide instructions
+    if _is_running_in_docker():
+        return FoundryStartResponse(
+            success=False,
+            message="Foundry must be started on host machine",
+            error=(
+                "The API is running in Docker. Please start Foundry Local on your host machine:\n"
+                f"1. Open a terminal on your host\n"
+                f"2. Run: foundry model run {model}\n"
+                f"3. Wait for the model to load\n"
+                f"4. Click 'Test Connection' to verify"
+            ),
+        )
+
+    # Check if foundry CLI is available (non-Docker environment)
+    foundry_path = shutil.which("foundry")
+    if not foundry_path:
+        return FoundryStartResponse(
+            success=False,
+            message="Foundry CLI not found",
+            error="Foundry Local is not installed. Install it from: https://learn.microsoft.com/en-us/azure/ai-foundry/foundry-local/get-started",
+        )
+
+    try:
+        # Start foundry with the model
+        process = await asyncio.create_subprocess_exec(
+            "foundry",
+            "model",
+            "run",
+            model,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+
+        # Wait a bit for startup (don't wait for completion as it runs in background)
+        await asyncio.sleep(3)
+
+        # Check if Foundry is now responding
+        async with httpx.AsyncClient() as client:
+            try:
+                response = await client.get(
+                    f"{settings.foundry_endpoint}/v1/models",
+                    timeout=5.0,
+                )
+                if response.status_code == 200:
+                    return FoundryStartResponse(
+                        success=True,
+                        message=f"Foundry Local started with model: {model}",
+                        endpoint=settings.foundry_endpoint,
+                        model=model,
+                    )
+            except Exception:
+                pass
+
+        return FoundryStartResponse(
+            success=False,
+            message="Foundry Local may be starting...",
+            error="Service not responding yet. Please wait and try again.",
+            model=model,
+        )
+
+    except Exception as e:
+        logger.error("foundry_start_error", error=str(e))
+        return FoundryStartResponse(
+            success=False,
+            message="Failed to start Foundry Local",
+            error=str(e)[:200],
+        )
+
+
+@router.get("/providers/foundry/models-cli", response_model=FoundryModelListResponse)
+async def list_foundry_models_cli():
+    """
+    List available Foundry models using the CLI command.
+
+    This executes 'foundry model list' to get all available models.
+    """
+    import asyncio
+    import shutil
+
+    # Check if foundry CLI is available
+    foundry_path = shutil.which("foundry")
+    if not foundry_path:
+        return FoundryModelListResponse(
+            success=False,
+            models=[],
+            error="Foundry CLI not found. Install from: https://learn.microsoft.com/en-us/azure/ai-foundry/foundry-local/get-started",
+        )
+
+    try:
+        # Run foundry model list
+        process = await asyncio.create_subprocess_exec(
+            "foundry",
+            "model",
+            "list",
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        stdout, stderr = await asyncio.wait_for(process.communicate(), timeout=30.0)
+
+        if process.returncode != 0:
+            return FoundryModelListResponse(
+                success=False,
+                models=[],
+                error=stderr.decode() if stderr else "Command failed",
+            )
+
+        # Parse the output - typically table format
+        output = stdout.decode()
+        models = []
+
+        # Parse table output (skip header lines)
+        lines = output.strip().split("\n")
+        for line in lines:
+            # Skip empty lines and separator lines
+            if not line.strip() or line.startswith("-") or line.startswith("="):
+                continue
+            # Skip header
+            if "Model" in line and ("Size" in line or "Status" in line):
+                continue
+
+            # Parse columns (space-separated)
+            parts = line.split()
+            if len(parts) >= 1:
+                model_info = {
+                    "name": parts[0],
+                    "size": parts[1] if len(parts) > 1 else None,
+                    "status": parts[2] if len(parts) > 2 else None,
+                }
+                models.append(model_info)
+
+        return FoundryModelListResponse(
+            success=True,
+            models=models,
+        )
+
+    except asyncio.TimeoutError:
+        return FoundryModelListResponse(
+            success=False,
+            models=[],
+            error="Command timed out",
+        )
+    except Exception as e:
+        logger.error("foundry_list_models_cli_error", error=str(e))
+        return FoundryModelListResponse(
+            success=False,
+            models=[],
+            error=str(e)[:200],
+        )
 
 
 @router.post("/providers/test", response_model=ConnectionTestResult)

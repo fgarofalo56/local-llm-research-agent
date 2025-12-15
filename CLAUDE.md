@@ -110,7 +110,7 @@ manage_task("update", task_id="...", status="doing")
 | **ORM** | SQLAlchemy 2.0 + Alembic | Database models & migrations |
 | **Vector Store** | Redis Stack | Vector similarity search (RAG) |
 | **Embeddings** | Ollama (nomic-embed-text) | Local document embeddings |
-| **Document Processing** | Docling | PDF/DOCX parsing for RAG |
+| **Document Processing** | pypdf, python-docx | PDF/DOCX parsing for RAG (offline-capable) |
 
 ---
 
@@ -178,7 +178,7 @@ local-llm-research-agent/
 │   │   ├── __init__.py
 │   │   ├── embedder.py          # Ollama embeddings
 │   │   ├── redis_vector_store.py # Redis vector search
-│   │   ├── document_processor.py # Docling document parsing
+│   │   ├── document_processor.py # PDF/DOCX parsing (pypdf, python-docx)
 │   │   └── schema_indexer.py    # Database schema indexing
 │   │
 │   ├── providers/
@@ -669,7 +669,7 @@ async def test_mssql_connection():
 | **SQLAlchemy ORM** | 11 database models (Conversations, Messages, Dashboards, etc.) |
 | **Alembic Migrations** | Database schema version control |
 | **Redis Vector Store** | Vector similarity search using Redis Stack |
-| **RAG Pipeline** | Document processing with Docling, Ollama embeddings |
+| **RAG Pipeline** | Document processing with pypdf/python-docx, Ollama embeddings |
 | **Dynamic MCP** | Load/configure MCP servers from `mcp_config.json` at runtime |
 
 ### API Endpoints (Phase 2.1)

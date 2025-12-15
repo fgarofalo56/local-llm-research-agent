@@ -5,6 +5,7 @@ Phase 2.1: Backend Infrastructure & RAG Pipeline
 Endpoints for document upload, processing, and management.
 """
 
+import json
 import uuid
 from datetime import datetime
 from pathlib import Path
@@ -43,11 +44,36 @@ class DocumentResponse(BaseModel):
     chunk_count: int | None
     processing_status: str
     error_message: str | None
+    tags: list[str] = []
     created_at: datetime
     processed_at: datetime | None
 
     class Config:
         from_attributes = True
+
+    @classmethod
+    def from_orm_with_tags(cls, doc: "Document") -> "DocumentResponse":
+        """Create response from ORM model, parsing tags JSON."""
+        tags = []
+        if doc.tags:
+            try:
+                tags = json.loads(doc.tags)
+            except (json.JSONDecodeError, TypeError):
+                tags = []
+
+        return cls(
+            id=doc.id,
+            filename=doc.filename,
+            original_filename=doc.original_filename,
+            mime_type=doc.mime_type,
+            file_size=doc.file_size,
+            chunk_count=doc.chunk_count,
+            processing_status=doc.processing_status,
+            error_message=doc.error_message,
+            tags=tags,
+            created_at=doc.created_at,
+            processed_at=doc.processed_at,
+        )
 
 
 class DocumentListResponse(BaseModel):
@@ -61,21 +87,38 @@ class DocumentListResponse(BaseModel):
 async def list_documents(
     skip: int = 0,
     limit: int = 20,
+    tag: str | None = None,
     db: AsyncSession = Depends(get_db),
 ):
-    """List all documents."""
+    """List all documents, optionally filtered by tag."""
     # Get total count
     count_query = select(Document)
     result = await db.execute(count_query)
-    total = len(result.scalars().all())
+    all_docs = result.scalars().all()
 
-    # Get paginated results
-    query = select(Document).offset(skip).limit(limit).order_by(Document.created_at.desc())
-    result = await db.execute(query)
-    documents = result.scalars().all()
+    # Filter by tag if provided
+    if tag:
+        filtered_docs = []
+        for doc in all_docs:
+            if doc.tags:
+                try:
+                    doc_tags = json.loads(doc.tags)
+                    if tag.lower() in [t.lower() for t in doc_tags]:
+                        filtered_docs.append(doc)
+                except (json.JSONDecodeError, TypeError):
+                    pass
+        total = len(filtered_docs)
+        # Apply pagination
+        documents = filtered_docs[skip : skip + limit]
+    else:
+        total = len(all_docs)
+        # Get paginated results
+        query = select(Document).offset(skip).limit(limit).order_by(Document.created_at.desc())
+        result = await db.execute(query)
+        documents = result.scalars().all()
 
     return DocumentListResponse(
-        documents=[DocumentResponse.model_validate(doc) for doc in documents],
+        documents=[DocumentResponse.from_orm_with_tags(doc) for doc in documents],
         total=total,
     )
 
@@ -145,7 +188,7 @@ async def upload_document(
     else:
         logger.warning("vector_store_unavailable", document_id=document.id)
 
-    return DocumentResponse.model_validate(document)
+    return DocumentResponse.from_orm_with_tags(document)
 
 
 async def process_document_task(
@@ -222,7 +265,7 @@ async def get_document(
     document = await db.get(Document, document_id)
     if not document:
         raise HTTPException(status_code=404, detail="Document not found")
-    return DocumentResponse.model_validate(document)
+    return DocumentResponse.from_orm_with_tags(document)
 
 
 @router.delete("/{document_id}")
@@ -303,13 +346,42 @@ async def reprocess_document(
             settings.chunk_overlap,
         )
 
-    return DocumentResponse.model_validate(document)
+    return DocumentResponse.from_orm_with_tags(document)
 
 
 class DocumentTagsUpdate(BaseModel):
     """Request model for updating document tags."""
 
     tags: list[str]
+
+
+class AllTagsResponse(BaseModel):
+    """Response model for all unique tags."""
+
+    tags: list[str]
+    total: int
+
+
+@router.get("/tags/all", response_model=AllTagsResponse)
+async def get_all_tags(
+    db: AsyncSession = Depends(get_db),
+):
+    """Get all unique tags across all documents."""
+    query = select(Document)
+    result = await db.execute(query)
+    documents = result.scalars().all()
+
+    all_tags: set[str] = set()
+    for doc in documents:
+        if doc.tags:
+            try:
+                doc_tags = json.loads(doc.tags)
+                all_tags.update(doc_tags)
+            except (json.JSONDecodeError, TypeError):
+                pass
+
+    sorted_tags = sorted(all_tags)
+    return AllTagsResponse(tags=sorted_tags, total=len(sorted_tags))
 
 
 @router.patch("/{document_id}/tags", response_model=DocumentResponse)
@@ -320,19 +392,20 @@ async def update_document_tags(
 ):
     """Update tags for a document.
 
-    Note: This endpoint is a placeholder. The Document model would need a 'tags'
-    column (JSON/Text) to fully support this feature. For now, it validates
-    the document exists but doesn't persist tags.
+    Tags are stored as a JSON array in the database.
     """
     document = await db.get(Document, document_id)
     if not document:
         raise HTTPException(status_code=404, detail="Document not found")
 
-    # TODO: Add tags column to Document model in a future migration
-    # document.tags = json.dumps(data.tags)
-    # await db.commit()
-    # await db.refresh(document)
+    # Normalize tags: lowercase, strip whitespace, remove duplicates
+    normalized_tags = list(set(tag.strip().lower() for tag in data.tags if tag.strip()))
 
-    logger.info("document_tags_update", document_id=document_id, tags=data.tags)
+    # Update tags
+    document.tags = json.dumps(normalized_tags)
+    await db.commit()
+    await db.refresh(document)
 
-    return DocumentResponse.model_validate(document)
+    logger.info("document_tags_updated", document_id=document_id, tags=normalized_tags)
+
+    return DocumentResponse.from_orm_with_tags(document)

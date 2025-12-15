@@ -72,6 +72,7 @@ async def upload_document(file_content: bytes, filename: str) -> dict:
                 try:
                     error_detail = e.response.json().get("detail", str(e))
                 except Exception:
+                    # Fallback to string representation if JSON parsing fails
                     pass
             return {"success": False, "error": error_detail}
 
@@ -133,6 +134,7 @@ def format_datetime(dt_str: str | None) -> str:
         dt = datetime.fromisoformat(dt_str.replace("Z", "+00:00"))
         return dt.strftime("%Y-%m-%d %H:%M")
     except Exception:
+        # Return original string if datetime parsing fails
         return dt_str
 
 

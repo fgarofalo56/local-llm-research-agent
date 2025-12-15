@@ -96,26 +96,6 @@ jobs:
       - name: Install dependencies
         run: uv sync --dev
 
-      - name: Verify package installation
-        env:
-          PYTHONPATH: ${{ github.workspace }}
-        run: |
-          echo "=== PYTHONPATH: $PYTHONPATH ==="
-          echo "=== Directory structure of src ==="
-          ls -la src/
-          echo "=== Directory structure of src/models ==="
-          ls -la src/models/ || echo "src/models/ not found!"
-          echo "=== Checking __init__.py files ==="
-          cat src/__init__.py
-          echo "---"
-          cat src/models/__init__.py || echo "src/models/__init__.py not found!"
-          echo "=== Python path ==="
-          uv run python -c "import sys; print('Python path:'); print('\\n'.join(sys.path))"
-          echo "=== Trying imports ==="
-          uv run python -c "import src; print('src found at:', src.__file__)"
-          uv run python -c "import sys,os;p=os.path.join(sys.path[0],'src');print('src exists:',os.path.isdir(p));print('models exists:',os.path.isdir(os.path.join(p,'models')));print('__init__ exists:',os.path.isfile(os.path.join(p,'models','__init__.py')));print('src contents:',os.listdir(p) if os.path.isdir(p) else 'N/A')"
-          uv run python -c "import src.models; print('src.models found at:', src.models.__file__)"
-
       - name: Run tests
         env:
           PYTHONPATH: ${{ github.workspace }}

@@ -210,3 +210,7 @@ class ThemeConfig(Base):
     is_active = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+# Alias for backwards compatibility
+DashboardWidget = Widget

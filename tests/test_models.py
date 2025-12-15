@@ -4,22 +4,21 @@ Tests for Chat and SQL Result Models
 Tests the Pydantic models in src/models/chat.py and src/models/sql_results.py.
 """
 
-import pytest
 from datetime import datetime
 
 from src.models.chat import (
-    MessageRole,
-    ChatMessage,
-    ToolCall,
-    ConversationTurn,
-    Conversation,
     AgentResponse,
+    ChatMessage,
+    Conversation,
+    ConversationTurn,
+    MessageRole,
+    ToolCall,
 )
 from src.models.sql_results import (
     ColumnInfo,
-    TableInfo,
-    QueryResult,
     DatabaseSchema,
+    QueryResult,
+    TableInfo,
 )
 
 

@@ -36,9 +36,7 @@ jobs:
           cache-dependency-glob: "uv.lock"
 
       - name: Install dependencies
-        run: |
-          uv sync --dev
-          uv pip install -e .
+        run: uv sync --dev
 
       - name: Run Ruff linter
         run: uv run ruff check src/ tests/
@@ -65,9 +63,7 @@ jobs:
           cache-dependency-glob: "uv.lock"
 
       - name: Install dependencies
-        run: |
-          uv sync --dev
-          uv pip install -e .
+        run: uv sync --dev
 
       - name: Run mypy
         env:
@@ -98,25 +94,32 @@ jobs:
           cache-dependency-glob: "uv.lock"
 
       - name: Install dependencies
-        run: |
-          uv sync --dev
-          uv pip install -e .
+        run: uv sync --dev
 
       - name: Verify package installation
+        env:
+          PYTHONPATH: ${{ github.workspace }}
         run: |
+          echo "=== PYTHONPATH: $PYTHONPATH ==="
           uv run python -c "import sys; print('Python path:'); print('\\n'.join(sys.path))"
           uv run python -c "import src; print('src package found at:', src.__file__)"
+          uv run python -c "import src.models; print('src.models found at:', src.models.__file__)"
+          uv run python -c "from src.models.chat import ChatMessage; print('ChatMessage imported OK')"
 
       - name: Run tests
         env:
           PYTHONPATH: ${{ github.workspace }}
-        run: uv run pytest tests/ -v --tb=short -x
+        run: |
+          cd ${{ github.workspace }}
+          uv run python -m pytest tests/ -v --tb=short -x
 
       - name: Run tests with coverage
         if: matrix.python-version == '3.11'
         env:
           PYTHONPATH: ${{ github.workspace }}
-        run: uv run pytest tests/ --cov=src --cov-report=xml --cov-report=term-missing
+        run: |
+          cd ${{ github.workspace }}
+          uv run python -m pytest tests/ --cov=src --cov-report=xml --cov-report=term-missing
 
       - name: Upload coverage to Codecov
         if: matrix.python-version == '3.11'

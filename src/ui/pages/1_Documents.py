@@ -132,6 +132,7 @@ def format_datetime(dt_str: str | None) -> str:
         dt = datetime.fromisoformat(dt_str.replace("Z", "+00:00"))
         return dt.strftime("%Y-%m-%d %H:%M")
     except Exception:
+        # Return original string if datetime parsing fails
         return dt_str
 
 

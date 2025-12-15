@@ -85,7 +85,7 @@ async def create_mcp_server(data: dict) -> dict:
                 try:
                     error_detail = e.response.json().get("detail", str(e))
                 except Exception:
-                    # Ignore JSON parsing errors - we already have a fallback error message from str(e)
+                    # Ignore JSON parsing errors - error_detail already set to str(e) on line 83
                     pass
             return {"success": False, "error": error_detail}
 
@@ -106,7 +106,7 @@ async def delete_mcp_server(server_id: str) -> dict:
                 try:
                     error_detail = e.response.json().get("detail", str(e))
                 except Exception:
-                    # Ignore JSON parsing errors - we already have a fallback error message from str(e)
+                    # Ignore JSON parsing errors - error_detail already set to str(e) on line 104
                     pass
             return {"success": False, "error": error_detail}
 

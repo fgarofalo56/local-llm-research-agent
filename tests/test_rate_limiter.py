@@ -141,7 +141,8 @@ class TestTokenBucketRateLimiter:
         assert initial_tokens == 5.0
 
         limiter.try_acquire()
-        assert limiter.available_tokens == 4.0
+        # Use pytest.approx to handle floating point precision issues from token refill
+        assert limiter.available_tokens == pytest.approx(4.0, abs=0.01)
 
     def test_stats_tracking(self):
         """Test statistics tracking."""

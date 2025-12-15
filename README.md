@@ -319,8 +319,21 @@ docker-compose -f docker/docker-compose.yml logs -f mssql
 # Stop all services (preserves data)
 docker-compose -f docker/docker-compose.yml down
 
+# Clean rebuild (keeps SQL/Redis data)
+docker-compose -f docker/docker-compose.yml --env-file .env down --remove-orphans
+docker-compose -f docker/docker-compose.yml --env-file .env build --no-cache
+docker-compose -f docker/docker-compose.yml --env-file .env up -d --force-recreate
+
+# Clean rebuild with profiles (example: full stack)
+docker-compose -f docker/docker-compose.yml --env-file .env --profile full up -d --build --force-recreate
+
 # Stop and DELETE all data (fresh start)
 docker-compose -f docker/docker-compose.yml down -v
+
+# Nuclear clean rebuild (DELETES SQL/Redis data)
+docker-compose -f docker/docker-compose.yml --env-file .env down -v --remove-orphans
+docker-compose -f docker/docker-compose.yml --env-file .env build --no-cache
+docker-compose -f docker/docker-compose.yml --env-file .env up -d --force-recreate
 
 # Restart with fresh data
 docker-compose -f docker/docker-compose.yml down -v

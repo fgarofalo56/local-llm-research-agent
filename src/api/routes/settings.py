@@ -425,10 +425,20 @@ async def start_foundry_local(request: FoundryStartRequest):
     This endpoint will check if Foundry is accessible and provide instructions.
     """
     import asyncio
+    import re
     import shutil
 
     settings = get_settings()
     model = request.model or "phi-4"
+
+    # SECURITY: Validate model name to prevent command injection
+    # Only allow alphanumeric, hyphens, underscores, and dots
+    if not re.match(r'^[a-zA-Z0-9_\-\.]+$', model):
+        return FoundryStartResponse(
+            success=False,
+            message="Invalid model name",
+            error="Model name must contain only letters, numbers, hyphens, underscores, and dots",
+        )
 
     # First, check if Foundry is already running on the host
     async with httpx.AsyncClient() as client:

@@ -92,7 +92,9 @@ class DocumentProcessor:
         try:
             from pypdf import PdfReader
         except ImportError:
-            raise ImportError("pypdf is required for PDF processing. Install with: pip install pypdf")
+            raise ImportError(
+                "pypdf is required for PDF processing. Install with: pip install pypdf"
+            )
 
         reader = PdfReader(str(file_path))
         page_count = len(reader.pages)
@@ -120,7 +122,9 @@ class DocumentProcessor:
         try:
             from docx import Document as DocxDocument
         except ImportError:
-            raise ImportError("python-docx is required for DOCX processing. Install with: pip install python-docx")
+            raise ImportError(
+                "python-docx is required for DOCX processing. Install with: pip install python-docx"
+            )
 
         doc = DocxDocument(str(file_path))
 
@@ -137,7 +141,9 @@ class DocumentProcessor:
                     text_parts.append(row_text)
 
         full_text = "\n\n".join(text_parts)
-        logger.info("docx_extracted", path=str(file_path), paragraphs=len(text_parts), chars=len(full_text))
+        logger.info(
+            "docx_extracted", path=str(file_path), paragraphs=len(text_parts), chars=len(full_text)
+        )
         return full_text, None
 
     def _extract_text_file(self, file_path: Path) -> tuple[str, None]:
@@ -155,9 +161,11 @@ class DocumentProcessor:
 
         for encoding in encodings:
             try:
-                with open(file_path, "r", encoding=encoding) as f:
+                with open(file_path, encoding=encoding) as f:
                     content = f.read()
-                logger.info("text_file_read", path=str(file_path), encoding=encoding, chars=len(content))
+                logger.info(
+                    "text_file_read", path=str(file_path), encoding=encoding, chars=len(content)
+                )
                 return content, None
             except UnicodeDecodeError:
                 continue
@@ -205,7 +213,9 @@ class DocumentProcessor:
 
         suffix = file_path.suffix.lower()
         if suffix not in self.SUPPORTED_EXTENSIONS:
-            raise ValueError(f"Unsupported file type: {suffix}. Supported: {self.SUPPORTED_EXTENSIONS}")
+            raise ValueError(
+                f"Unsupported file type: {suffix}. Supported: {self.SUPPORTED_EXTENSIONS}"
+            )
 
         # Extract text based on file type
         page_count = None

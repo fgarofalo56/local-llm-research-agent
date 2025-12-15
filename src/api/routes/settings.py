@@ -409,7 +409,7 @@ def _is_running_in_docker() -> bool:
         return True
     # Check cgroup
     try:
-        with open("/proc/1/cgroup", "r") as f:
+        with open("/proc/1/cgroup") as f:
             return "docker" in f.read()
     except Exception:
         pass
@@ -433,7 +433,7 @@ async def start_foundry_local(request: FoundryStartRequest):
 
     # SECURITY: Validate model name to prevent command injection
     # Only allow alphanumeric, hyphens, underscores, and dots
-    if not re.match(r'^[a-zA-Z0-9_\-\.]+$', model):
+    if not re.match(r"^[a-zA-Z0-9_\-\.]+$", model):
         return FoundryStartResponse(
             success=False,
             message="Invalid model name",
@@ -484,7 +484,7 @@ async def start_foundry_local(request: FoundryStartRequest):
 
     try:
         # Start foundry with the model
-        process = await asyncio.create_subprocess_exec(
+        _process = await asyncio.create_subprocess_exec(
             "foundry",
             "model",
             "run",
@@ -492,6 +492,20 @@ async def start_foundry_local(request: FoundryStartRequest):
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
         )
+
+        # Check if process failed immediately
+        try:
+            await asyncio.wait_for(process.wait(), timeout=0.5)
+            # If we get here, process exited immediately (failed)
+            stderr = await process.stderr.read() if process.stderr else b""
+            return FoundryStartResponse(
+                success=False,
+                message="Foundry failed to start",
+                error=stderr.decode()[:200] if stderr else "Process exited immediately",
+            )
+        except asyncio.TimeoutError:
+            # Process is still running, which is good
+            pass
 
         # Wait a bit for startup (don't wait for completion as it runs in background)
         await asyncio.sleep(3)
@@ -595,7 +609,7 @@ async def list_foundry_models_cli():
             models=models,
         )
 
-    except asyncio.TimeoutError:
+    except TimeoutError:
         return FoundryModelListResponse(
             success=False,
             models=[],

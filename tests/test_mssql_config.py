@@ -4,14 +4,12 @@ Tests for MSSQL MCP Server Configuration
 Tests the MSSQLMCPConfig class and related utilities in src/mcp/mssql_config.py.
 """
 
-import pytest
-from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 from src.mcp.mssql_config import (
+    MSSQL_TOOLS,
     MSSQLMCPConfig,
     MSSQLToolInfo,
-    MSSQL_TOOLS,
     get_readonly_tools,
     get_write_tools,
 )

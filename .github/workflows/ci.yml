@@ -113,15 +113,7 @@ jobs:
           uv run python -c "import sys; print('Python path:'); print('\\n'.join(sys.path))"
           echo "=== Trying imports ==="
           uv run python -c "import src; print('src found at:', src.__file__)"
-          uv run python -c "
-import sys
-import os
-src_path = os.path.join(sys.path[0], 'src')
-print('src directory exists:', os.path.isdir(src_path))
-print('src/models exists:', os.path.isdir(os.path.join(src_path, 'models')))
-print('src/models/__init__.py exists:', os.path.isfile(os.path.join(src_path, 'models', '__init__.py')))
-print('Contents of src:', os.listdir(src_path) if os.path.isdir(src_path) else 'N/A')
-"
+          uv run python -c "import sys,os;p=os.path.join(sys.path[0],'src');print('src exists:',os.path.isdir(p));print('models exists:',os.path.isdir(os.path.join(p,'models')));print('__init__ exists:',os.path.isfile(os.path.join(p,'models','__init__.py')));print('src contents:',os.listdir(p) if os.path.isdir(p) else 'N/A')"
           uv run python -c "import src.models; print('src.models found at:', src.models.__file__)"
 
       - name: Run tests

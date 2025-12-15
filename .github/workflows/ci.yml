@@ -70,6 +70,8 @@ jobs:
           uv pip install -e .
 
       - name: Run mypy
+        env:
+          PYTHONPATH: ${{ github.workspace }}
         run: uv run mypy src/ --ignore-missing-imports
 
   test:
@@ -100,11 +102,20 @@ jobs:
           uv sync --dev
           uv pip install -e .
 
+      - name: Verify package installation
+        run: |
+          uv run python -c "import sys; print('Python path:'); print('\\n'.join(sys.path))"
+          uv run python -c "import src; print('src package found at:', src.__file__)"
+
       - name: Run tests
+        env:
+          PYTHONPATH: ${{ github.workspace }}
         run: uv run pytest tests/ -v --tb=short -x
 
       - name: Run tests with coverage
         if: matrix.python-version == '3.11'
+        env:
+          PYTHONPATH: ${{ github.workspace }}
         run: uv run pytest tests/ --cov=src --cov-report=xml --cov-report=term-missing
 
       - name: Upload coverage to Codecov

@@ -33,7 +33,6 @@ class MockDocument:
         tags: str | None = None,
         created_at: datetime = None,
         processed_at: datetime = None,
-        tags: str | None = None,
     ):
         self.id = id
         self.filename = filename
@@ -46,7 +45,6 @@ class MockDocument:
         self.tags = tags
         self.created_at = created_at or datetime.utcnow()
         self.processed_at = processed_at
-        self.tags = tags
 
 
 class TestDocumentResponse:
@@ -339,11 +337,11 @@ class TestListDocuments:
 
         # Note: The actual implementation uses two queries,
         # so we need to handle both execute calls
-        await list_documents(skip=0, limit=2, db=mock_db)
+        result = await list_documents(skip=0, limit=2, db=mock_db)
 
         # Check that pagination was requested
         assert mock_db.execute.call_count == 2
-        
+
         # Validate the result
         assert result.total == 5  # Total count from first query
         assert len(result.documents) == 2  # Paginated results from second query

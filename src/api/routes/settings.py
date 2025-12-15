@@ -486,7 +486,7 @@ async def start_foundry_local(request: FoundryStartRequest):
 
     try:
         # Start foundry with the model
-        _process = await asyncio.create_subprocess_exec(
+        process = await asyncio.create_subprocess_exec(
             "foundry",
             "model",
             "run",
@@ -505,7 +505,7 @@ async def start_foundry_local(request: FoundryStartRequest):
                 message="Foundry failed to start",
                 error=stderr.decode()[:200] if stderr else "Process exited immediately",
             )
-        except asyncio.TimeoutError:
+        except TimeoutError:
             # Process is still running, which is good
             pass
 

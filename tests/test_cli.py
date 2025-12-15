@@ -184,7 +184,7 @@ class TestChatCommand:
         with patch("src.cli.chat.asyncio.run") as mock_run:
             mock_run.return_value = None
 
-            result = runner.invoke(app, ["chat"])
+            runner.invoke(app, ["chat"])
 
             mock_welcome.assert_called_once()
             mock_status.assert_called_once()

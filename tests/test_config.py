@@ -5,7 +5,6 @@ Tests the Settings class and configuration functions in src/utils/config.py.
 """
 
 import os
-import pytest
 from unittest.mock import patch
 
 from src.utils.config import Settings, get_settings, reload_settings
@@ -220,7 +219,7 @@ class TestReloadSettings:
 
     def test_reload_clears_cache(self):
         """Test reload_settings clears the cache."""
-        settings1 = get_settings()
+        get_settings()  # Ensure cache is populated
 
         # Reload should return a new instance
         settings2 = reload_settings()
@@ -244,7 +243,7 @@ class TestSettingsIntegration:
             {"ollama_host": "http://lower:11434"},
             clear=False,
         ):
-            settings = Settings()
+            Settings()  # Verify Settings can be created with lowercase env vars
             # Both OLLAMA_HOST and ollama_host should work
             # The actual behavior depends on OS and pydantic-settings version
 

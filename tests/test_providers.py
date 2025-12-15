@@ -9,8 +9,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from src.providers import LLMProvider, ProviderType, create_provider, get_available_providers
-from src.providers.ollama import OllamaProvider
 from src.providers.foundry import FoundryLocalProvider
+from src.providers.ollama import OllamaProvider
 
 
 @pytest.mark.unit

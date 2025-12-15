@@ -66,6 +66,7 @@ async def test_provider_connection(provider_type: str, model: str) -> dict:
         provider = create_provider(provider_type=ptype, model_name=model)
 
         import time
+
         start_time = time.time()
 
         # Simple test - just check connection
@@ -306,10 +307,11 @@ Always explain your reasoning and the SQL queries you generate."""
             st.rerun()
 
     with col2:
-        if system_prompt != st.session_state.system_prompt:
-            if st.button("Save Changes", type="primary"):
-                st.session_state.system_prompt = system_prompt
-                st.toast("System prompt saved", icon="✅")
+        if system_prompt != st.session_state.system_prompt and st.button(
+            "Save Changes", type="primary"
+        ):
+            st.session_state.system_prompt = system_prompt
+            st.toast("System prompt saved", icon="✅")
 
     return system_prompt
 
@@ -352,14 +354,13 @@ def render_theme_settings():
     )
 
     # Activate button
-    if selected_theme != active_theme:
-        if st.button("Apply Theme", type="primary"):
-            result = run_async(activate_theme(selected_theme))
-            if result.get("success"):
-                st.success(f"Theme '{selected_theme}' activated!")
-                st.rerun()
-            else:
-                st.error(f"Failed: {result.get('error', 'Unknown error')}")
+    if selected_theme != active_theme and st.button("Apply Theme", type="primary"):
+        result = run_async(activate_theme(selected_theme))
+        if result.get("success"):
+            st.success(f"Theme '{selected_theme}' activated!")
+            st.rerun()
+        else:
+            st.error(f"Failed: {result.get('error', 'Unknown error')}")
 
 
 def render_current_config():

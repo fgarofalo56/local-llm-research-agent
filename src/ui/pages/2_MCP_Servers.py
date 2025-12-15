@@ -11,6 +11,7 @@ Features:
 """
 
 import asyncio
+import contextlib
 import json
 
 import httpx
@@ -82,10 +83,8 @@ async def create_mcp_server(data: dict) -> dict:
         except httpx.HTTPError as e:
             error_detail = str(e)
             if hasattr(e, "response") and e.response is not None:
-                try:
+                with contextlib.suppress(Exception):
                     error_detail = e.response.json().get("detail", str(e))
-                except Exception:
-                    pass
             return {"success": False, "error": error_detail}
 
 
@@ -102,10 +101,8 @@ async def delete_mcp_server(server_id: str) -> dict:
         except httpx.HTTPError as e:
             error_detail = str(e)
             if hasattr(e, "response") and e.response is not None:
-                try:
+                with contextlib.suppress(Exception):
                     error_detail = e.response.json().get("detail", str(e))
-                except Exception:
-                    pass
             return {"success": False, "error": error_detail}
 
 
@@ -129,45 +126,44 @@ def render_server_card(server: dict):
         with col1:
             st.markdown(f"### {server['name']}")
             st.caption(f"ID: `{server['id']}` | Type: `{server['type']}`")
-            if server.get('description'):
-                st.caption(server['description'])
+            if server.get("description"):
+                st.caption(server["description"])
 
         with col2:
-            st.markdown(get_status_indicator(server.get('status', 'unknown'), server['enabled']))
-            if server['type'] == 'stdio':
-                if server.get('command'):
-                    st.caption(f"Command: `{server['command']}`")
-            elif server['type'] == 'http':
-                if server.get('url'):
-                    st.caption(f"URL: `{server['url']}`")
+            st.markdown(get_status_indicator(server.get("status", "unknown"), server["enabled"]))
+            if server["type"] == "stdio" and server.get("command"):
+                st.caption(f"Command: `{server['command']}`")
+            elif server["type"] == "http" and server.get("url"):
+                st.caption(f"URL: `{server['url']}`")
 
         with col3:
             # Enable/Disable toggle
             new_state = st.toggle(
                 "Enabled",
-                value=server['enabled'],
+                value=server["enabled"],
                 key=f"toggle_{server['id']}",
                 help="Enable or disable this MCP server",
             )
 
             # Handle toggle change
-            if new_state != server['enabled']:
-                result = run_async(toggle_server(server['id'], new_state))
-                if result['success']:
+            if new_state != server["enabled"]:
+                result = run_async(toggle_server(server["id"], new_state))
+                if result["success"]:
                     st.toast(f"Server {'enabled' if new_state else 'disabled'}", icon="✅")
                     st.rerun()
                 else:
                     st.error(f"Failed: {result.get('error', 'Unknown error')}")
 
             # Delete button (only for non-built-in servers)
-            if not server.get('built_in', False):
-                if st.button("🗑️ Delete", key=f"delete_{server['id']}", help="Delete this server"):
-                    st.session_state[f"confirm_delete_server_{server['id']}"] = True
+            if not server.get("built_in", False) and st.button(
+                "🗑️ Delete", key=f"delete_{server['id']}", help="Delete this server"
+            ):
+                st.session_state[f"confirm_delete_server_{server['id']}"] = True
 
         # Show tools if available
-        if server.get('tools') and server['enabled']:
+        if server.get("tools") and server["enabled"]:
             with st.expander(f"Available Tools ({len(server['tools'])})"):
-                for tool in server['tools']:
+                for tool in server["tools"]:
                     st.markdown(f"- `{tool}`")
 
         # Deletion confirmation
@@ -175,9 +171,11 @@ def render_server_card(server: dict):
             st.warning(f"Are you sure you want to delete '{server['name']}'?")
             col_yes, col_no = st.columns(2)
             with col_yes:
-                if st.button("Yes, delete", key=f"confirm_yes_server_{server['id']}", type="primary"):
-                    result = run_async(delete_mcp_server(server['id']))
-                    if result['success']:
+                if st.button(
+                    "Yes, delete", key=f"confirm_yes_server_{server['id']}", type="primary"
+                ):
+                    result = run_async(delete_mcp_server(server["id"]))
+                    if result["success"]:
                         st.toast("Server deleted", icon="✅")
                         del st.session_state[f"confirm_delete_server_{server['id']}"]
                         st.rerun()
@@ -296,7 +294,7 @@ def render_add_server_form():
 
                 # Create server
                 result = run_async(create_mcp_server(data))
-                if result['success']:
+                if result["success"]:
                     st.success("Server added successfully!")
                     st.rerun()
                 else:
@@ -321,8 +319,8 @@ def render_server_list():
         return
 
     # Separate built-in and custom servers
-    builtin_servers = [s for s in servers if s.get('built_in', False)]
-    custom_servers = [s for s in servers if not s.get('built_in', False)]
+    builtin_servers = [s for s in servers if s.get("built_in", False)]
+    custom_servers = [s for s in servers if not s.get("built_in", False)]
 
     # Built-in servers
     if builtin_servers:

@@ -4,13 +4,11 @@ Tests for System Prompts
 Tests the system prompts and prompt generation in src/agent/prompts.py.
 """
 
-import pytest
-
 from src.agent.prompts import (
-    SYSTEM_PROMPT,
-    SYSTEM_PROMPT_READONLY,
-    SYSTEM_PROMPT_MINIMAL,
     EXPLANATION_MODE_SUFFIX,
+    SYSTEM_PROMPT,
+    SYSTEM_PROMPT_MINIMAL,
+    SYSTEM_PROMPT_READONLY,
     get_system_prompt,
 )
 

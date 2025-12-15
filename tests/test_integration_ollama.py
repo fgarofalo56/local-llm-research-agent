@@ -26,9 +26,7 @@ Environment variables:
     OLLAMA_MODEL: Model to use for tests (auto-detected if not set)
 """
 
-import asyncio
 import os
-from typing import AsyncGenerator
 
 import httpx
 import pytest
@@ -332,7 +330,7 @@ class TestProviderHealthCheck:
     @pytest.mark.asyncio
     async def test_health_check_reports_healthy(self, ollama_host: str, ollama_model: str):
         """Test that health check reports Ollama as healthy."""
-        from src.utils.health import check_ollama_health, HealthStatus
+        from src.utils.health import HealthStatus, check_ollama_health
 
         # Ensure environment is set for the health check
         os.environ["OLLAMA_HOST"] = ollama_host

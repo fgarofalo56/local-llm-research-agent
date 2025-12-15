@@ -5,6 +5,7 @@ Phase 2.1: Backend Infrastructure & RAG Pipeline
 Endpoints for document upload, processing, and management.
 """
 
+import contextlib
 import json
 import uuid
 from datetime import datetime
@@ -323,10 +324,8 @@ async def reprocess_document(
 
     # Delete existing embeddings if any
     if vector_store:
-        try:
+        with contextlib.suppress(Exception):
             await vector_store.delete_document(str(document_id))
-        except Exception:
-            pass  # May not exist
 
     # Reset status
     document.processing_status = "pending"
@@ -399,7 +398,7 @@ async def update_document_tags(
         raise HTTPException(status_code=404, detail="Document not found")
 
     # Normalize tags: lowercase, strip whitespace, remove duplicates
-    normalized_tags = list(set(tag.strip().lower() for tag in data.tags if tag.strip()))
+    normalized_tags = list({tag.strip().lower() for tag in data.tags if tag.strip()})
 
     # Update tags
     document.tags = json.dumps(normalized_tags)

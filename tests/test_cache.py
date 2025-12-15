@@ -6,8 +6,6 @@ Tests the TTL-based LRU cache functionality for LLM responses.
 
 import time
 
-import pytest
-
 from src.utils.cache import CacheStats, ResponseCache, get_response_cache, reset_response_cache
 
 

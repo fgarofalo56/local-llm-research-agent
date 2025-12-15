@@ -66,7 +66,7 @@ def execute_query(query: str, params: tuple = None) -> list[dict]:
         if cursor.description:
             columns = [column[0] for column in cursor.description]
             rows = cursor.fetchall()
-            return [dict(zip(columns, row)) for row in rows]
+            return [dict(zip(columns, row, strict=False)) for row in rows]
 
         # For INSERT/UPDATE/DELETE, commit and return affected rows
         conn.commit()
@@ -80,11 +80,7 @@ async def list_tools() -> list[Tool]:
         Tool(
             name="list_tables",
             description="List all tables in the database",
-            inputSchema={
-                "type": "object",
-                "properties": {},
-                "required": []
-            }
+            inputSchema={"type": "object", "properties": {}, "required": []},
         ),
         Tool(
             name="describe_table",
@@ -92,27 +88,19 @@ async def list_tools() -> list[Tool]:
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "table_name": {
-                        "type": "string",
-                        "description": "Name of the table to describe"
-                    }
+                    "table_name": {"type": "string", "description": "Name of the table to describe"}
                 },
-                "required": ["table_name"]
-            }
+                "required": ["table_name"],
+            },
         ),
         Tool(
             name="execute_sql",
             description="Execute a SQL query against the database",
             inputSchema={
                 "type": "object",
-                "properties": {
-                    "query": {
-                        "type": "string",
-                        "description": "SQL query to execute"
-                    }
-                },
-                "required": ["query"]
-            }
+                "properties": {"query": {"type": "string", "description": "SQL query to execute"}},
+                "required": ["query"],
+            },
         ),
         Tool(
             name="read_data",
@@ -120,26 +108,23 @@ async def list_tools() -> list[Tool]:
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "table_name": {
-                        "type": "string",
-                        "description": "Name of the table to read"
-                    },
+                    "table_name": {"type": "string", "description": "Name of the table to read"},
                     "columns": {
                         "type": "string",
-                        "description": "Comma-separated column names (default: *)"
+                        "description": "Comma-separated column names (default: *)",
                     },
                     "where": {
                         "type": "string",
-                        "description": "WHERE clause conditions (without WHERE keyword)"
+                        "description": "WHERE clause conditions (without WHERE keyword)",
                     },
                     "limit": {
                         "type": "integer",
-                        "description": "Maximum number of rows to return (default: 100)"
-                    }
+                        "description": "Maximum number of rows to return (default: 100)",
+                    },
                 },
-                "required": ["table_name"]
-            }
-        )
+                "required": ["table_name"],
+            },
+        ),
     ]
 
 
@@ -155,10 +140,7 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
                 ORDER BY TABLE_SCHEMA, TABLE_NAME
             """
             results = execute_query(query)
-            return [TextContent(
-                type="text",
-                text=json.dumps(results, indent=2, default=str)
-            )]
+            return [TextContent(type="text", text=json.dumps(results, indent=2, default=str))]
 
         elif name == "describe_table":
             table_name = arguments.get("table_name", "")
@@ -174,10 +156,7 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
                 ORDER BY ORDINAL_POSITION
             """
             results = execute_query(query, (table_name,))
-            return [TextContent(
-                type="text",
-                text=json.dumps(results, indent=2, default=str)
-            )]
+            return [TextContent(type="text", text=json.dumps(results, indent=2, default=str))]
 
         elif name == "execute_sql":
             query = arguments.get("query", "")
@@ -186,10 +165,7 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
             if len(results) > 100:
                 results = results[:100]
                 results.append({"_note": "Results truncated to 100 rows"})
-            return [TextContent(
-                type="text",
-                text=json.dumps(results, indent=2, default=str)
-            )]
+            return [TextContent(type="text", text=json.dumps(results, indent=2, default=str))]
 
         elif name == "read_data":
             table_name = arguments.get("table_name", "")
@@ -203,36 +179,23 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
                 query += f" WHERE {where}"
 
             results = execute_query(query)
-            return [TextContent(
-                type="text",
-                text=json.dumps(results, indent=2, default=str)
-            )]
+            return [TextContent(type="text", text=json.dumps(results, indent=2, default=str))]
 
         else:
-            return [TextContent(
-                type="text",
-                text=f"Unknown tool: {name}"
-            )]
+            return [TextContent(type="text", text=f"Unknown tool: {name}")]
 
     except Exception as e:
-        return [TextContent(
-            type="text",
-            text=f"Error: {str(e)}"
-        )]
+        return [TextContent(type="text", text=f"Error: {str(e)}")]
 
 
 async def main():
     """Run the MCP server."""
-    print(f"Starting MSSQL MCP Server (pyodbc)...", file=sys.stderr)
+    print("Starting MSSQL MCP Server (pyodbc)...", file=sys.stderr)
     print(f"Server: {os.environ.get('MSSQL_SERVER', 'localhost')}", file=sys.stderr)
     print(f"Database: {os.environ.get('MSSQL_DATABASE', 'master')}", file=sys.stderr)
 
     async with stdio_server() as (read_stream, write_stream):
-        await server.run(
-            read_stream,
-            write_stream,
-            server.create_initialization_options()
-        )
+        await server.run(read_stream, write_stream, server.create_initialization_options())
 
 
 if __name__ == "__main__":

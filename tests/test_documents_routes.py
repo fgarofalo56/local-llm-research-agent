@@ -10,12 +10,11 @@ Tests for:
 - Document deletion
 """
 
-import pytest
 from datetime import datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import pytest
 from fastapi import HTTPException
-from pydantic import BaseModel
 
 
 class MockDocument:
@@ -31,6 +30,7 @@ class MockDocument:
         chunk_count: int | None = 10,
         processing_status: str = "completed",
         error_message: str | None = None,
+        tags: str | None = None,
         created_at: datetime = None,
         processed_at: datetime = None,
     ):
@@ -42,6 +42,7 @@ class MockDocument:
         self.chunk_count = chunk_count
         self.processing_status = processing_status
         self.error_message = error_message
+        self.tags = tags
         self.created_at = created_at or datetime.utcnow()
         self.processed_at = processed_at
 
@@ -238,7 +239,7 @@ class TestUpdateTagsEndpoint:
     @pytest.mark.asyncio
     async def test_update_tags_not_found(self):
         """Test updating tags for non-existent document."""
-        from src.api.routes.documents import update_document_tags, DocumentTagsUpdate
+        from src.api.routes.documents import DocumentTagsUpdate, update_document_tags
 
         # Mock database session
         mock_db = AsyncMock()
@@ -259,7 +260,7 @@ class TestUpdateTagsEndpoint:
     @pytest.mark.asyncio
     async def test_update_tags_success(self):
         """Test successful tags update (placeholder implementation)."""
-        from src.api.routes.documents import update_document_tags, DocumentTagsUpdate
+        from src.api.routes.documents import DocumentTagsUpdate, update_document_tags
 
         # Mock document
         mock_doc = MockDocument()
@@ -336,7 +337,7 @@ class TestListDocuments:
 
         # Note: The actual implementation uses two queries,
         # so we need to handle both execute calls
-        result = await list_documents(skip=0, limit=2, db=mock_db)
+        await list_documents(skip=0, limit=2, db=mock_db)
 
         # Check that pagination was requested
         assert mock_db.execute.call_count == 2

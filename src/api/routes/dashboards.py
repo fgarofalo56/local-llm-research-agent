@@ -285,10 +285,26 @@ async def delete_dashboard(
     return {"status": "deleted", "dashboard_id": dashboard_id}
 
 
-@router.post("/{dashboard_id}/share")
+class ShareLinkRequest(BaseModel):
+    """Request model for creating a share link."""
+
+    expires_hours: int = 24
+    is_public: bool = True
+
+
+class ShareLinkResponse(BaseModel):
+    """Response model for share link."""
+
+    share_token: str
+    share_url: str
+    expires_at: datetime | None
+    is_public: bool
+
+
+@router.post("/{dashboard_id}/share", response_model=ShareLinkResponse)
 async def create_share_link(
     dashboard_id: int,
-    expires_hours: int = 24,
+    data: ShareLinkRequest | None = None,
     db: AsyncSession = Depends(get_db),
 ):
     """Create a share link for a dashboard."""
@@ -296,16 +312,81 @@ async def create_share_link(
     if not dashboard:
         raise HTTPException(status_code=404, detail="Dashboard not found")
 
+    expires_hours = data.expires_hours if data else 24
+
     # Generate token
     dashboard.share_token = secrets.token_urlsafe(32)
-    dashboard.share_expires_at = datetime.utcnow() + timedelta(hours=expires_hours)
+    if expires_hours > 0:
+        dashboard.share_expires_at = datetime.utcnow() + timedelta(hours=expires_hours)
+    else:
+        # Never expires
+        dashboard.share_expires_at = None
 
     await db.commit()
 
-    return {
-        "share_token": dashboard.share_token,
-        "expires_at": dashboard.share_expires_at,
-    }
+    # Build share URL (frontend will construct actual URL)
+    share_url = f"/shared/{dashboard.share_token}"
+
+    return ShareLinkResponse(
+        share_token=dashboard.share_token,
+        share_url=share_url,
+        expires_at=dashboard.share_expires_at,
+        is_public=data.is_public if data else True,
+    )
+
+
+@router.delete("/{dashboard_id}/share")
+async def revoke_share_link(
+    dashboard_id: int,
+    db: AsyncSession = Depends(get_db),
+):
+    """Revoke the share link for a dashboard."""
+    dashboard = await db.get(Dashboard, dashboard_id)
+    if not dashboard:
+        raise HTTPException(status_code=404, detail="Dashboard not found")
+
+    dashboard.share_token = None
+    dashboard.share_expires_at = None
+
+    await db.commit()
+
+    return {"status": "revoked", "dashboard_id": dashboard_id}
+
+
+@router.get("/shared/{share_token}", response_model=DashboardDetailResponse)
+async def get_shared_dashboard(
+    share_token: str,
+    db: AsyncSession = Depends(get_db),
+):
+    """Get a shared dashboard by its share token (public access)."""
+    query = (
+        select(Dashboard)
+        .options(selectinload(Dashboard.widgets))
+        .where(Dashboard.share_token == share_token)
+    )
+    result = await db.execute(query)
+    dashboard = result.scalar_one_or_none()
+
+    if not dashboard:
+        raise HTTPException(status_code=404, detail="Shared dashboard not found")
+
+    # Check if share has expired
+    if dashboard.share_expires_at and dashboard.share_expires_at < datetime.utcnow():
+        raise HTTPException(status_code=410, detail="Share link has expired")
+
+    return DashboardDetailResponse(
+        id=dashboard.id,
+        name=dashboard.name,
+        description=dashboard.description,
+        layout=dashboard.layout,
+        is_default=dashboard.is_default,
+        share_token=dashboard.share_token,
+        share_expires_at=dashboard.share_expires_at,
+        created_at=dashboard.created_at,
+        updated_at=dashboard.updated_at,
+        widget_count=len(dashboard.widgets),
+        widgets=[WidgetResponse.model_validate(w) for w in dashboard.widgets],
+    )
 
 
 # Widget Endpoints

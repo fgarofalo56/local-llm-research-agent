@@ -23,11 +23,14 @@ _redis_client: Redis | None = None
 _vector_store = None
 _embedder = None
 _mcp_manager = None
+_alert_scheduler = None
+_query_scheduler = None
 
 
 async def init_services() -> None:
     """Initialize all services on application startup."""
     global _engine, _session_factory, _redis_client, _vector_store, _embedder, _mcp_manager
+    global _alert_scheduler, _query_scheduler
 
     settings = get_settings()
 
@@ -90,10 +93,39 @@ async def init_services() -> None:
     except Exception as e:
         logger.warning("mcp_manager_init_failed", error=str(e))
 
+    # Initialize schedulers (only if database is available)
+    if _session_factory:
+        try:
+            from src.services.alert_scheduler import AlertScheduler
+            from src.services.query_scheduler import QueryScheduler
+
+            _alert_scheduler = AlertScheduler(session_factory=_session_factory)
+            await _alert_scheduler.start()
+            logger.info("alert_scheduler_initialized")
+
+            _query_scheduler = QueryScheduler(session_factory=_session_factory)
+            await _query_scheduler.start()
+            logger.info("query_scheduler_initialized")
+        except Exception as e:
+            logger.warning("schedulers_init_failed", error=str(e))
+
 
 async def shutdown_services() -> None:
     """Cleanup services on application shutdown."""
-    global _engine, _redis_client, _mcp_manager
+    global _engine, _redis_client, _mcp_manager, _alert_scheduler, _query_scheduler
+
+    # Stop schedulers first
+    if _alert_scheduler:
+        try:
+            await _alert_scheduler.stop()
+        except Exception as e:
+            logger.error("alert_scheduler_shutdown_error", error=str(e))
+
+    if _query_scheduler:
+        try:
+            await _query_scheduler.stop()
+        except Exception as e:
+            logger.error("query_scheduler_shutdown_error", error=str(e))
 
     if _mcp_manager:
         try:
@@ -176,3 +208,13 @@ def get_mcp_manager():
 def get_mcp_manager_optional():
     """Get MCP manager (optional, returns None if not available)."""
     return _mcp_manager
+
+
+def get_alert_scheduler():
+    """Get alert scheduler for dependency injection."""
+    return _alert_scheduler
+
+
+def get_query_scheduler():
+    """Get query scheduler for dependency injection."""
+    return _query_scheduler

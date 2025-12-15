@@ -4,6 +4,7 @@ import { api } from '@/api/client';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
+import { ThemeSelector } from '@/components/settings/ThemeSelector';
 import { Save, RefreshCw } from 'lucide-react';
 import type { HealthStatus } from '@/types';
 
@@ -38,6 +39,9 @@ export function SettingsPage() {
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold">Settings</h1>
+
+      {/* Theme Settings */}
+      <ThemeSelector />
 
       {/* Health Status */}
       <Card>

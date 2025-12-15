@@ -41,6 +41,7 @@ ENV PYTHONUNBUFFERED=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1 \
     # Application paths
     APP_HOME=/app \
+    PYTHONPATH=/app \
     MCP_MSSQL_PATH=/opt/mssql-mcp/dist/index.js \
     # Default LLM provider (expects external Ollama service)
     LLM_PROVIDER=ollama \

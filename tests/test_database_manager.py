@@ -4,11 +4,8 @@ Tests for Database Manager
 Tests the multi-database configuration functionality.
 """
 
-import json
 import tempfile
 from pathlib import Path
-
-import pytest
 
 from src.utils.database_manager import DatabaseConfig, DatabaseManager, get_database_manager
 
@@ -216,9 +213,7 @@ class TestGetDatabaseManager:
 
     def test_with_nonexistent_file(self):
         """Test with nonexistent config file."""
-        manager = get_database_manager(
-            config_file=Path("/nonexistent/path/databases.json")
-        )
+        manager = get_database_manager(config_file=Path("/nonexistent/path/databases.json"))
 
         # Should work with defaults
         assert manager.get_database("default") is not None

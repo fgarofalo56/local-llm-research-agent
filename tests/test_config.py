@@ -5,7 +5,6 @@ Tests the Settings class and configuration functions in src/utils/config.py.
 """
 
 import os
-import pytest
 from unittest.mock import patch
 
 from src.utils.config import Settings, get_settings, reload_settings
@@ -60,7 +59,9 @@ class TestSettings:
         for model in supported_models:
             with patch.dict(os.environ, {"OLLAMA_MODEL": model}, clear=False):
                 settings = Settings()
-                assert settings.validate_ollama_model() is True, f"Model {model} should be supported"
+                assert settings.validate_ollama_model() is True, (
+                    f"Model {model} should be supported"
+                )
 
     def test_validate_ollama_model_unsupported(self):
         """Test model validation for unsupported models."""
@@ -73,7 +74,9 @@ class TestSettings:
         for model in unsupported_models:
             with patch.dict(os.environ, {"OLLAMA_MODEL": model}, clear=False):
                 settings = Settings()
-                assert settings.validate_ollama_model() is False, f"Model {model} should not be supported"
+                assert settings.validate_ollama_model() is False, (
+                    f"Model {model} should not be supported"
+                )
 
     def test_get_mcp_env_basic(self):
         """Test MCP environment variable generation."""
@@ -216,7 +219,7 @@ class TestReloadSettings:
 
     def test_reload_clears_cache(self):
         """Test reload_settings clears the cache."""
-        settings1 = get_settings()
+        get_settings()  # Ensure cache is populated
 
         # Reload should return a new instance
         settings2 = reload_settings()
@@ -240,7 +243,7 @@ class TestSettingsIntegration:
             {"ollama_host": "http://lower:11434"},
             clear=False,
         ):
-            settings = Settings()
+            Settings()  # Verify Settings can be created with lowercase env vars
             # Both OLLAMA_HOST and ollama_host should work
             # The actual behavior depends on OS and pydantic-settings version
 

@@ -5,10 +5,7 @@ Tests the logging setup and logger functions in src/utils/logger.py.
 """
 
 import logging
-from unittest.mock import patch, MagicMock
-
-import pytest
-import structlog
+from unittest.mock import patch
 
 
 class TestSetupLogging:

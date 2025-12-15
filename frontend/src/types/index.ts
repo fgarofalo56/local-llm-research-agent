@@ -14,6 +14,10 @@ export interface Message {
   tool_calls: string | null;
   tokens_used: number | null;
   created_at: string;
+  metadata?: {
+    sources?: Array<{ name: string; url?: string; type: string }>;
+    [key: string]: unknown;
+  };
 }
 
 export interface Document {
@@ -25,6 +29,7 @@ export interface Document {
   chunk_count: number | null;
   processing_status: 'pending' | 'processing' | 'completed' | 'failed';
   error_message: string | null;
+  tags: string[];
   created_at: string;
   processed_at: string | null;
 }

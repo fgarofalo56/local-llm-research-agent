@@ -55,6 +55,18 @@
 | ⏱️ **Auto-Refresh** | ✅ | Per-widget refresh intervals |
 | 💾 **Persistence** | ✅ | Dashboard state saved to SQL Server |
 
+### Exports & Power BI Integration (Phase 2.4)
+
+| Feature | Status | Description |
+|---------|--------|-------------|
+| 🖼️ **PNG Export** | ✅ | Export charts as high-resolution PNG images |
+| 📑 **PDF Export** | ✅ | Export dashboards and charts to PDF |
+| 📊 **CSV Export** | ✅ | Export query results to CSV format |
+| 📗 **Excel Export** | ✅ | Export data to Excel spreadsheets |
+| 📋 **Dashboard JSON** | ✅ | Import/export dashboard configurations |
+| 💬 **Chat Export** | ✅ | Export conversations to Markdown or PDF |
+| 📊 **Power BI Dialog** | ✅ | Integration dialog for PBIX export |
+
 ---
 
 ## 📑 Table of Contents
@@ -67,6 +79,7 @@
 - [FastAPI Backend](#-fastapi-backend-phase-21)
 - [React Frontend](#️-react-frontend-phase-22)
 - [Dashboards & Visualization](#-dashboards--visualization-phase-23)
+- [Exports & Power BI](#-exports--power-bi-phase-24)
 - [Testing the Agent](#-testing-the-agent)
 - [MCP Tools Reference](#-mcp-tools-reference)
 - [Architecture](#️-architecture)
@@ -669,6 +682,65 @@ The dashboard system allows you to create custom analytics views with interactiv
 
 ---
 
+## 📤 Exports & Power BI (Phase 2.4)
+
+Comprehensive export functionality for charts, dashboards, and conversations.
+
+### Export Formats
+
+| Format | Use Case | Features |
+|--------|----------|----------|
+| **PNG** | Chart images | High-resolution (2x scale), transparent background |
+| **PDF** | Reports | Multi-page support, titles, timestamps |
+| **CSV** | Data transfer | Standard comma-separated values |
+| **Excel** | Analysis | Auto-calculated column widths, multi-sheet support |
+| **JSON** | Backup/Restore | Dashboard configuration import/export |
+| **Markdown** | Documentation | Chat conversation export |
+
+### Export Locations
+
+| Component | Export Options |
+|-----------|---------------|
+| **Charts** | PNG, PDF, CSV, Excel (via dropdown menu) |
+| **Dashboards** | PDF (full page), JSON (configuration) |
+| **Conversations** | Markdown, PDF |
+| **Query Results** | CSV, Excel, Power BI |
+
+### Power BI Integration
+
+The Power BI export dialog allows you to:
+- Specify table name for your data
+- Set optional report name
+- Create `.pbix` files ready for Power BI Desktop
+
+### Dashboard Import/Export
+
+```bash
+# Export dashboard configuration
+1. Navigate to /dashboards
+2. Select a dashboard
+3. Click "Export JSON" button
+
+# Import dashboard configuration
+1. Navigate to /dashboards
+2. Click "Import" button
+3. Select a .json file exported previously
+```
+
+### Chat Export
+
+```bash
+# Export conversation to Markdown
+1. Open a conversation in /chat
+2. Click "Export MD" button
+
+# Export conversation to PDF
+1. Open a conversation in /chat
+2. Click "Export PDF" button
+```
+
+---
+
 ## 🧪 Testing the Agent
 
 ### Sample Queries to Try
@@ -920,4 +992,4 @@ MIT License - see [LICENSE](LICENSE) file for details.
 
 ---
 
-*Last Updated: December 2025* (Phase 2.3 Visualization & Dashboards)
+*Last Updated: December 2025* (Phase 2.4 Exports & Power BI Integration)

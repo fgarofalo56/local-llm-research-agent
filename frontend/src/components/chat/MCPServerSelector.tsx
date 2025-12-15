@@ -1,9 +1,19 @@
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/api/client';
-import type { MCPServer } from '@/types';
 import { useChatStore } from '@/stores/chatStore';
 import * as Switch from '@radix-ui/react-switch';
 import { Database, Globe, BarChart } from 'lucide-react';
+
+interface MCPServerListItem {
+  id: string;
+  name: string;
+  enabled: boolean;
+}
+
+interface MCPServersResponse {
+  servers: MCPServerListItem[];
+  total: number;
+}
 
 const serverIcons: Record<string, typeof Database> = {
   mssql: Database,
@@ -12,12 +22,14 @@ const serverIcons: Record<string, typeof Database> = {
 };
 
 export function MCPServerSelector() {
-  const { data: servers } = useQuery({
+  const { data } = useQuery({
     queryKey: ['mcp-servers'],
-    queryFn: () => api.get<MCPServer[]>('/mcp-servers'),
+    queryFn: () => api.get<MCPServersResponse>('/mcp-servers'),
   });
 
   const { selectedMCPServers, toggleMCPServer } = useChatStore();
+
+  const servers = data?.servers;
 
   return (
     <div className="space-y-2">

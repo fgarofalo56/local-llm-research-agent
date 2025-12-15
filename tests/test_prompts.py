@@ -4,13 +4,11 @@ Tests for System Prompts
 Tests the system prompts and prompt generation in src/agent/prompts.py.
 """
 
-import pytest
-
 from src.agent.prompts import (
-    SYSTEM_PROMPT,
-    SYSTEM_PROMPT_READONLY,
-    SYSTEM_PROMPT_MINIMAL,
     EXPLANATION_MODE_SUFFIX,
+    SYSTEM_PROMPT,
+    SYSTEM_PROMPT_MINIMAL,
+    SYSTEM_PROMPT_READONLY,
     get_system_prompt,
 )
 
@@ -53,11 +51,15 @@ class TestSystemPromptConstants:
     def test_readonly_prompt_no_write_tools(self):
         """Test readonly prompt doesn't mention write operations as available."""
         # The readonly prompt should not list write tools as available
-        assert "insert_data" not in SYSTEM_PROMPT_READONLY.split("Available Tools")[1].split("##")[0]
+        assert (
+            "insert_data" not in SYSTEM_PROMPT_READONLY.split("Available Tools")[1].split("##")[0]
+        )
 
     def test_readonly_prompt_mentions_readonly(self):
         """Test readonly prompt mentions read-only mode."""
-        assert "READ-ONLY" in SYSTEM_PROMPT_READONLY or "read-only" in SYSTEM_PROMPT_READONLY.lower()
+        assert (
+            "READ-ONLY" in SYSTEM_PROMPT_READONLY or "read-only" in SYSTEM_PROMPT_READONLY.lower()
+        )
 
     def test_explanation_mode_contains_educational_content(self):
         """Test explanation mode suffix contains educational guidance."""

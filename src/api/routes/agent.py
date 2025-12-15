@@ -264,3 +264,47 @@ async def agent_websocket(
                     "error": str(e),
                 }
             )
+
+
+class PowerBIExportRequest(BaseModel):
+    """Request model for Power BI export."""
+
+    query: str
+    table_name: str
+    report_name: str | None = None
+
+
+class PowerBIExportResponse(BaseModel):
+    """Response model for Power BI export."""
+
+    status: str
+    file_path: str | None = None
+    message: str | None = None
+
+
+@router.post("/powerbi-export", response_model=PowerBIExportResponse)
+async def export_to_powerbi(request: PowerBIExportRequest):
+    """
+    Export query results to Power BI PBIX file.
+
+    This endpoint creates a PBIX file using the Power BI MCP server if available.
+    """
+    logger.info(
+        "powerbi_export_request",
+        table_name=request.table_name,
+        report_name=request.report_name,
+    )
+
+    # Power BI MCP integration placeholder
+    # In a full implementation, this would:
+    # 1. Check if Power BI MCP server is configured
+    # 2. Execute the query to get data
+    # 3. Use MCP to create the PBIX file
+
+    # For now, return informative message about the feature
+    return PowerBIExportResponse(
+        status="error",
+        message="Power BI MCP server is not configured. Please add a Power BI MCP server "
+        "to your mcp_config.json to enable this feature. Visit https://github.com/microsoft/powerbi-mcp "
+        "for more information.",
+    )

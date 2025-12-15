@@ -377,6 +377,8 @@ async def get_all_tags(
                 doc_tags = json.loads(doc.tags)
                 all_tags.update(doc_tags)
             except (json.JSONDecodeError, TypeError):
+                # Silently skip documents with malformed tags JSON to ensure
+                # the endpoint returns valid tags from other documents
                 pass
 
     sorted_tags = sorted(all_tags)

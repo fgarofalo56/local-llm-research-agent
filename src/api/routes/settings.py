@@ -411,8 +411,9 @@ def _is_running_in_docker() -> bool:
     try:
         with open("/proc/1/cgroup", "r") as f:
             return "docker" in f.read()
-    except Exception:
-        pass
+    except Exception as e:
+        # Failed to read cgroup file - likely not in Docker or permission issue
+        logger.debug("cgroup_check_failed", error=str(e))
     return False
 
 
@@ -456,8 +457,9 @@ async def start_foundry_local(request: FoundryStartRequest):
                     endpoint=settings.foundry_endpoint,
                     model=models[0] if models else None,
                 )
-        except Exception:
-            pass
+        except Exception as e:
+            # Foundry is not running or unreachable - this is expected, continue with start logic
+            logger.debug("foundry_check_failed", error=str(e), endpoint=settings.foundry_endpoint)
 
     # If running in Docker, we can't start Foundry - provide instructions
     if _is_running_in_docker():
@@ -510,8 +512,9 @@ async def start_foundry_local(request: FoundryStartRequest):
                         endpoint=settings.foundry_endpoint,
                         model=model,
                     )
-            except Exception:
-                pass
+            except Exception as e:
+                # Foundry not responding yet - this is expected during startup
+                logger.debug("foundry_startup_check_failed", error=str(e))
 
         return FoundryStartResponse(
             success=False,

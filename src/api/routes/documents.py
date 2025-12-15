@@ -107,7 +107,13 @@ async def list_documents(
                     if tag.lower() in [t.lower() for t in doc_tags]:
                         filtered_docs.append(doc)
                 except (json.JSONDecodeError, TypeError):
-                    pass
+                    # Skip documents with malformed tag JSON - this can happen if tags
+                    # were manually edited in the database or during migration
+                    logger.debug(
+                        "skipping_document_with_invalid_tags",
+                        document_id=doc.id,
+                        tags_value=doc.tags,
+                    )
         total = len(filtered_docs)
         # Apply pagination
         documents = filtered_docs[skip : skip + limit]

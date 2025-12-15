@@ -58,10 +58,7 @@ class MSSQLMCPConfig:
         mcp_path = settings.mcp_mssql_path
 
         # Determine command based on MCP path
-        if mcp_path == PYTHON_MCP_MARKER:
-            command = "python"
-        else:
-            command = "node"
+        command = "python" if mcp_path == PYTHON_MCP_MARKER else "node"
 
         return cls(
             command=command,

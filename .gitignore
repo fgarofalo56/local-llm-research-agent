@@ -293,6 +293,7 @@ data/
 *.gguf
 models/
 !models/.gitkeep
+!src/models/
 !src/api/models/
 
 # -------------------- Streamlit --------------------

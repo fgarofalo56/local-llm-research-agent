@@ -26,9 +26,7 @@ Environment variables:
     OLLAMA_MODEL: Model to use for tests (auto-detected if not set)
 """
 
-import asyncio
 import os
-from typing import AsyncGenerator
 
 import httpx
 import pytest
@@ -47,6 +45,16 @@ def ollama_available() -> bool:
         return response.status_code == 200
     except (httpx.ConnectError, httpx.TimeoutException):
         return False
+
+
+def mcp_available() -> bool:
+    """Check if MCP_MSSQL_PATH is configured and exists."""
+    from pathlib import Path
+
+    mcp_path = os.environ.get("MCP_MSSQL_PATH", "")
+    if not mcp_path:
+        return False
+    return Path(mcp_path).exists()
 
 
 def get_available_model() -> str | None:
@@ -81,12 +89,15 @@ def get_available_model() -> str | None:
     return None
 
 
-# Skip entire module if Ollama is not available
+# Skip entire module if Ollama or MCP is not available
 pytestmark = [
     pytest.mark.requires_ollama,
     pytest.mark.integration,
     pytest.mark.skipif(
         not ollama_available(), reason="Ollama is not available at the configured host"
+    ),
+    pytest.mark.skipif(
+        not mcp_available(), reason="MCP_MSSQL_PATH is not configured or does not exist"
     ),
 ]
 
@@ -332,7 +343,7 @@ class TestProviderHealthCheck:
     @pytest.mark.asyncio
     async def test_health_check_reports_healthy(self, ollama_host: str, ollama_model: str):
         """Test that health check reports Ollama as healthy."""
-        from src.utils.health import check_ollama_health, HealthStatus
+        from src.utils.health import HealthStatus, check_ollama_health
 
         # Ensure environment is set for the health check
         os.environ["OLLAMA_HOST"] = ollama_host

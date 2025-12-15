@@ -409,7 +409,7 @@ def _is_running_in_docker() -> bool:
         return True
     # Check cgroup
     try:
-        with open("/proc/1/cgroup", "r") as f:
+        with open("/proc/1/cgroup") as f:
             return "docker" in f.read()
     except Exception:
         pass
@@ -433,7 +433,7 @@ async def start_foundry_local(request: FoundryStartRequest):
 
     # SECURITY: Validate model name to prevent command injection
     # Only allow alphanumeric, hyphens, underscores, and dots
-    if not re.match(r'^[a-zA-Z0-9_\-\.]+$', model):
+    if not re.match(r"^[a-zA-Z0-9_\-\.]+$", model):
         return FoundryStartResponse(
             success=False,
             message="Invalid model name",
@@ -483,8 +483,8 @@ async def start_foundry_local(request: FoundryStartRequest):
         )
 
     try:
-        # Start foundry with the model (runs in background)
-        process = await asyncio.create_subprocess_exec(
+        # Start foundry with the model
+        _process = await asyncio.create_subprocess_exec(
             "foundry",
             "model",
             "run",
@@ -609,7 +609,7 @@ async def list_foundry_models_cli():
             models=models,
         )
 
-    except asyncio.TimeoutError:
+    except TimeoutError:
         return FoundryModelListResponse(
             success=False,
             models=[],

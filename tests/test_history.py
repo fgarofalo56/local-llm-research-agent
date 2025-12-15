@@ -174,9 +174,9 @@ class TestHistoryManager:
 
     def test_list_sessions_sorted_by_date(self, history_manager, sample_conversation):
         """Test that sessions are sorted by updated_at descending."""
-        id1 = history_manager.save_session(sample_conversation, title="First")
-        id2 = history_manager.save_session(sample_conversation, title="Second")
-        id3 = history_manager.save_session(sample_conversation, title="Third")
+        history_manager.save_session(sample_conversation, title="First")
+        history_manager.save_session(sample_conversation, title="Second")
+        history_manager.save_session(sample_conversation, title="Third")
 
         sessions = history_manager.list_sessions()
         # Most recent should be first

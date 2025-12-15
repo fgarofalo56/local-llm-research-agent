@@ -4,11 +4,8 @@ Tests for Database Manager
 Tests the multi-database configuration functionality.
 """
 
-import json
 import tempfile
 from pathlib import Path
-
-import pytest
 
 from src.utils.database_manager import DatabaseConfig, DatabaseManager, get_database_manager
 

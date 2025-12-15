@@ -11,6 +11,7 @@ Features:
 """
 
 import asyncio
+import contextlib
 from datetime import datetime
 
 import httpx
@@ -69,10 +70,8 @@ async def upload_document(file_content: bytes, filename: str) -> dict:
         except httpx.HTTPError as e:
             error_detail = str(e)
             if hasattr(e, "response") and e.response is not None:
-                try:
+                with contextlib.suppress(Exception):
                     error_detail = e.response.json().get("detail", str(e))
-                except Exception:
-                    pass
             return {"success": False, "error": error_detail}
 
 
@@ -164,34 +163,35 @@ def render_document_list():
 
         with col1:
             st.markdown(f"**{doc['original_filename']}**")
-            st.caption(format_file_size(doc['file_size']))
+            st.caption(format_file_size(doc["file_size"]))
 
         with col2:
-            st.markdown(get_status_badge(doc['processing_status']))
-            if doc['processing_status'] == 'failed' and doc.get('error_message'):
+            st.markdown(get_status_badge(doc["processing_status"]))
+            if doc["processing_status"] == "failed" and doc.get("error_message"):
                 st.caption(f"Error: {doc['error_message'][:50]}...")
 
         with col3:
-            if doc.get('chunk_count'):
-                st.metric("Chunks", doc['chunk_count'])
+            if doc.get("chunk_count"):
+                st.metric("Chunks", doc["chunk_count"])
             else:
                 st.caption("-")
 
         with col4:
             st.caption(f"Uploaded: {format_datetime(doc['created_at'])}")
-            if doc.get('processed_at'):
+            if doc.get("processed_at"):
                 st.caption(f"Processed: {format_datetime(doc['processed_at'])}")
 
         with col5:
             # Action buttons
-            if doc['processing_status'] == 'failed':
-                if st.button("🔄", key=f"reprocess_{doc['id']}", help="Reprocess"):
-                    result = run_async(reprocess_document(doc['id']))
-                    if result['success']:
-                        st.toast("Reprocessing started", icon="🔄")
-                        st.rerun()
-                    else:
-                        st.error(f"Failed: {result.get('error', 'Unknown error')}")
+            if doc["processing_status"] == "failed" and st.button(
+                "🔄", key=f"reprocess_{doc['id']}", help="Reprocess"
+            ):
+                result = run_async(reprocess_document(doc["id"]))
+                if result["success"]:
+                    st.toast("Reprocessing started", icon="🔄")
+                    st.rerun()
+                else:
+                    st.error(f"Failed: {result.get('error', 'Unknown error')}")
 
             if st.button("🗑️", key=f"delete_{doc['id']}", help="Delete"):
                 # Use session state for confirmation
@@ -203,8 +203,8 @@ def render_document_list():
             col_yes, col_no = st.columns(2)
             with col_yes:
                 if st.button("Yes, delete", key=f"confirm_yes_{doc['id']}", type="primary"):
-                    result = run_async(delete_document(doc['id']))
-                    if result['success']:
+                    result = run_async(delete_document(doc["id"]))
+                    if result["success"]:
                         st.toast("Document deleted", icon="✅")
                         del st.session_state[f"confirm_delete_{doc['id']}"]
                         st.rerun()
@@ -229,7 +229,7 @@ def render_upload_section():
     # File uploader
     uploaded_file = st.file_uploader(
         "Choose a file to upload",
-        type=[t.lstrip('.') for t in supported_types],
+        type=[t.lstrip(".") for t in supported_types],
         help="Select a document to upload for RAG processing",
         key="document_uploader",
     )
@@ -244,7 +244,7 @@ def render_upload_section():
                 content = uploaded_file.read()
                 result = run_async(upload_document(content, uploaded_file.name))
 
-            if result['success']:
+            if result["success"]:
                 st.success("Document uploaded successfully! Processing started.")
                 st.balloons()
                 # Clear the uploader by rerunning

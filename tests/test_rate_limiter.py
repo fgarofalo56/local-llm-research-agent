@@ -10,7 +10,6 @@ import time
 import pytest
 
 from src.utils.rate_limiter import (
-    RateLimitExceededError,
     RateLimitStats,
     TokenBucketRateLimiter,
     rate_limited,

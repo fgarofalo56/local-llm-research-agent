@@ -411,8 +411,9 @@ def _is_running_in_docker() -> bool:
     try:
         with open("/proc/1/cgroup") as f:
             return "docker" in f.read()
-    except Exception:
-        pass
+    except Exception as e:
+        # Failed to read cgroup file - likely not in Docker or permission issue
+        logger.debug("cgroup_check_failed", error=str(e))
     return False
 
 

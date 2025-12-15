@@ -409,7 +409,7 @@ def _is_running_in_docker() -> bool:
         return True
     # Check cgroup
     try:
-        with open("/proc/1/cgroup", "r") as f:
+        with open("/proc/1/cgroup") as f:
             return "docker" in f.read()
     except Exception as e:
         # Failed to read cgroup file - likely not in Docker or permission issue
@@ -434,7 +434,7 @@ async def start_foundry_local(request: FoundryStartRequest):
 
     # SECURITY: Validate model name to prevent command injection
     # Only allow alphanumeric, hyphens, underscores, and dots
-    if not re.match(r'^[a-zA-Z0-9_\-\.]+$', model):
+    if not re.match(r"^[a-zA-Z0-9_\-\.]+$", model):
         return FoundryStartResponse(
             success=False,
             message="Invalid model name",
@@ -458,8 +458,8 @@ async def start_foundry_local(request: FoundryStartRequest):
                     model=models[0] if models else None,
                 )
         except Exception as e:
-            # Foundry is not running or unreachable - this is expected, continue with start logic
-            logger.debug("foundry_check_failed", error=str(e), endpoint=settings.foundry_endpoint)
+            # Ignore connection errors - Foundry may not be running yet, will attempt to start it next
+            logger.debug("foundry_health_check_failed", error=str(e))
 
     # If running in Docker, we can't start Foundry - provide instructions
     if _is_running_in_docker():
@@ -486,7 +486,7 @@ async def start_foundry_local(request: FoundryStartRequest):
 
     try:
         # Start foundry with the model
-        process = await asyncio.create_subprocess_exec(
+        _process = await asyncio.create_subprocess_exec(
             "foundry",
             "model",
             "run",
@@ -494,6 +494,20 @@ async def start_foundry_local(request: FoundryStartRequest):
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
         )
+
+        # Check if process failed immediately
+        try:
+            await asyncio.wait_for(process.wait(), timeout=0.5)
+            # If we get here, process exited immediately (failed)
+            stderr = await process.stderr.read() if process.stderr else b""
+            return FoundryStartResponse(
+                success=False,
+                message="Foundry failed to start",
+                error=stderr.decode()[:200] if stderr else "Process exited immediately",
+            )
+        except asyncio.TimeoutError:
+            # Process is still running, which is good
+            pass
 
         # Wait a bit for startup (don't wait for completion as it runs in background)
         await asyncio.sleep(3)
@@ -513,7 +527,7 @@ async def start_foundry_local(request: FoundryStartRequest):
                         model=model,
                     )
             except Exception as e:
-                # Foundry not responding yet - this is expected during startup
+                # Ignore connection errors after startup - service may still be initializing, will prompt retry below
                 logger.debug("foundry_startup_check_failed", error=str(e))
 
         return FoundryStartResponse(
@@ -598,7 +612,7 @@ async def list_foundry_models_cli():
             models=models,
         )
 
-    except asyncio.TimeoutError:
+    except TimeoutError:
         return FoundryModelListResponse(
             success=False,
             models=[],

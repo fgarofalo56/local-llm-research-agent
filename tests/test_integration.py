@@ -21,9 +21,7 @@ class TestAgentWithOllamaProvider:
     @patch("src.agent.research_agent.MCPClientManager")
     @patch("src.providers.ollama.OllamaProvider.check_connection")
     @patch("src.agent.research_agent.Agent")
-    async def test_agent_chat_with_ollama(
-        self, mock_agent_cls, mock_check_conn, mock_mcp_cls
-    ):
+    async def test_agent_chat_with_ollama(self, mock_agent_cls, mock_check_conn, mock_mcp_cls):
         """Test complete chat flow with Ollama provider."""
         # Setup MCP mock
         mock_mcp = MagicMock()
@@ -37,7 +35,9 @@ class TestAgentWithOllamaProvider:
 
         # Setup agent mock
         mock_result = MagicMock()
-        mock_result.output = "The database has 5 tables: Users, Orders, Products, Categories, Reviews."
+        mock_result.output = (
+            "The database has 5 tables: Users, Orders, Products, Categories, Reviews."
+        )
 
         mock_agent_instance = MagicMock()
         mock_agent_instance.__aenter__ = AsyncMock(return_value=mock_agent_instance)
@@ -62,23 +62,21 @@ class TestAgentWithOllamaProvider:
         mock_mcp.get_mssql_server.return_value = MagicMock()
         mock_mcp_cls.return_value = mock_mcp
 
-        # Setup streaming mock
-        async def mock_stream_text():
-            chunks = ["Found ", "3 ", "tables: ", "Users, ", "Orders, ", "Products."]
-            for chunk in chunks:
-                yield chunk
-
-        mock_stream = MagicMock()
-        mock_stream.stream_text = mock_stream_text
-
-        mock_stream_context = MagicMock()
-        mock_stream_context.__aenter__ = AsyncMock(return_value=mock_stream)
-        mock_stream_context.__aexit__ = AsyncMock(return_value=None)
+        # Setup agent mock with run() method (chat_stream uses run() internally)
+        mock_result = MagicMock()
+        mock_result.output = "Found 3 tables: Users, Orders, Products."
+        mock_result.usage = MagicMock(
+            return_value=MagicMock(
+                request_tokens=50,
+                response_tokens=20,
+                total_tokens=70,
+            )
+        )
 
         mock_agent_instance = MagicMock()
         mock_agent_instance.__aenter__ = AsyncMock(return_value=mock_agent_instance)
         mock_agent_instance.__aexit__ = AsyncMock(return_value=None)
-        mock_agent_instance.run_stream = MagicMock(return_value=mock_stream_context)
+        mock_agent_instance.run = AsyncMock(return_value=mock_result)
         mock_agent_cls.return_value = mock_agent_instance
 
         # Test
@@ -100,9 +98,7 @@ class TestAgentWithFoundryProvider:
     @patch("src.agent.research_agent.MCPClientManager")
     @patch("src.providers.foundry.FoundryLocalProvider.check_connection")
     @patch("src.agent.research_agent.Agent")
-    async def test_agent_chat_with_foundry(
-        self, mock_agent_cls, mock_check_conn, mock_mcp_cls
-    ):
+    async def test_agent_chat_with_foundry(self, mock_agent_cls, mock_check_conn, mock_mcp_cls):
         """Test complete chat flow with Foundry Local provider."""
         # Setup MCP mock
         mock_mcp = MagicMock()
@@ -252,9 +248,7 @@ class TestErrorHandling:
         mock_agent_instance = MagicMock()
         mock_agent_instance.__aenter__ = AsyncMock(return_value=mock_agent_instance)
         mock_agent_instance.__aexit__ = AsyncMock(return_value=None)
-        mock_agent_instance.run = AsyncMock(
-            side_effect=Exception("MCP server not responding")
-        )
+        mock_agent_instance.run = AsyncMock(side_effect=Exception("MCP server not responding"))
         mock_agent_cls.return_value = mock_agent_instance
 
         agent = ResearchAgent()

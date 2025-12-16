@@ -1,8 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, Edit, Save, X, LayoutDashboard, Trash2 } from 'lucide-react';
+import { Plus, Edit, Save, X, LayoutDashboard, Trash2, Download, Upload } from 'lucide-react';
 import { api } from '@/api/client';
-import type { Dashboard, DashboardWidget, DashboardCreate } from '@/types/dashboard';
+import type { Dashboard, DashboardWidget, DashboardCreate, WidgetCreate } from '@/types/dashboard';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { DashboardGrid } from '@/components/dashboard/DashboardGrid';
@@ -10,6 +10,8 @@ import { useDashboardStore } from '@/stores/dashboardStore';
 import * as Select from '@radix-ui/react-select';
 import * as Dialog from '@radix-ui/react-dialog';
 import { ChevronDown, Check } from 'lucide-react';
+import { exportDashboardToJson, importDashboardFromJson } from '@/lib/exports/jsonExport';
+import { exportDashboardToPdf } from '@/lib/exports/pdfExport';
 
 interface DashboardsResponse {
   dashboards: Dashboard[];
@@ -38,6 +40,9 @@ export function DashboardsPage() {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [newDashboardName, setNewDashboardName] = useState('');
   const [newDashboardDescription, setNewDashboardDescription] = useState('');
+
+  const dashboardGridRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Fetch dashboards
   const { data: dashboardsData, isLoading: isDashboardsLoading } = useQuery({
@@ -128,6 +133,60 @@ export function DashboardsPage() {
     });
   };
 
+  // Import dashboard mutation
+  const importMutation = useMutation({
+    mutationFn: async (file: File) => {
+      const importData = await importDashboardFromJson(file);
+
+      // Create new dashboard
+      const newDashboard = await api.post<Dashboard>('/dashboards', {
+        name: `${importData.dashboard.name} (Imported)`,
+        description: importData.dashboard.description,
+      });
+
+      // Create widgets
+      for (const widget of importData.widgets) {
+        await api.post<DashboardWidget>(`/dashboards/${newDashboard.id}/widgets`, {
+          widget_type: widget.widget_type,
+          title: widget.title,
+          query: widget.query,
+          chart_config: widget.chart_config,
+          position: widget.position,
+          refresh_interval: widget.refresh_interval,
+        } as WidgetCreate);
+      }
+
+      return newDashboard;
+    },
+    onSuccess: (newDashboard) => {
+      queryClient.invalidateQueries({ queryKey: ['dashboards'] });
+      setCurrentDashboard(newDashboard);
+    },
+  });
+
+  const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      importMutation.mutate(file);
+    }
+    // Reset input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const handleExportJson = () => {
+    if (currentDashboard) {
+      exportDashboardToJson(currentDashboard, widgets);
+    }
+  };
+
+  const handleExportPdf = async () => {
+    if (dashboardGridRef.current && currentDashboard) {
+      await exportDashboardToPdf(dashboardGridRef.current, currentDashboard.name);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -178,6 +237,15 @@ export function DashboardsPage() {
 
         {/* Actions */}
         <div className="flex gap-2">
+          {/* Hidden file input for import */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".json"
+            className="hidden"
+            onChange={handleImport}
+          />
+
           {isEditing ? (
             <>
               <Button variant="outline" onClick={handleCancel}>
@@ -196,6 +264,23 @@ export function DashboardsPage() {
             <>
               {currentDashboard && (
                 <>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={importMutation.isPending}
+                  >
+                    <Upload className="mr-2 h-4 w-4" />
+                    {importMutation.isPending ? 'Importing...' : 'Import'}
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={handleExportJson}>
+                    <Download className="mr-2 h-4 w-4" />
+                    Export JSON
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={handleExportPdf}>
+                    <Download className="mr-2 h-4 w-4" />
+                    Export PDF
+                  </Button>
                   <Button variant="outline" onClick={() => setShowDeleteDialog(true)}>
                     <Trash2 className="mr-2 h-4 w-4" />
                     Delete
@@ -230,7 +315,9 @@ export function DashboardsPage() {
               <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
             </div>
           ) : (
-            <DashboardGrid />
+            <div ref={dashboardGridRef}>
+              <DashboardGrid />
+            </div>
           )}
         </div>
       ) : (

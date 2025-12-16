@@ -8,4 +8,5 @@ export { KPICard } from './KPICard';
 export { DataTable } from './DataTable';
 export { ChartRenderer } from './ChartRenderer';
 export type { ChartConfig } from './ChartRenderer';
+export { QueryResultPanel } from './QueryResultPanel';
 export { useChartSuggestion } from '@/hooks/useChartSuggestion';

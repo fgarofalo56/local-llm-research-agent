@@ -1,12 +1,18 @@
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/api/client';
-import type { MCPServer } from '@/types';
 import { useChatStore } from '@/stores/chatStore';
 import * as Switch from '@radix-ui/react-switch';
 import { Database, Globe, BarChart } from 'lucide-react';
 
+interface MCPServerListItem {
+  id: string;
+  name: string;
+  enabled: boolean;
+}
+
 interface MCPServersResponse {
-  servers: MCPServer[];
+  servers: MCPServerListItem[];
+  total: number;
 }
 
 const serverIcons: Record<string, typeof Database> = {
@@ -23,6 +29,8 @@ export function MCPServerSelector() {
 
   const servers = data?.servers ?? [];
   const { selectedMCPServers, toggleMCPServer } = useChatStore();
+
+  const servers = data?.servers;
 
   return (
     <div className="space-y-2">

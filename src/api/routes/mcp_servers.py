@@ -21,13 +21,16 @@ class MCPServerResponse(BaseModel):
 
     id: str
     name: str
-    description: str
+    description: str | None
     type: str
     command: str | None
     args: list[str]
     url: str | None
     enabled: bool
     built_in: bool
+    # Additional fields for frontend compatibility
+    status: str = "connected"  # 'connected', 'disconnected', 'error'
+    tools: list[str] = []  # List of available tool names
 
 
 class MCPServerCreate(BaseModel):
@@ -72,8 +75,29 @@ async def list_mcp_servers(
         return MCPServerListResponse(servers=[], total=0)
 
     servers = mcp_manager.list_servers()
-    return MCPServerListResponse(
-        servers=[
+
+    # Build response with status and tools info
+    server_responses = []
+    for s in servers:
+        # Determine status based on enabled flag
+        status = "connected" if s.enabled else "disconnected"
+
+        # Get tools if available (placeholder - would need to query MCP server)
+        tools: list[str] = []
+        if s.id == "mssql" and s.enabled:
+            # Default MSSQL tools
+            tools = [
+                "list_tables",
+                "describe_table",
+                "read_data",
+                "insert_data",
+                "update_data",
+                "create_table",
+                "drop_table",
+                "create_index",
+            ]
+
+        server_responses.append(
             MCPServerResponse(
                 id=s.id,
                 name=s.name,
@@ -84,9 +108,13 @@ async def list_mcp_servers(
                 url=s.url,
                 enabled=s.enabled,
                 built_in=s.built_in,
+                status=status,
+                tools=tools,
             )
-            for s in servers
-        ],
+        )
+
+    return MCPServerListResponse(
+        servers=server_responses,
         total=len(servers),
     )
 

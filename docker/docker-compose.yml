@@ -7,13 +7,14 @@
 # PROFILES - Choose what to start
 # =============================================================================
 #
-# Profile       | Services Started                    | Use Case
-# --------------|-------------------------------------|----------------------------------
-# (default)     | mssql, redis-stack, agent-ui        | Basic usage with web UI
-# --profile api | + api                               | Add FastAPI backend
-# --profile cli | + agent-cli                         | Add interactive CLI
-# --profile full| mssql, redis, agent-ui, api         | Everything (production-like)
-# --profile init| + mssql-tools                       | Database initialization
+# Profile           | Services Started                        | Use Case
+# ------------------|----------------------------------------|----------------------------------
+# (default)         | mssql, redis-stack, agent-ui           | Basic usage with Streamlit UI
+# --profile api     | + api                                  | Add FastAPI backend
+# --profile frontend| + api, frontend                        | Add React frontend (needs api)
+# --profile cli     | + agent-cli                            | Add interactive CLI
+# --profile full    | mssql, redis, agent-ui, api, frontend  | Everything (production-like)
+# --profile init    | + mssql-tools                          | Database initialization
 #
 # =============================================================================
 # QUICK START COMMANDS (run from project root with --env-file .env)
@@ -25,11 +26,14 @@
 #   docker-compose -f docker/docker-compose.yml --env-file .env up -d
 #   docker-compose -f docker/docker-compose.yml --env-file .env --profile init up mssql-tools
 #
-# Start everything:
+# Start everything (including React frontend):
 #   docker-compose -f docker/docker-compose.yml --env-file .env --profile full up -d
 #
 # Start with API only:
 #   docker-compose -f docker/docker-compose.yml --env-file .env --profile api up -d
+#
+# Start with React frontend (includes API):
+#   docker-compose -f docker/docker-compose.yml --env-file .env --profile frontend up -d
 #
 # Run CLI interactively:
 #   docker-compose -f docker/docker-compose.yml --env-file .env --profile cli run --rm agent-cli
@@ -47,10 +51,12 @@
 # redis-stack  | local-agent-redis          | 6379, 8001*     | Redis + Vector Search
 # agent-ui     | local-agent-streamlit-ui   | 8501            | Streamlit Web UI
 # api          | local-agent-api            | 8000            | FastAPI Backend
+# frontend     | local-agent-frontend       | 5173**          | React Frontend
 # agent-cli    | local-agent-cli            | -               | Interactive CLI
 # mssql-tools  | local-agent-mssql-tools    | -               | DB Init (runs once)
 #
 # * RedisInsight port configurable via REDIS_INSIGHT_PORT
+# ** React frontend port configurable via FRONTEND_PORT
 #
 # =============================================================================
 # CONNECTION DETAILS
@@ -67,9 +73,10 @@
 #   RedisInsight GUI: http://localhost:8001 (or REDIS_INSIGHT_PORT)
 #
 # Web Interfaces:
-#   Streamlit UI: http://localhost:8501
-#   FastAPI Docs: http://localhost:8000/docs
-#   API Health:   http://localhost:8000/health
+#   React Frontend: http://localhost:5173 (or FRONTEND_PORT)
+#   Streamlit UI:   http://localhost:8501
+#   FastAPI Docs:   http://localhost:8000/docs
+#   API Health:     http://localhost:8000/api/health
 #
 # =============================================================================
 # ENVIRONMENT VARIABLES (via .env)
@@ -183,8 +190,8 @@ services:
       SQL_USERNAME: sa
       SQL_PASSWORD: "${MSSQL_SA_PASSWORD:-LocalLLM@2024!}"
       SQL_TRUST_SERVER_CERTIFICATE: "true"
-      # MCP Configuration
-      MCP_MSSQL_PATH: /opt/mssql-mcp/dist/index.js
+      # MCP Configuration - use Python-based MCP server (supports SQL auth)
+      MCP_MSSQL_PATH: python-mcp
       MCP_MSSQL_READONLY: "${MCP_MSSQL_READONLY:-false}"
       # Application settings
       LOG_LEVEL: "${LOG_LEVEL:-INFO}"
@@ -219,8 +226,8 @@ services:
       SQL_USERNAME: sa
       SQL_PASSWORD: "${MSSQL_SA_PASSWORD:-LocalLLM@2024!}"
       SQL_TRUST_SERVER_CERTIFICATE: "true"
-      # MCP Configuration
-      MCP_MSSQL_PATH: /opt/mssql-mcp/dist/index.js
+      # MCP Configuration - use Python-based MCP server (supports SQL auth)
+      MCP_MSSQL_PATH: python-mcp
       MCP_MSSQL_READONLY: "${MCP_MSSQL_READONLY:-false}"
       # Application settings
       LOG_LEVEL: "${LOG_LEVEL:-INFO}"
@@ -287,8 +294,8 @@ services:
       SQL_TRUST_SERVER_CERTIFICATE: "true"
       # Redis
       REDIS_URL: "redis://redis-stack:6379"
-      # MCP Configuration
-      MCP_MSSQL_PATH: /opt/mssql-mcp/dist/index.js
+      # MCP Configuration - use Python-based MCP server (supports SQL auth)
+      MCP_MSSQL_PATH: "python-mcp"
       MCP_MSSQL_READONLY: "${MCP_MSSQL_READONLY:-false}"
       MCP_CONFIG_PATH: "/app/mcp_config.json"
       # RAG Settings
@@ -315,6 +322,26 @@ services:
     profiles:
       - api   # Runs with: docker compose --profile api up
       - full  # Runs with: docker compose --profile full up
+
+  # ==========================================================================
+  # React Frontend Service
+  # ==========================================================================
+
+  frontend:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.frontend
+    container_name: local-agent-frontend
+    depends_on:
+      - api
+    ports:
+      - "${FRONTEND_PORT:-5173}:80"
+    restart: unless-stopped
+    networks:
+      - llm-network
+    profiles:
+      - frontend  # Runs with: docker compose --profile frontend up
+      - full      # Runs with: docker compose --profile full up
 
 volumes:
   mssql_data:

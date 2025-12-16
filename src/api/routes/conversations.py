@@ -172,6 +172,46 @@ async def get_conversation(
     )
 
 
+class MessagesListResponse(BaseModel):
+    """Response model for messages list."""
+
+    messages: list[MessageResponse]
+    total: int
+
+
+@router.get("/{conversation_id}/messages", response_model=MessagesListResponse)
+async def list_messages(
+    conversation_id: int,
+    skip: int = 0,
+    limit: int = 100,
+    db: AsyncSession = Depends(get_db),
+):
+    """List all messages for a conversation."""
+    conversation = await db.get(Conversation, conversation_id)
+    if not conversation:
+        raise HTTPException(status_code=404, detail="Conversation not found")
+
+    query = (
+        select(Message)
+        .where(Message.conversation_id == conversation_id)
+        .order_by(Message.created_at)
+    )
+
+    # Get total count
+    count_result = await db.execute(query)
+    total = len(count_result.scalars().all())
+
+    # Get paginated results
+    query = query.offset(skip).limit(limit)
+    result = await db.execute(query)
+    messages = result.scalars().all()
+
+    return MessagesListResponse(
+        messages=[MessageResponse.model_validate(msg) for msg in messages],
+        total=total,
+    )
+
+
 @router.post("/{conversation_id}/messages", response_model=MessageResponse)
 async def add_message(
     conversation_id: int,

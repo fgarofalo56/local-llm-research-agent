@@ -32,8 +32,19 @@ COPY uv.lock* ./
 COPY README.md ./
 COPY src/ src/
 
-# Install dependencies (use pip for more reliable builds in Docker)
+# Install dependencies
+# No longer using Docling/HuggingFace - using pypdf and python-docx instead
+ENV UV_HTTP_TIMEOUT=300
+
 RUN uv pip install --system -e .
+
+# Install Python-based MSSQL MCP Server (supports SQL Server authentication)
+# This replaces the Node.js Azure-Samples version which only supports Azure AD
+RUN uv pip install --system microsoft_sql_server_mcp
+
+# Set MCP_MSSQL_PATH to use the Python MCP server module
+# The mssql_config.py will detect this and use python -m mssql_mcp_server
+ENV MCP_MSSQL_PATH=python-mcp
 
 # Create data directories
 RUN mkdir -p /app/data/uploads /app/data/models

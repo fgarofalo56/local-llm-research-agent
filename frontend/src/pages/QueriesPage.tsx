@@ -7,11 +7,11 @@ import { Button } from '@/components/ui/Button';
 
 interface Query {
   id: number;
-  sql: string;
+  generated_sql: string | null;
   natural_language: string | null;
   is_favorite: boolean;
-  execution_count: number;
-  avg_execution_time: number | null;
+  result_row_count: number | null;
+  execution_time_ms: number | null;
   created_at: string;
 }
 
@@ -78,14 +78,16 @@ export function QueriesPage() {
                     {query.natural_language || 'SQL Query'}
                   </span>
                   <span className="flex items-center gap-4 text-xs text-muted-foreground">
-                    <span className="flex items-center gap-1">
-                      <Play className="h-3 w-3" />
-                      {query.execution_count}x
-                    </span>
-                    {query.avg_execution_time && (
+                    {query.result_row_count !== null && (
+                      <span className="flex items-center gap-1">
+                        <Play className="h-3 w-3" />
+                        {query.result_row_count} rows
+                      </span>
+                    )}
+                    {query.execution_time_ms !== null && (
                       <span className="flex items-center gap-1">
                         <Clock className="h-3 w-3" />
-                        {query.avg_execution_time.toFixed(0)}ms
+                        {query.execution_time_ms}ms
                       </span>
                     )}
                   </span>
@@ -93,7 +95,7 @@ export function QueriesPage() {
               </CardHeader>
               <CardContent>
                 <pre className="overflow-x-auto rounded-md bg-muted p-3 text-sm">
-                  <code>{query.sql}</code>
+                  <code>{query.generated_sql || 'No SQL generated'}</code>
                 </pre>
               </CardContent>
             </Card>

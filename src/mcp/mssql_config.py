@@ -4,6 +4,10 @@ MSSQL MCP Server Configuration
 Handles building configuration for the MSSQL MCP Server including
 environment variable resolution and validation.
 Supports SQL Auth, Windows Auth, and Azure AD authentication.
+
+Supports both:
+- Python-based MCP server (microsoft_sql_server_mcp) for SQL Server authentication
+- Node.js-based Azure-Samples MCP server for Azure AD authentication
 """
 
 from dataclasses import dataclass, field
@@ -13,6 +17,9 @@ from src.utils.config import SqlAuthType, settings
 from src.utils.logger import get_logger
 
 logger = get_logger(__name__)
+
+# Marker value for Python-based MCP server
+PYTHON_MCP_MARKER = "python-mcp"
 
 
 @dataclass
@@ -48,8 +55,14 @@ class MSSQLMCPConfig:
     @classmethod
     def from_settings(cls) -> "MSSQLMCPConfig":
         """Create config from application settings."""
+        mcp_path = settings.mcp_mssql_path
+
+        # Determine command based on MCP path
+        command = "python" if mcp_path == PYTHON_MCP_MARKER else "node"
+
         return cls(
-            mcp_path=settings.mcp_mssql_path,
+            command=command,
+            mcp_path=mcp_path,
             server_name=settings.sql_server_host,
             database_name=settings.sql_database_name,
             trust_server_certificate=settings.sql_trust_server_certificate,
@@ -62,6 +75,11 @@ class MSSQLMCPConfig:
             azure_client_id=settings.azure_client_id,
             azure_client_secret=settings.azure_client_secret,
         )
+
+    @property
+    def is_python_mcp(self) -> bool:
+        """Check if using Python-based MCP server."""
+        return self.mcp_path == PYTHON_MCP_MARKER
 
     @property
     def is_azure_sql(self) -> bool:
@@ -105,6 +123,9 @@ class MSSQLMCPConfig:
         # MCP path validation
         if not self.mcp_path:
             errors.append("MCP_MSSQL_PATH is not set")
+        elif self.mcp_path == PYTHON_MCP_MARKER:
+            # Python MCP server - no path validation needed
+            pass
         elif not Path(self.mcp_path).exists():
             errors.append(f"MCP_MSSQL_PATH does not exist: {self.mcp_path}")
 
@@ -155,6 +176,28 @@ class MSSQLMCPConfig:
         Returns:
             Dictionary of environment variables
         """
+        if self.is_python_mcp:
+            # Python-based MCP server (microsoft_sql_server_mcp)
+            # Uses different environment variable names
+            # Note: pymssql doesn't support encrypt parameter the same way
+            env = {
+                "MSSQL_SERVER": self.server_name,
+                "MSSQL_DATABASE": self.database_name,
+            }
+
+            # Add authentication-specific environment variables
+            if self.auth_type == SqlAuthType.SQL_AUTH:
+                env["MSSQL_USER"] = self.username
+                env["MSSQL_PASSWORD"] = self.password
+            elif self.auth_type == SqlAuthType.WINDOWS_AUTH:
+                env["MSSQL_WINDOWS_AUTH"] = "true"
+
+            # Note: pymssql doesn't support encrypt parameter directly
+            # The connection uses TLS automatically when server requires it
+
+            return env
+
+        # Node.js-based MCP server (Azure-Samples)
         env = {
             "SERVER_NAME": self.server_name,
             "DATABASE_NAME": self.database_name,
@@ -200,6 +243,9 @@ class MSSQLMCPConfig:
 
     def get_args(self) -> list[str]:
         """Get command arguments for MCP server."""
+        if self.is_python_mcp:
+            # Use our custom pyodbc-based MCP server
+            return ["-m", "src.mcp.pyodbc_mssql_server"]
         return [self.mcp_path]
 
     def log_config(self, mask_credentials: bool = True) -> None:
@@ -213,6 +259,7 @@ class MSSQLMCPConfig:
             readonly=self.readonly,
             encrypt=self.encrypt,
             mcp_path=self.mcp_path,
+            is_python_mcp=self.is_python_mcp,
             is_azure_sql=self.is_azure_sql,
             has_sql_credentials=bool(self.username),
             has_azure_credentials=bool(self.azure_client_id),
@@ -227,6 +274,7 @@ class MSSQLMCPConfig:
             "readonly": self.readonly,
             "encrypt": self.encrypt,
             "is_azure": self.is_azure_sql,
+            "mcp_type": "python" if self.is_python_mcp else "node",
         }
 
 

@@ -20,8 +20,27 @@ A 100% local smart chat agent for SQL Server data analytics research. Uses Ollam
 
 ## Project Phases
 - **Phase 1** (Complete): CLI + Streamlit + SQL Agent + Docker SQL Server
-- **Phase 2.1** (In Progress): Backend Infrastructure & RAG Pipeline
-- **Phase 2.2** (Planned): React UI + Full Stack
+- **Phase 2.1** (Complete): Backend Infrastructure + RAG Pipeline + FastAPI
+- **Phase 2.2** (Complete): React UI + Frontend Integration + WebSocket Chat
+- **Phase 2.3** (Complete): Dashboard Builder + Advanced Visualizations
+- **Phase 2.4** (Complete): Exports + Power BI MCP Integration
+
+## Phase 2.4 Export Features
+- PNG Export: High-resolution chart images (html2canvas)
+- PDF Export: Multi-page reports (jspdf)
+- CSV Export: Standard data export
+- Excel Export: Spreadsheets with auto-column widths (xlsx)
+- Dashboard JSON: Import/export configurations
+- Chat Export: Markdown/PDF conversation exports
+- Power BI Dialog: PBIX file creation interface
+
+## Frontend Tech Stack (Phase 2.2+)
+- **Framework**: React 19 + TypeScript + Vite
+- **State Management**: TanStack Query (server), Zustand (client)
+- **Styling**: Tailwind CSS
+- **Charts**: Recharts
+- **Dashboard Layout**: react-grid-layout
+- **Export Libraries**: html2canvas, jspdf, xlsx, file-saver
 
 ## Archon Project ID
 ```

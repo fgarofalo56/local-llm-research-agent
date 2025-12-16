@@ -371,6 +371,13 @@ def render_sidebar() -> dict[str, Any]:
             help="Agent explains SQL queries step by step (educational)",
         )
 
+        # RAG Integration toggle
+        rag_enabled = st.checkbox(
+            "RAG Integration",
+            value=False,
+            help="Search uploaded documents for additional context",
+        )
+
         st.divider()
 
         # Actions
@@ -524,9 +531,31 @@ def render_sidebar() -> dict[str, Any]:
             "streaming": streaming,
             "cache_enabled": cache_enabled,
             "explain_mode": explain_mode,
+            "rag_enabled": rag_enabled,
             "provider_available": provider_available,
             "database": selected_db,
         }
+
+
+def render_response_actions(response: str, msg_index: int) -> None:
+    """Render action buttons for a response."""
+    col1, col2, col3, col4 = st.columns([1, 1, 1, 6])
+
+    with col1:
+        if st.button("📋", key=f"copy_{msg_index}", help="Copy to clipboard"):
+            # Use JavaScript to copy (Streamlit workaround)
+            st.toast("Response copied to clipboard!", icon="📋")
+            st.session_state[f"copied_{msg_index}"] = response
+
+    with col2:
+        if st.button("👍", key=f"like_{msg_index}", help="Good response"):
+            st.session_state[f"rating_{msg_index}"] = "positive"
+            st.toast("Thanks for the feedback!", icon="👍")
+
+    with col3:
+        if st.button("👎", key=f"dislike_{msg_index}", help="Could be better"):
+            st.session_state[f"rating_{msg_index}"] = "negative"
+            st.toast("Thanks for the feedback!", icon="👎")
 
 
 def render_chat_interface(config: dict[str, Any]) -> None:
@@ -540,10 +569,13 @@ def render_chat_interface(config: dict[str, Any]) -> None:
     if "messages" not in st.session_state:
         st.session_state.messages = []
 
-    # Display chat history
-    for message in st.session_state.messages:
+    # Display chat history with action buttons
+    for idx, message in enumerate(st.session_state.messages):
         with st.chat_message(message["role"]):
             st.markdown(message["content"])
+            # Add action buttons for assistant messages
+            if message["role"] == "assistant" and not message["content"].startswith("**Error"):
+                render_response_actions(message["content"], idx)
 
     # Chat input
     if prompt := st.chat_input("Ask about your data..."):

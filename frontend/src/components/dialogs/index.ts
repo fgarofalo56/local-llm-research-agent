@@ -1,2 +1,2 @@
 export { PinToDashboardDialog } from './PinToDashboardDialog';
-export { KeyboardShortcutsDialog } from './KeyboardShortcutsDialog';
+export { PowerBIExportDialog } from './PowerBIExportDialog';

@@ -27,6 +27,7 @@ This is a **100% local** smart chat agent for SQL Server data analytics research
 | **Phase 2.2** | ✅ Complete | React UI + Frontend Integration + WebSocket Chat |
 | **Phase 2.3** | ✅ Complete | Dashboard Builder + Advanced Visualizations |
 | **Phase 2.4** | ✅ Complete | Exports + Power BI MCP Integration |
+| **Phase 3** | ✅ Complete | Apache Superset BI Platform Integration |
 
 ---
 
@@ -697,6 +698,7 @@ async def test_mssql_connection():
 | FastAPI | 8000 | http://localhost:8000 |
 | Streamlit | 8501 | http://localhost:8501 |
 | RedisInsight | 8001 | http://localhost:8001 |
+| Superset | 8088 | http://localhost:8088 |
 | SQL Server | 1433 | localhost:1433 |
 
 ### Streamlit Multi-Page App
@@ -966,6 +968,63 @@ interface ChatState {
   // Message ratings
   messageRatings: Record<number, 'up' | 'down' | null>;
 }
+```
+
+---
+
+## Phase 3 Features (Implemented)
+
+### Apache Superset Integration
+
+| Feature | Description |
+|---------|-------------|
+| **Superset Container** | Apache Superset 3.1.0 with SQL Server driver |
+| **SQL Lab** | Full SQL IDE for data exploration |
+| **Dashboard Embedding** | Embed Superset dashboards in React app |
+| **Guest Token Auth** | Secure iframe embedding with guest tokens |
+| **Health Integration** | Superset status in health checks |
+
+### Superset API Endpoints
+
+| Route | Description |
+|-------|-------------|
+| `GET /api/superset/health` | Check Superset status |
+| `GET /api/superset/dashboards` | List all dashboards |
+| `GET /api/superset/embed/{id}` | Get embed URL with guest token |
+| `GET /api/superset/charts` | List all charts |
+| `GET /api/superset/databases` | List database connections |
+
+### Frontend Components (Phase 3)
+
+```
+frontend/src/
+├── components/
+│   └── superset/
+│       ├── SupersetEmbed.tsx    # Iframe dashboard embedding
+│       └── index.ts
+└── pages/
+    └── SupersetPage.tsx         # Superset dashboards page
+```
+
+### Docker Profiles
+
+```bash
+# Start with Superset
+docker-compose -f docker/docker-compose.yml --env-file .env --profile superset up -d
+
+# Start everything including Superset
+docker-compose -f docker/docker-compose.yml --env-file .env --profile full up -d
+```
+
+### Environment Variables (Phase 3)
+
+```bash
+# Superset Configuration
+SUPERSET_URL=http://localhost:8088
+SUPERSET_SECRET_KEY=your_secure_key
+SUPERSET_ADMIN_USER=admin
+SUPERSET_ADMIN_PASSWORD=LocalLLM@2024!
+SUPERSET_PORT=8088
 ```
 
 ---

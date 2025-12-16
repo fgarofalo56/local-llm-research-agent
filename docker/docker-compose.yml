@@ -54,6 +54,7 @@
 # frontend     | local-agent-frontend       | 5173**          | React Frontend
 # agent-cli    | local-agent-cli            | -               | Interactive CLI
 # mssql-tools  | local-agent-mssql-tools    | -               | DB Init (runs once)
+# superset     | local-agent-superset       | 8088            | Apache Superset BI
 #
 # * RedisInsight port configurable via REDIS_INSIGHT_PORT
 # ** React frontend port configurable via FRONTEND_PORT
@@ -77,6 +78,7 @@
 #   Streamlit UI:   http://localhost:8501
 #   FastAPI Docs:   http://localhost:8000/docs
 #   API Health:     http://localhost:8000/api/health
+#   Superset BI:    http://localhost:8088
 #
 # =============================================================================
 # ENVIRONMENT VARIABLES (via .env)
@@ -308,6 +310,10 @@ services:
       # Application settings
       LOG_LEVEL: "${LOG_LEVEL:-INFO}"
       DEBUG: "${DEBUG:-false}"
+      # Superset connection (for API to call Superset)
+      SUPERSET_URL: "http://superset:8088"
+      SUPERSET_ADMIN_USER: "${SUPERSET_ADMIN_USER:-admin}"
+      SUPERSET_ADMIN_PASSWORD: "${SUPERSET_ADMIN_PASSWORD:-LocalLLM@2024!}"
     ports:
       - "${API_PORT:-8000}:8000"
     volumes:
@@ -343,6 +349,59 @@ services:
       - frontend  # Runs with: docker compose --profile frontend up
       - full      # Runs with: docker compose --profile full up
 
+  # ==========================================================================
+  # Apache Superset - Enterprise BI Platform
+  # ==========================================================================
+  # Phase 3: Provides SQL Lab, scheduled reports, and embeddable dashboards
+  # Access at http://localhost:8088 with admin credentials from .env
+
+  superset:
+    build:
+      context: .
+      dockerfile: Dockerfile.superset
+    container_name: local-agent-superset
+    depends_on:
+      mssql:
+        condition: service_healthy
+      redis-stack:
+        condition: service_healthy
+    environment:
+      SUPERSET_SECRET_KEY: "${SUPERSET_SECRET_KEY:-localllm_default_secret_key_change_me_in_production}"
+      SUPERSET_ADMIN_PASSWORD: "${SUPERSET_ADMIN_PASSWORD:-LocalLLM@2024!}"
+      SQLALCHEMY_DATABASE_URI: "sqlite:////app/superset_home/superset.db"
+      SUPERSET_LOAD_EXAMPLES: "no"
+      REDIS_HOST: "redis-stack"
+      REDIS_PORT: "6379"
+      # Pass SQL Server credentials for datasource setup script
+      MSSQL_HOST: "mssql"
+      MSSQL_PORT: "1433"
+      MSSQL_DATABASE: "${SQL_DATABASE_NAME:-ResearchAnalytics}"
+      MSSQL_SA_PASSWORD: "${MSSQL_SA_PASSWORD:-LocalLLM@2024!}"
+    ports:
+      - "${SUPERSET_PORT:-8088}:8088"
+    volumes:
+      - superset_home:/app/superset_home
+      - ./superset/superset_config.py:/app/pythonpath/superset_config.py:ro
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8088/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    command: >
+      bash -c "
+        superset db upgrade &&
+        superset fab create-admin --username admin --firstname Admin --lastname User --email admin@local.llm --password $${SUPERSET_ADMIN_PASSWORD} || true &&
+        superset init &&
+        superset run -h 0.0.0.0 -p 8088 --with-threads --reload
+      "
+    restart: unless-stopped
+    networks:
+      - llm-network
+    profiles:
+      - superset   # Runs with: docker compose --profile superset up
+      - full       # Runs with: docker compose --profile full up
+
 volumes:
   mssql_data:
     # Use existing volume to preserve data from previous "docker" project
@@ -354,6 +413,8 @@ volumes:
   redis_data:
     name: ${REDIS_VOLUME_NAME:-local-llm-redis-data}
     external: true
+  superset_home:
+    name: ${SUPERSET_VOLUME_NAME:-local-llm-superset-data}
 
 networks:
   llm-network:

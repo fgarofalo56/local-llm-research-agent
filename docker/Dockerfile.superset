@@ -1,0 +1,28 @@
+# Custom Apache Superset Image with SQL Server Support
+# Phase 3: Enterprise BI Platform Integration
+#
+# This adds the Microsoft SQL Server ODBC driver and pymssql to the base Superset image
+
+FROM apache/superset:3.1.0
+
+USER root
+
+# Install dependencies for MS SQL Server connectivity
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        gnupg \
+        curl \
+        apt-transport-https \
+    && curl https://packages.microsoft.com/keys/microsoft.asc | apt-key add - \
+    && curl https://packages.microsoft.com/config/debian/11/prod.list > /etc/apt/sources.list.d/mssql-release.list \
+    && apt-get update \
+    && ACCEPT_EULA=Y apt-get install -y --no-install-recommends \
+        msodbcsql18 \
+        unixodbc-dev \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Python SQL Server driver
+RUN pip install --no-cache-dir pymssql
+
+USER superset

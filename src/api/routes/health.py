@@ -48,9 +48,12 @@ async def health_check(
 
     Returns overall status and individual service health.
     """
+    import os
+
     services = []
     unhealthy_count = 0
     settings = get_settings()
+    superset_url = os.getenv("SUPERSET_URL", "http://localhost:8088")
 
     # Check SQL Server
     try:
@@ -129,6 +132,33 @@ async def health_check(
                 name="ollama",
                 status="unhealthy",
                 message=str(e)[:200],
+            )
+        )
+
+    # Check Superset (optional service - doesn't count as unhealthy if not running)
+    try:
+        start = time.time()
+        async with httpx.AsyncClient() as client:
+            response = await client.get(
+                f"{superset_url}/health",
+                timeout=5.0,
+            )
+            response.raise_for_status()
+        latency = (time.time() - start) * 1000
+        services.append(
+            ServiceHealth(
+                name="superset",
+                status="healthy",
+                latency_ms=round(latency, 2),
+            )
+        )
+    except Exception as e:
+        # Superset is optional, so we mark it as unknown rather than unhealthy
+        services.append(
+            ServiceHealth(
+                name="superset",
+                status="unknown",
+                message=f"Not available: {str(e)[:100]}",
             )
         )
 

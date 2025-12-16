@@ -31,6 +31,7 @@ The Local LLM Research Agent runs as a set of Docker services under the `local-a
 | **api** | `local-agent-api` | 8000 | FastAPI backend with RAG |
 | **agent-cli** | `local-agent-cli` | - | Interactive CLI chat |
 | **mssql-tools** | `local-agent-mssql-tools` | - | Database initialization |
+| **superset** | `local-agent-superset` | 8088 | Apache Superset BI platform |
 
 > *RedisInsight port is configurable via `REDIS_INSIGHT_PORT`
 
@@ -98,7 +99,8 @@ Profiles allow you to start different combinations of services:
 | **Default** | `up -d` | mssql, redis-stack, agent-ui |
 | **API** | `--profile api up -d` | + api |
 | **CLI** | `--profile cli run agent-cli` | + agent-cli |
-| **Full** | `--profile full up -d` | mssql, redis-stack, agent-ui, api |
+| **Superset** | `--profile superset up -d` | + superset |
+| **Full** | `--profile full up -d` | mssql, redis-stack, agent-ui, api, superset |
 | **Init** | `--profile init up mssql-tools` | + mssql-tools (for DB setup) |
 
 ### Examples
@@ -366,6 +368,49 @@ docker exec local-agent-mssql /opt/mssql-tools18/bin/sqlcmd \
 
 ---
 
+### 7. Apache Superset (superset)
+
+**Purpose:** Enterprise BI platform with SQL Lab, dashboards, and scheduled reports.
+
+**Access:**
+| Setting | Value |
+|---------|-------|
+| URL | `http://localhost:8088` |
+| Username | `admin` |
+| Password | See `SUPERSET_ADMIN_PASSWORD` in `.env` |
+
+**Start:**
+```bash
+# Start Superset with dependencies
+docker-compose -f docker/docker-compose.yml --env-file .env --profile superset up -d
+
+# Wait for initialization (~60 seconds)
+docker logs -f local-agent-superset
+
+# Configure SQL Server connection
+python scripts/setup_superset.py
+```
+
+**Test:**
+```bash
+# Health check
+curl http://localhost:8088/health
+
+# View logs
+docker logs local-agent-superset -f
+```
+
+**Features:**
+- **SQL Lab**: Full SQL IDE for data exploration
+- **40+ Charts**: Extensive visualization library
+- **Dashboards**: Drag-and-drop dashboard builder
+- **Scheduled Reports**: Email reports on schedule
+- **Embedding**: Embed dashboards in React app
+
+For detailed usage, see [superset-guide.md](../superset-guide.md).
+
+---
+
 ## Testing Each Service
 
 ### Quick Health Check Script
@@ -389,6 +434,9 @@ curl -s http://localhost:8501/_stcore/health && echo "OK" || echo "FAILED"
 
 echo -e "\n=== FastAPI Test (if running) ==="
 curl -s http://localhost:8000/api/health/live && echo "" || echo "Not running (use --profile api)"
+
+echo -e "\n=== Superset Test (if running) ==="
+curl -s http://localhost:8088/health && echo "OK" || echo "Not running (use --profile superset)"
 ```
 
 ---
@@ -527,7 +575,11 @@ docker-compose -f docker/docker-compose.yml --env-file .env --profile init up ms
 | `OLLAMA_HOST` | `http://host.docker.internal:11434` | Ollama server URL |
 | `OLLAMA_MODEL` | `qwen2.5:7b-instruct` | LLM model to use |
 | `LLM_PROVIDER` | `ollama` | LLM provider (ollama/foundry_local) |
+| `SUPERSET_SECRET_KEY` | (generated) | Superset session encryption key |
+| `SUPERSET_ADMIN_PASSWORD` | `LocalLLM@2024!` | Superset admin password |
+| `SUPERSET_PORT` | `8088` | Superset web UI port |
+| `SUPERSET_VOLUME_NAME` | `local-llm-superset-data` | Superset data volume name |
 
 ---
 
-*Last Updated: December 2025* (Phase 2.1)
+*Last Updated: December 2025* (Phase 3 - Added Apache Superset)

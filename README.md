@@ -67,6 +67,17 @@
 | 💬 **Chat Export** | ✅ | Export conversations to Markdown or PDF |
 | 📊 **Power BI Dialog** | ✅ | Integration dialog for PBIX export |
 
+### Apache Superset Integration (Phase 3)
+
+| Feature | Status | Description |
+|---------|--------|-------------|
+| 📊 **Superset Container** | ✅ | Apache Superset 3.1.0 with SQL Server driver |
+| 🔍 **SQL Lab** | ✅ | Full SQL IDE for data exploration |
+| 📈 **Dashboard Embedding** | ✅ | Embed Superset dashboards in React app |
+| 🔐 **Guest Token Auth** | ✅ | Secure iframe embedding with guest tokens |
+| ❤️ **Health Integration** | ✅ | Superset status in health checks |
+| 📚 **Documentation** | ✅ | Complete user guide for Superset |
+
 ---
 
 ## 📑 Table of Contents
@@ -80,6 +91,7 @@
 - [React Frontend](#️-react-frontend-phase-22)
 - [Dashboards & Visualization](#-dashboards--visualization-phase-23)
 - [Exports & Power BI](#-exports--power-bi-phase-24)
+- [Apache Superset](#-apache-superset-phase-3)
 - [Testing the Agent](#-testing-the-agent)
 - [MCP Tools Reference](#-mcp-tools-reference)
 - [Architecture](#️-architecture)
@@ -166,6 +178,7 @@ docker-compose -f docker/docker-compose.yml up -d
 | **agent-ui** | `local-agent-streamlit-ui` | 8501 | default | Streamlit web interface |
 | **agent-cli** | `local-agent-cli` | - | `cli` | Interactive CLI chat |
 | **api** | `local-agent-api` | 8000 | `api` | FastAPI backend |
+| **superset** | `local-agent-superset` | 8088 | `superset` | Apache Superset BI |
 
 > *RedisInsight GUI port is configurable via `REDIS_INSIGHT_PORT` (default: 8001)
 
@@ -636,6 +649,7 @@ npm run preview
 | `/dashboards` | Analytics dashboards with widgets |
 | `/queries` | Query history and favorites |
 | `/mcp-servers` | MCP server status and tools |
+| `/superset` | Superset BI reports and embedding |
 | `/settings` | Theme and app settings |
 
 ### Development Notes
@@ -751,6 +765,73 @@ The Power BI export dialog allows you to:
 1. Open a conversation in /chat
 2. Click "Export PDF" button
 ```
+
+---
+
+## 📊 Apache Superset (Phase 3)
+
+Apache Superset provides enterprise-grade BI capabilities alongside the AI-powered React UI.
+
+### Features
+
+| Feature | Description |
+|---------|-------------|
+| **SQL Lab** | Full SQL IDE with syntax highlighting and query history |
+| **40+ Charts** | Extensive visualization library |
+| **Scheduled Reports** | Email reports on schedule |
+| **Dashboard Embedding** | Embed dashboards in the React app |
+| **Role-Based Access** | Native user management and permissions |
+
+### Starting Superset
+
+```bash
+# Start Superset with dependencies
+docker-compose -f docker/docker-compose.yml --env-file .env --profile superset up -d
+
+# Wait for initialization (~60 seconds), then setup database connection
+python scripts/setup_superset.py
+
+# Access Superset
+# URL: http://localhost:8088
+# Username: admin
+# Password: LocalLLM@2024! (or SUPERSET_ADMIN_PASSWORD)
+```
+
+### Quick Start Commands
+
+```bash
+# Start full stack including Superset
+docker-compose -f docker/docker-compose.yml --env-file .env --profile full up -d
+
+# View Superset logs
+docker logs -f local-agent-superset
+
+# Restart Superset
+docker-compose -f docker/docker-compose.yml --profile superset restart superset
+```
+
+### API Endpoints
+
+| Endpoint | Description |
+|----------|-------------|
+| `GET /api/superset/health` | Check Superset status |
+| `GET /api/superset/dashboards` | List all dashboards |
+| `GET /api/superset/embed/{id}` | Get embed URL with guest token |
+| `GET /api/superset/charts` | List all charts |
+| `GET /api/superset/databases` | List database connections |
+
+### Embedding Dashboards
+
+Superset dashboards can be embedded in the React application:
+
+1. Create and publish a dashboard in Superset
+2. Navigate to **Superset Reports** in the React app sidebar
+3. Click on a dashboard to view it embedded
+4. Use the external link button to open in full Superset
+
+### Documentation
+
+For detailed usage instructions, see [docs/superset-guide.md](docs/superset-guide.md).
 
 ---
 
@@ -1005,4 +1086,4 @@ MIT License - see [LICENSE](LICENSE) file for details.
 
 ---
 
-*Last Updated: December 2025* (Phase 2.4 Exports & Power BI Integration)
+*Last Updated: December 2025* (Phase 3 Apache Superset Integration)

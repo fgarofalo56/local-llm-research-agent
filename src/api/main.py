@@ -23,6 +23,7 @@ from src.api.routes import (
     queries,
     scheduled_queries,
     settings,
+    superset,
 )
 from src.api.routes.agent import agent_websocket
 
@@ -57,9 +58,11 @@ app.add_middleware(
         "http://localhost:5173",  # Vite dev server
         "http://localhost:3000",  # Alternative React port
         "http://localhost:8501",  # Streamlit
+        "http://localhost:8088",  # Apache Superset
         "http://127.0.0.1:5173",
         "http://127.0.0.1:3000",
         "http://127.0.0.1:8501",
+        "http://127.0.0.1:8088",
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -76,7 +79,10 @@ app.include_router(mcp_servers.router, prefix="/api/mcp-servers", tags=["MCP Ser
 app.include_router(settings.router, prefix="/api/settings", tags=["Settings"])
 app.include_router(agent.router, prefix="/api/agent", tags=["Agent"])
 app.include_router(alerts.router, prefix="/api/alerts", tags=["Alerts"])
-app.include_router(scheduled_queries.router, prefix="/api/scheduled-queries", tags=["Scheduled Queries"])
+app.include_router(
+    scheduled_queries.router, prefix="/api/scheduled-queries", tags=["Scheduled Queries"]
+)
+app.include_router(superset.router, prefix="/api/superset", tags=["Superset"])
 
 
 @app.get("/")

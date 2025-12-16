@@ -27,6 +27,7 @@ export function MCPServerSelector() {
     queryFn: () => api.get<MCPServersResponse>('/mcp-servers'),
   });
 
+  const servers = data?.servers ?? [];
   const { selectedMCPServers, toggleMCPServer } = useChatStore();
 
   const servers = data?.servers;
@@ -35,7 +36,7 @@ export function MCPServerSelector() {
     <div className="space-y-2">
       <h3 className="text-sm font-medium text-muted-foreground">Active Tools</h3>
       <div className="flex flex-wrap gap-3">
-        {servers?.filter(s => s.enabled).map((server) => {
+        {servers.filter(s => s.enabled !== false).map((server) => {
           const Icon = serverIcons[server.id] || Database;
           const isSelected = selectedMCPServers.includes(server.id);
 

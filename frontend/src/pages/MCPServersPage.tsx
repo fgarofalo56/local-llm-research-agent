@@ -7,9 +7,10 @@ import { Button } from '@/components/ui/Button';
 interface MCPServer {
   id: string;
   name: string;
-  status: 'connected' | 'disconnected' | 'error';
-  tools: string[];
+  status?: 'connected' | 'disconnected' | 'error';
+  tools?: string[];
   description: string | null;
+  enabled?: boolean;
 }
 
 interface MCPServersResponse {
@@ -67,7 +68,7 @@ export function MCPServersPage() {
                     <Database className="h-5 w-5" />
                     {server.name}
                   </span>
-                  {server.status === 'connected' ? (
+                  {server.status === 'connected' || server.enabled !== false ? (
                     <CheckCircle className="h-5 w-5 text-green-500" />
                   ) : (
                     <XCircle className="h-5 w-5 text-red-500" />
@@ -80,21 +81,23 @@ export function MCPServersPage() {
                     {server.description}
                   </p>
                 )}
-                <div>
-                  <h4 className="mb-2 text-xs font-medium uppercase text-muted-foreground">
-                    Available Tools ({server.tools.length})
-                  </h4>
-                  <div className="flex flex-wrap gap-1">
-                    {server.tools.map((tool) => (
-                      <span
-                        key={tool}
-                        className="rounded-md bg-muted px-2 py-1 text-xs"
-                      >
-                        {tool}
-                      </span>
-                    ))}
+                {server.tools && server.tools.length > 0 && (
+                  <div>
+                    <h4 className="mb-2 text-xs font-medium uppercase text-muted-foreground">
+                      Available Tools ({server.tools.length})
+                    </h4>
+                    <div className="flex flex-wrap gap-1">
+                      {server.tools.map((tool) => (
+                        <span
+                          key={tool}
+                          className="rounded-md bg-muted px-2 py-1 text-xs"
+                        >
+                          {tool}
+                        </span>
+                      ))}
+                    </div>
                   </div>
-                </div>
+                )}
               </CardContent>
             </Card>
           ))}

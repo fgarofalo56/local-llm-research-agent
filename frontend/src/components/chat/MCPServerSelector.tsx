@@ -5,6 +5,10 @@ import { useChatStore } from '@/stores/chatStore';
 import * as Switch from '@radix-ui/react-switch';
 import { Database, Globe, BarChart } from 'lucide-react';
 
+interface MCPServersResponse {
+  servers: MCPServer[];
+}
+
 const serverIcons: Record<string, typeof Database> = {
   mssql: Database,
   'microsoft-learn': Globe,
@@ -12,18 +16,19 @@ const serverIcons: Record<string, typeof Database> = {
 };
 
 export function MCPServerSelector() {
-  const { data: servers } = useQuery({
+  const { data } = useQuery({
     queryKey: ['mcp-servers'],
-    queryFn: () => api.get<MCPServer[]>('/mcp-servers'),
+    queryFn: () => api.get<MCPServersResponse>('/mcp-servers'),
   });
 
+  const servers = data?.servers ?? [];
   const { selectedMCPServers, toggleMCPServer } = useChatStore();
 
   return (
     <div className="space-y-2">
       <h3 className="text-sm font-medium text-muted-foreground">Active Tools</h3>
       <div className="flex flex-wrap gap-3">
-        {servers?.filter(s => s.enabled).map((server) => {
+        {servers.filter(s => s.enabled !== false).map((server) => {
           const Icon = serverIcons[server.id] || Database;
           const isSelected = selectedMCPServers.includes(server.id);
 

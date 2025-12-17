@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { api } from '@/api/client';
-import { useTheme } from '@/contexts/ThemeContext';
+import { useTheme, THEMES, type ThemeVariant } from '@/contexts/ThemeContext';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
@@ -20,6 +20,7 @@ import {
   ChevronDown,
   AlertCircle,
   Play,
+  Palette,
 } from 'lucide-react';
 import type { HealthStatus } from '@/types';
 
@@ -107,15 +108,31 @@ interface ProviderConfig {
   host: string;
 }
 
-// Theme selector component
-function ThemeSelector() {
-  const { theme, setTheme } = useTheme();
+// Theme color preview swatch
+function ThemePreviewSwatch({ colors, isActive }: { colors: { bg: string; primary: string; accent: string }; isActive: boolean }) {
+  return (
+    <div
+      className={`flex h-8 w-full overflow-hidden rounded-md border-2 ${isActive ? 'border-primary' : 'border-transparent'}`}
+    >
+      <div className="flex-1" style={{ backgroundColor: colors.bg }} />
+      <div className="w-4" style={{ backgroundColor: colors.primary }} />
+      <div className="w-2" style={{ backgroundColor: colors.accent }} />
+    </div>
+  );
+}
 
-  const themes = [
-    { id: 'light', label: 'Light', icon: Sun },
-    { id: 'dark', label: 'Dark', icon: Moon },
-    { id: 'system', label: 'System', icon: Monitor },
-  ] as const;
+// Theme selector component with mode and variant selection
+function ThemeSelector() {
+  const { mode, setMode, variant, setVariant, resolvedMode } = useTheme();
+
+  const modes = [
+    { id: 'light' as const, label: 'Light', icon: Sun },
+    { id: 'dark' as const, label: 'Dark', icon: Moon },
+    { id: 'system' as const, label: 'System', icon: Monitor },
+  ];
+
+  // Filter themes based on current resolved mode
+  const availableThemes = THEMES.filter(t => t.supportedModes.includes(resolvedMode));
 
   return (
     <Card>
@@ -125,30 +142,70 @@ function ThemeSelector() {
           Theme
         </CardTitle>
       </CardHeader>
-      <CardContent>
-        <div className="flex gap-2">
-          {themes.map((t) => {
-            const Icon = t.icon;
-            const isActive = theme === t.id;
-            return (
-              <button
-                key={t.id}
-                onClick={() => setTheme(t.id)}
-                className={`flex flex-col items-center gap-2 rounded-lg border p-4 transition-colors ${
-                  isActive
-                    ? 'border-primary bg-primary/10 text-primary'
-                    : 'border-border hover:border-primary/50 hover:bg-muted'
-                }`}
-              >
-                <Icon className="h-6 w-6" />
-                <span className="text-sm font-medium">{t.label}</span>
-                {isActive && <Check className="h-4 w-4" />}
-              </button>
-            );
-          })}
+      <CardContent className="space-y-6">
+        {/* Mode Selection */}
+        <div>
+          <h4 className="mb-3 text-sm font-medium text-muted-foreground">Mode</h4>
+          <div className="flex gap-2">
+            {modes.map((m) => {
+              const Icon = m.icon;
+              const isActive = mode === m.id;
+              return (
+                <button
+                  key={m.id}
+                  onClick={() => setMode(m.id)}
+                  className={`flex flex-1 flex-col items-center gap-2 rounded-lg border p-3 transition-colors ${
+                    isActive
+                      ? 'border-primary bg-primary/10 text-primary'
+                      : 'border-border hover:border-primary/50 hover:bg-muted'
+                  }`}
+                >
+                  <Icon className="h-5 w-5" />
+                  <span className="text-xs font-medium">{m.label}</span>
+                </button>
+              );
+            })}
+          </div>
         </div>
-        <p className="mt-3 text-sm text-muted-foreground">
-          Theme preference is saved and persists across sessions.
+
+        {/* Theme Variant Selection */}
+        <div>
+          <h4 className="mb-3 flex items-center gap-2 text-sm font-medium text-muted-foreground">
+            <Palette className="h-4 w-4" />
+            Color Theme
+            <span className="ml-1 rounded bg-muted px-1.5 py-0.5 text-xs">
+              {resolvedMode === 'dark' ? 'Dark' : 'Light'} themes
+            </span>
+          </h4>
+          <div className="grid grid-cols-3 gap-3 md:grid-cols-5">
+            {availableThemes.map((t) => {
+              const isActive = variant === t.id;
+              return (
+                <button
+                  key={t.id}
+                  onClick={() => setVariant(t.id as ThemeVariant)}
+                  className={`flex flex-col items-center gap-2 rounded-lg border p-3 transition-all ${
+                    isActive
+                      ? 'border-primary bg-primary/5 ring-2 ring-primary/20'
+                      : 'border-border hover:border-primary/50 hover:bg-muted/50'
+                  }`}
+                  title={t.description}
+                >
+                  <ThemePreviewSwatch colors={t.previewColors} isActive={isActive} />
+                  <span className="text-xs font-medium">{t.name}</span>
+                  {isActive && <Check className="h-3 w-3 text-primary" />}
+                </button>
+              );
+            })}
+          </div>
+          <p className="mt-3 text-xs text-muted-foreground">
+            Some themes are only available in {resolvedMode === 'dark' ? 'dark' : 'light'} mode.
+            Switch modes to see all available themes.
+          </p>
+        </div>
+
+        <p className="text-sm text-muted-foreground">
+          Theme preferences are saved and persist across sessions.
         </p>
       </CardContent>
     </Card>
@@ -535,10 +592,11 @@ export function SettingsPage() {
   });
 
   // Fetch providers list
-  const { data: providers = [], isLoading: providersLoading } = useQuery({
+  const { data: providers = [], isLoading: providersLoading, refetch: refetchProviders } = useQuery({
     queryKey: ['providers'],
     queryFn: () => api.get<ProviderInfo[]>('/settings/providers'),
-    staleTime: 30000, // 30 seconds
+    staleTime: 10000, // 10 seconds - shorter for faster availability updates
+    refetchOnWindowFocus: true,
   });
 
   // Fetch models for selected provider
@@ -547,14 +605,18 @@ export function SettingsPage() {
     queryFn: () =>
       api.get<ProviderModelsResponse>(`/settings/providers/${providerConfig.provider}/models`),
     enabled: !!providerConfig.provider,
+    staleTime: 5000, // 5 seconds - shorter for responsiveness
+    refetchOnWindowFocus: true,
   });
 
   // Fetch models for secondary provider
-  const { data: secondaryModelsData, refetch: refetchSecondaryModels } = useQuery({
+  const { data: secondaryModelsData, isLoading: secondaryModelsLoading, refetch: refetchSecondaryModels } = useQuery({
     queryKey: ['models', secondaryConfig.provider],
     queryFn: () =>
       api.get<ProviderModelsResponse>(`/settings/providers/${secondaryConfig.provider}/models`),
     enabled: !!secondaryConfig.provider && secondaryConfig.provider !== providerConfig.provider,
+    staleTime: 5000, // 5 seconds
+    refetchOnWindowFocus: true,
   });
 
   // Health status
@@ -626,11 +688,22 @@ export function SettingsPage() {
 
       {/* Primary LLM Provider Configuration */}
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="flex items-center gap-2">
             <ProviderIcon providerId={providerConfig.provider} className="h-6 w-6" />
             Primary LLM Provider
           </CardTitle>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => {
+              refetchProviders();
+              refetchModels();
+            }}
+            title="Refresh provider status and models"
+          >
+            <RefreshCw className={`h-4 w-4 ${providersLoading || modelsLoading ? 'animate-spin' : ''}`} />
+          </Button>
         </CardHeader>
         <CardContent className="space-y-4">
           <ProviderSelector
@@ -684,11 +757,22 @@ export function SettingsPage() {
 
       {/* Secondary LLM Provider Configuration (Dual Provider Support) */}
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="flex items-center gap-2">
             <ProviderIcon providerId={secondaryConfig.provider} className="h-6 w-6" />
             Secondary LLM Provider (Optional)
           </CardTitle>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => {
+              refetchProviders();
+              refetchSecondaryModels();
+            }}
+            title="Refresh provider status and models"
+          >
+            <RefreshCw className={`h-4 w-4 ${providersLoading || secondaryModelsLoading ? 'animate-spin' : ''}`} />
+          </Button>
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-sm text-muted-foreground">
@@ -711,7 +795,7 @@ export function SettingsPage() {
                 models={secondaryModelsData?.models || []}
                 selectedModel={secondaryConfig.model}
                 onSelect={(model) => setSecondaryConfig((prev) => ({ ...prev, model }))}
-                isLoading={false}
+                isLoading={secondaryModelsLoading}
                 error={secondaryModelsData?.error || null}
                 onRefresh={() => refetchSecondaryModels()}
               />

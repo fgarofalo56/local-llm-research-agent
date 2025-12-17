@@ -259,6 +259,18 @@ export function MessageList() {
 
   return (
     <div className="space-y-4 p-4">
+      {/* Empty state for new conversations */}
+      {messages.length === 0 && !isStreaming && (
+        <div className="flex h-[50vh] flex-col items-center justify-center text-center">
+          <Bot className="mb-4 h-12 w-12 text-muted-foreground" />
+          <h3 className="mb-2 text-lg font-semibold">Start a Conversation</h3>
+          <p className="max-w-md text-sm text-muted-foreground">
+            Ask a question about your SQL Server data, upload documents for RAG context,
+            or explore your database schema using the research agent.
+          </p>
+        </div>
+      )}
+
       {messages.map((message) => (
         <MessageItem key={message.id} message={message} />
       ))}

@@ -84,6 +84,45 @@ class DocumentListResponse(BaseModel):
     total: int
 
 
+class DocumentTagsUpdate(BaseModel):
+    """Request model for updating document tags."""
+
+    tags: list[str]
+
+
+class AllTagsResponse(BaseModel):
+    """Response model for all unique tags."""
+
+    tags: list[str]
+    total: int
+
+
+# NOTE: /tags/all MUST be defined BEFORE /{document_id} routes to prevent
+# "tags" from being matched as a document_id
+@router.get("/tags/all", response_model=AllTagsResponse)
+async def get_all_tags(
+    db: AsyncSession = Depends(get_db),
+):
+    """Get all unique tags across all documents."""
+    query = select(Document)
+    result = await db.execute(query)
+    documents = result.scalars().all()
+
+    all_tags: set[str] = set()
+    for doc in documents:
+        if doc.tags:
+            try:
+                doc_tags = json.loads(doc.tags)
+                all_tags.update(doc_tags)
+            except (json.JSONDecodeError, TypeError):
+                # Silently skip documents with malformed tags JSON to ensure
+                # the endpoint returns valid tags from other documents
+                pass
+
+    sorted_tags = sorted(all_tags)
+    return AllTagsResponse(tags=sorted_tags, total=len(sorted_tags))
+
+
 @router.get("", response_model=DocumentListResponse)
 async def list_documents(
     skip: int = 0,
@@ -352,43 +391,6 @@ async def reprocess_document(
         )
 
     return DocumentResponse.from_orm_with_tags(document)
-
-
-class DocumentTagsUpdate(BaseModel):
-    """Request model for updating document tags."""
-
-    tags: list[str]
-
-
-class AllTagsResponse(BaseModel):
-    """Response model for all unique tags."""
-
-    tags: list[str]
-    total: int
-
-
-@router.get("/tags/all", response_model=AllTagsResponse)
-async def get_all_tags(
-    db: AsyncSession = Depends(get_db),
-):
-    """Get all unique tags across all documents."""
-    query = select(Document)
-    result = await db.execute(query)
-    documents = result.scalars().all()
-
-    all_tags: set[str] = set()
-    for doc in documents:
-        if doc.tags:
-            try:
-                doc_tags = json.loads(doc.tags)
-                all_tags.update(doc_tags)
-            except (json.JSONDecodeError, TypeError):
-                # Silently skip documents with malformed tags JSON to ensure
-                # the endpoint returns valid tags from other documents
-                pass
-
-    sorted_tags = sorted(all_tags)
-    return AllTagsResponse(tags=sorted_tags, total=len(sorted_tags))
 
 
 @router.patch("/{document_id}/tags", response_model=DocumentResponse)

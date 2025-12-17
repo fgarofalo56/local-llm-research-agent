@@ -147,6 +147,17 @@ class Settings(BaseSettings):
         default="mcp_config.json", description="Path to MCP server configuration file"
     )
 
+    @field_validator("mcp_config_path", mode="after")
+    @classmethod
+    def resolve_mcp_config_path(cls, v: str) -> str:
+        """Resolve mcp_config_path to absolute path relative to project root."""
+        config_path = Path(v)
+        if not config_path.is_absolute():
+            # Resolve relative to project root (parent of src/)
+            project_root = Path(__file__).parent.parent.parent
+            config_path = project_root / v
+        return str(config_path.resolve())
+
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"

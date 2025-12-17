@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import { Layout } from '@/components/layout/Layout';
+import { GlobalUploadProgress } from '@/components/upload';
 import { ChatPage } from '@/pages/ChatPage';
 import { DashboardsPage } from '@/pages/DashboardsPage';
 import { DocumentsPage } from '@/pages/DocumentsPage';
@@ -37,6 +38,8 @@ function App() {
               <Route path="/settings" element={<SettingsPage />} />
             </Routes>
           </Layout>
+          {/* Global upload progress - visible across all pages */}
+          <GlobalUploadProgress />
         </BrowserRouter>
       </ThemeProvider>
     </QueryClientProvider>

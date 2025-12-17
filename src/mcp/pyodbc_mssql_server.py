@@ -3,14 +3,27 @@ Custom MSSQL MCP Server using pyodbc.
 
 This is a simple MCP server that provides SQL Server database access
 using pyodbc for reliable connectivity with ODBC Driver 18.
+
+IMPORTANT: MCP protocol requires JSON-RPC only on stdout.
+All logging MUST go to stderr to avoid breaking the protocol.
 """
 
 import asyncio
 import json
+import logging
 import os
 import sys
 from contextlib import contextmanager
 from typing import Any
+
+# Configure logging to stderr BEFORE any other imports
+# This is critical for MCP protocol compliance
+logging.basicConfig(
+    level=logging.WARNING,  # Suppress INFO logs from mcp library
+    format="%(name)s - %(levelname)s - %(message)s",
+    stream=sys.stderr,
+    force=True,  # Override any existing config
+)
 
 import pyodbc
 from mcp.server import Server

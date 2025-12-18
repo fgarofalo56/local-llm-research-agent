@@ -1,6 +1,6 @@
 # Exports Guide
 
-> Comprehensive documentation for export features in the Local LLM Research Agent (Phase 2.4)
+> Comprehensive documentation for export features in the Local LLM Research Agent
 
 ---
 
@@ -401,4 +401,4 @@ Exported files are downloaded to the user's default downloads folder, except for
 
 ---
 
-*Last Updated: December 2025* (Phase 2.4)
+*Last Updated: December 2025*

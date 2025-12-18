@@ -12,6 +12,8 @@ import {
   Database,
   Bot,
   Hash,
+  Wifi,
+  WifiOff,
 } from 'lucide-react';
 import { MessageList } from '@/components/chat/MessageList';
 import { ChatInput } from '@/components/chat/ChatInput';
@@ -297,7 +299,7 @@ function RAGSettings() {
 
 export function ChatPage() {
   const { conversationId } = useParams<{ conversationId: string }>();
-  const { currentConversationId, setCurrentConversation, setMessages, loadSavedSettings } = useChatStore();
+  const { currentConversationId, setCurrentConversation, setMessages, addMessage, loadSavedSettings } = useChatStore();
   const createConversation = useCreateConversation();
   const [showSettings, setShowSettings] = useState(false);
 
@@ -309,18 +311,24 @@ export function ChatPage() {
     loadSavedSettings();
   }, [loadSavedSettings]);
 
-  // Set current conversation
+  // Set current conversation and clear stale messages when conversation changes
   useEffect(() => {
     if (parsedId) {
+      // Clear messages first to prevent showing stale data
+      setMessages([]);
       setCurrentConversation(parsedId);
     }
-  }, [parsedId, setCurrentConversation]);
+  }, [parsedId, setCurrentConversation, setMessages]);
+
+  // Use parsedId directly for queries to ensure sync with URL
+  // (avoids race condition with store update)
+  const effectiveConversationId = parsedId ?? currentConversationId;
 
   // Fetch conversation details
-  const { data: conversation } = useConversation(currentConversationId);
+  const { data: conversation } = useConversation(effectiveConversationId);
 
   // Fetch messages
-  const { data: messagesData } = useMessages(currentConversationId);
+  const { data: messagesData } = useMessages(effectiveConversationId);
 
   // Update messages in store
   useEffect(() => {
@@ -330,17 +338,35 @@ export function ChatPage() {
   }, [messagesData, setMessages]);
 
   // WebSocket connection
-  const { sendMessage } = useAgentWebSocket(currentConversationId);
+  const { sendMessage, isConnected, reconnect } = useAgentWebSocket(currentConversationId);
 
   const handleSendMessage = async (content: string) => {
-    // Create conversation if needed
-    if (!currentConversationId) {
-      const conversation = await createConversation.mutateAsync(content.slice(0, 50));
-      setCurrentConversation(conversation.id);
-      // Wait for WebSocket to connect before sending
-      setTimeout(() => sendMessage(content), 100);
-    } else {
-      sendMessage(content);
+    try {
+      // Add user message to UI immediately for instant feedback
+      const userMessage = {
+        id: Date.now(), // Temporary ID until server assigns real one
+        conversation_id: currentConversationId || 0,
+        role: 'user' as const,
+        content,
+        created_at: new Date().toISOString(),
+      };
+      addMessage(userMessage);
+
+      // Create conversation if needed
+      if (!currentConversationId) {
+        const conversation = await createConversation.mutateAsync(content.slice(0, 50));
+        setCurrentConversation(conversation.id);
+        // Queue the message - it will be sent when WebSocket connects
+        // The hook will automatically connect when conversationId changes
+        // Give it a moment to trigger the useEffect, then queue the message
+        await new Promise(resolve => setTimeout(resolve, 50));
+        await sendMessage(content);
+      } else {
+        await sendMessage(content);
+      }
+    } catch (error) {
+      console.error('Failed to send message:', error);
+      // Could show an error toast here
     }
   };
 
@@ -364,6 +390,22 @@ export function ChatPage() {
           <div className="flex items-center gap-4">
             <MCPServerSelector />
             <ChatModelSelector />
+            {/* Connection status indicator */}
+            <div
+              className={`flex items-center gap-1.5 rounded-lg border px-2 py-1.5 text-xs ${
+                isConnected
+                  ? 'border-green-500/30 bg-green-500/10 text-green-600 dark:text-green-400'
+                  : 'border-yellow-500/30 bg-yellow-500/10 text-yellow-600 dark:text-yellow-400'
+              }`}
+              title={isConnected ? 'WebSocket connected' : 'WebSocket connecting...'}
+            >
+              {isConnected ? (
+                <Wifi className="h-3.5 w-3.5" />
+              ) : (
+                <WifiOff className="h-3.5 w-3.5" />
+              )}
+              <span>{isConnected ? 'Connected' : 'Connecting'}</span>
+            </div>
           </div>
 
           <div className="flex items-center gap-2">

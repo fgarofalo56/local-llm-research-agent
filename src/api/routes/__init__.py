@@ -1,6 +1,6 @@
 """
 API Routes Package
-Phase 2.1 & 2.5: Backend Infrastructure, RAG Pipeline, Advanced Features
+Phase 2.1, 2.5, 3: Backend Infrastructure, RAG Pipeline, Advanced Features, Superset
 
 FastAPI route modules.
 """
@@ -16,6 +16,7 @@ from src.api.routes import (
     queries,
     scheduled_queries,
     settings,
+    superset,
 )
 
 __all__ = [
@@ -29,4 +30,5 @@ __all__ = [
     "agent",
     "alerts",
     "scheduled_queries",
+    "superset",
 ]

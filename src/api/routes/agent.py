@@ -117,16 +117,30 @@ async def rag_search(
 
 @router.get("/models")
 async def list_models():
-    """List available LLM models."""
+    """List available LLM models and provider configuration."""
     settings = get_settings()
 
     return {
         "provider": settings.llm_provider,
         "models": {
-            "chat": settings.ollama_model,
+            "chat": (
+                settings.ollama_model
+                if settings.llm_provider == "ollama"
+                else settings.foundry_model
+            ),
             "embedding": settings.embedding_model,
         },
-        "ollama_host": settings.ollama_host,
+        "providers": {
+            "ollama": {
+                "host": settings.ollama_host,
+                "model": settings.ollama_model,
+            },
+            "foundry_local": {
+                "endpoint": settings.foundry_endpoint,
+                "model": settings.foundry_model,
+                "auto_start": settings.foundry_auto_start,
+            },
+        },
     }
 
 
@@ -169,6 +183,15 @@ async def agent_websocket(
     - {"type": "tool_call", "tool_name": "...", "tool_args": {...}}
     - {"type": "complete", "message": {...}}
     - {"type": "error", "error": "..."}
+
+    Optional provider configuration (client -> server):
+    {
+        "type": "message",
+        "content": "user message",
+        "provider": "ollama" or "foundry_local",  # optional
+        "model": "model-name",  # optional
+        "mcp_servers": ["mssql"]  # optional
+    }
     """
     await websocket.accept()
     logger.info("websocket_connected", conversation_id=conversation_id)
@@ -184,17 +207,24 @@ async def agent_websocket(
             if data.get("type") == "message":
                 content = data.get("content", "")
                 mcp_server_ids = data.get("mcp_servers", ["mssql"])
+                provider_type = data.get("provider")  # 'ollama' or 'foundry_local'
+                model_name = data.get("model")
 
                 logger.info(
                     "websocket_message_received",
                     conversation_id=conversation_id,
                     content_length=len(content),
                     mcp_servers=mcp_server_ids,
+                    provider=provider_type,
+                    model=model_name,
                 )
 
-                # Create agent instance
+                # Create agent instance with optional provider/model configuration
                 try:
-                    agent = create_research_agent()
+                    agent = create_research_agent(
+                        provider_type=provider_type,
+                        model_name=model_name,
+                    )
                 except Exception as e:
                     logger.error("agent_creation_error", error=str(e))
                     await websocket.send_json(

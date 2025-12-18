@@ -14,9 +14,9 @@ This section documents the programmatic interfaces for integrating with and exte
 - [MCP Client API](mcp-client.md) - MCP server integration
 - [Models API](models.md) - Data models and schemas
 - [Utilities API](utilities.md) - Helper functions and utilities
-- [FastAPI Backend](fastapi.md) - REST API documentation (Phase 2.1)
-- [RAG Pipeline](rag.md) - Document retrieval and vector search (Phase 2.1)
-- [Export APIs](#export-apis) - Export functionality (Phase 2.4)
+- [FastAPI Backend](fastapi.md) - REST API documentation
+- [RAG Pipeline](rag.md) - Document retrieval and vector search
+- [Export APIs](#export-apis) - Export functionality
 
 ---
 
@@ -110,7 +110,7 @@ ollama = OllamaProvider(
 
 foundry = FoundryLocalProvider(
     model_name="phi-4",
-    endpoint="http://127.0.0.1:55588",
+    endpoint="http://127.0.0.1:53760",
 )
 
 # Check connection
@@ -248,7 +248,7 @@ manager = MCPClientManager()
 
 ## Export APIs
 
-### Power BI Export Endpoint (Phase 2.4)
+### Power BI Export Endpoint
 
 ```http
 POST /api/agent/powerbi-export

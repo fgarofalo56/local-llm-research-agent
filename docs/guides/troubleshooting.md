@@ -42,7 +42,7 @@ echo "=== System Diagnostics ===" `
   && curl -s http://localhost:11434/api/tags 2>$null || echo "Ollama not running" `
   && echo "" `
   && echo "--- Foundry Local Status ---" `
-  && curl -s http://127.0.0.1:55588/v1/models 2>$null || echo "Foundry Local not running" `
+  && curl -s http://127.0.0.1:53760/v1/models 2>$null || echo "Foundry Local not running" `
   && echo "" `
   && echo "--- Docker Containers ---" `
   && docker ps --format "{{.Names}}: {{.Status}}" 2>$null | Select-String "llm" `
@@ -62,7 +62,7 @@ echo "--- Ollama Status ---" && \
 (curl -s http://localhost:11434/api/tags | head -c 100 || echo "Ollama not running") && \
 echo "" && \
 echo "--- Foundry Local Status ---" && \
-(curl -s http://127.0.0.1:55588/v1/models | head -c 100 || echo "Foundry Local not running") && \
+(curl -s http://127.0.0.1:53760/v1/models | head -c 100 || echo "Foundry Local not running") && \
 echo "" && \
 echo "--- Docker Containers ---" && \
 docker ps --format "{{.Names}}: {{.Status}}" 2>/dev/null | grep llm && \
@@ -77,7 +77,7 @@ echo "--- Environment File ---" && \
 |-----------|---------------|-----------------|
 | Python | `python --version` | 3.11+ |
 | Ollama | `curl localhost:11434/api/tags` | JSON with models |
-| Foundry Local | `curl 127.0.0.1:55588/v1/models` | JSON with models |
+| Foundry Local | `curl 127.0.0.1:53760/v1/models` | JSON with models |
 | Docker | `docker ps` | Containers running |
 | SQL Server | `docker logs local-agent-mssql` | No errors |
 | Redis | `docker exec local-agent-redis redis-cli PING` | PONG |
@@ -201,7 +201,7 @@ pip install foundry-local-sdk
 #### Connection Refused
 
 **Symptoms:**
-- Cannot connect to `http://127.0.0.1:55588`
+- Cannot connect to `http://127.0.0.1:53760`
 
 **Solutions:**
 
@@ -215,10 +215,10 @@ print(manager.endpoint)
 ```bash
 # Check if port is in use
 # Windows
-netstat -ano | findstr 55588
+netstat -ano | findstr 53760
 
 # Linux/Mac
-lsof -i :55588
+lsof -i :53760
 ```
 
 #### Model Download Failed
@@ -799,7 +799,7 @@ echo "Ollama:"
 curl -s http://localhost:11434/api/tags 2>/dev/null | head -c 200 || echo "  Not running"
 echo ""
 echo "Foundry Local:"
-curl -s http://127.0.0.1:55588/v1/models 2>/dev/null | head -c 200 || echo "  Not running"
+curl -s http://127.0.0.1:53760/v1/models 2>/dev/null | head -c 200 || echo "  Not running"
 
 echo ""
 echo "--- Docker Containers ---"
@@ -887,4 +887,4 @@ DEBUG=true LOG_LEVEL=DEBUG uv run python -m src.cli.chat 2>&1 | tee debug-logs/a
 
 ---
 
-*Last Updated: December 2025* (Phase 2.1 - Added Redis, updated container names)
+*Last Updated: December 2025*

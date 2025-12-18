@@ -77,31 +77,63 @@ class DynamicMCPManager:
                     config = json.load(f)
 
                 for server_id, server_config in config.get("mcpServers", {}).items():
-                    # Merge with defaults or add new
-                    self.servers[server_id] = MCPServerConfig(
-                        id=server_id,
-                        name=server_config.get("name", server_id),
-                        description=server_config.get("description", ""),
-                        type=server_config.get("type", "stdio"),
-                        command=server_config.get("command"),
-                        args=server_config.get("args", []),
-                        url=server_config.get("url"),
-                        env=server_config.get("env", {}),
-                        enabled=server_config.get("enabled", True),
-                        built_in=False,
-                    )
+                    # Check if this is a built-in server - preserve built_in status
+                    is_built_in = server_id in self.DEFAULT_SERVERS
+
+                    if is_built_in:
+                        # For built-in servers, only update mutable fields, preserve built_in flag
+                        default_config = self.DEFAULT_SERVERS[server_id]
+                        self.servers[server_id] = MCPServerConfig(
+                            id=server_id,
+                            name=server_config.get("name", default_config.name),
+                            description=server_config.get("description", default_config.description),
+                            type=server_config.get("type", default_config.type),
+                            command=server_config.get("command", default_config.command),
+                            args=server_config.get("args", default_config.args),
+                            url=server_config.get("url", default_config.url),
+                            env=server_config.get("env", default_config.env),
+                            enabled=server_config.get("enabled", default_config.enabled),
+                            built_in=True,  # Preserve built-in status
+                        )
+                    else:
+                        # User-added server
+                        self.servers[server_id] = MCPServerConfig(
+                            id=server_id,
+                            name=server_config.get("name", server_id),
+                            description=server_config.get("description", ""),
+                            type=server_config.get("type", "stdio"),
+                            command=server_config.get("command"),
+                            args=server_config.get("args", []),
+                            url=server_config.get("url"),
+                            env=server_config.get("env", {}),
+                            enabled=server_config.get("enabled", True),
+                            built_in=False,
+                        )
             except Exception as e:
                 logger.warning("mcp_config_load_error", error=str(e))
 
         logger.info("mcp_config_loaded", server_count=len(self.servers))
 
     async def save_config(self) -> None:
-        """Save configuration to file."""
-        config: dict[str, Any] = {"mcpServers": {}}
+        """Save configuration to file, preserving existing structure."""
+        # Load existing config to preserve non-server fields (like $schema, _documentation)
+        existing_config: dict[str, Any] = {}
+        if self.config_path.exists():
+            try:
+                with open(self.config_path) as f:
+                    existing_config = json.load(f)
+            except Exception:
+                pass  # If file is corrupted, we'll create a new one
 
+        # Ensure mcpServers dict exists
+        if "mcpServers" not in existing_config:
+            existing_config["mcpServers"] = {}
+
+        # Update server configurations
         for server_id, server in self.servers.items():
-            if not server.built_in:  # Only save user-added servers
-                config["mcpServers"][server_id] = {
+            if not server.built_in:
+                # Save user-added servers with all their config
+                existing_config["mcpServers"][server_id] = {
                     "name": server.name,
                     "description": server.description,
                     "type": server.type,
@@ -112,8 +144,18 @@ class DynamicMCPManager:
                     "enabled": server.enabled,
                 }
 
+        # Remove any servers that were deleted (user-added ones not in self.servers)
+        servers_to_remove = []
+        for server_id in existing_config["mcpServers"]:
+            # Only remove if it's not a built-in and not in our current list
+            if server_id not in self.DEFAULT_SERVERS and server_id not in self.servers:
+                servers_to_remove.append(server_id)
+
+        for server_id in servers_to_remove:
+            del existing_config["mcpServers"][server_id]
+
         with open(self.config_path, "w") as f:
-            json.dump(config, f, indent=2)
+            json.dump(existing_config, f, indent=2)
 
         logger.info("mcp_config_saved")
 

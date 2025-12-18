@@ -1,11 +1,12 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$comment": "MCP Server Configuration for Local LLM Research Analytics Tool",
-
   "mcpServers": {
     "mssql": {
       "command": "node",
-      "args": ["${MCP_MSSQL_PATH}"],
+      "args": [
+        "${MCP_MSSQL_PATH}"
+      ],
       "env": {
         "SERVER_NAME": "${SQL_SERVER_HOST}",
         "DATABASE_NAME": "${SQL_DATABASE_NAME}",
@@ -17,9 +18,18 @@
         "SQL_PASSWORD": "${SQL_PASSWORD}"
       },
       "description": "Microsoft SQL Server MCP Server for database operations"
+    },
+    "microsoft.docs.mcp": {
+      "name": "microsoft.docs.mcp",
+      "description": "MS Docs MCP Server",
+      "type": "http",
+      "command": null,
+      "args": [],
+      "url": "https://learn.microsoft.com/api/mcp",
+      "env": {},
+      "enabled": true
     }
   },
-
   "_documentation": {
     "mssql_tools": {
       "list_tables": "Lists all tables in the connected database",

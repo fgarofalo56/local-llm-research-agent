@@ -197,7 +197,7 @@ export function DashboardsPage() {
           {/* Dashboard Selector */}
           {dashboardsData?.dashboards && dashboardsData.dashboards.length > 0 && (
             <Select.Root
-              value={currentDashboard?.id?.toString()}
+              value={currentDashboard?.id?.toString() ?? ""}
               onValueChange={(value) => {
                 const dash = dashboardsData.dashboards.find(d => d.id === parseInt(value));
                 if (dash) setCurrentDashboard(dash);

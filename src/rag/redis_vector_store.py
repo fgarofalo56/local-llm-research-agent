@@ -9,6 +9,7 @@ import hashlib
 import json
 from typing import Any
 
+import numpy as np
 import structlog
 from redis.asyncio import Redis
 from redisvl.index import AsyncSearchIndex
@@ -125,6 +126,8 @@ class RedisVectorStore:
         # Prepare records
         records = []
         for i, (chunk, embedding) in enumerate(zip(chunks, embeddings, strict=True)):
+            # Convert embedding list to numpy array bytes for Redis
+            embedding_bytes = np.array(embedding, dtype=np.float32).tobytes()
             record = {
                 "id": self._generate_id(document_id, i),
                 "content": chunk,
@@ -133,7 +136,7 @@ class RedisVectorStore:
                 "document_id": document_id,
                 "chunk_index": i,
                 "metadata": json.dumps(metadata or {}),
-                "embedding": embedding,
+                "embedding": embedding_bytes,
             }
             records.append(record)
 
@@ -162,8 +165,9 @@ class RedisVectorStore:
         Returns:
             List of matching documents with scores
         """
-        # Generate query embedding
+        # Generate query embedding and convert to bytes
         query_embedding = await self.embedder.embed(query)
+        query_bytes = np.array(query_embedding, dtype=np.float32).tobytes()
 
         # Build filter
         filter_expr = None
@@ -172,7 +176,7 @@ class RedisVectorStore:
 
         # Create query
         vector_query = VectorQuery(
-            vector=query_embedding,
+            vector=query_bytes,
             vector_field_name="embedding",
             return_fields=[
                 "content",

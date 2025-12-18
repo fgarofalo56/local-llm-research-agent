@@ -30,8 +30,6 @@ export function MCPServerSelector() {
   const servers = data?.servers ?? [];
   const { selectedMCPServers, toggleMCPServer } = useChatStore();
 
-  const servers = data?.servers;
-
   return (
     <div className="space-y-2">
       <h3 className="text-sm font-medium text-muted-foreground">Active Tools</h3>

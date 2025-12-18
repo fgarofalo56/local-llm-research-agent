@@ -141,19 +141,19 @@ class TestFoundryLocalProvider:
         provider = FoundryLocalProvider()
 
         assert provider.provider_type == ProviderType.FOUNDRY_LOCAL
-        assert "127.0.0.1:55588" in provider.endpoint
+        assert "127.0.0.1:53760" in provider.endpoint
 
     def test_init_custom(self):
         """Test custom initialization."""
         provider = FoundryLocalProvider(
             model_name="phi-3-mini",
-            endpoint="http://custom:55588",
+            endpoint="http://custom:53760",
             api_key="test-key",
         )
 
         assert provider.model_name == "phi-3-mini"
         # endpoint now includes /v1 suffix for OpenAI compatibility
-        assert provider.endpoint == "http://custom:55588/v1"
+        assert provider.endpoint == "http://custom:53760/v1"
 
     def test_get_model(self):
         """Test getting OpenAI-compatible model."""

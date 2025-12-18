@@ -30,6 +30,7 @@ All services are organized under the `local-agent-ai-stack` Docker Compose proje
 | **agent-ui** | `local-agent-streamlit-ui` | 8501 | default | Streamlit web interface |
 | **agent-cli** | `local-agent-cli` | - | `cli` | Interactive CLI chat |
 | **api** | `local-agent-api` | 8000 | `api` | FastAPI backend |
+| **superset** | `local-agent-superset` | 8088 | `superset` | Apache Superset BI platform |
 
 > *RedisInsight port is configurable via `REDIS_INSIGHT_PORT` environment variable
 
@@ -406,4 +407,52 @@ ORDER BY CitationCount DESC;
 
 ---
 
-*Last Updated: December 2025* (Phase 2.1 - Added Redis Stack, FastAPI, data persistence)
+## 📊 Apache Superset
+
+Apache Superset is an enterprise BI platform included as an optional service.
+
+### Starting Superset
+
+```bash
+# Start Superset with dependencies
+docker-compose -f docker/docker-compose.yml --env-file .env --profile superset up -d
+
+# Wait for initialization (~60 seconds)
+docker logs -f local-agent-superset
+
+# Run setup script to configure SQL Server connection
+python scripts/setup_superset.py
+```
+
+### Access
+
+| Setting | Value |
+|---------|-------|
+| URL | `http://localhost:8088` |
+| Username | `admin` |
+| Password | See `SUPERSET_ADMIN_PASSWORD` in `.env` |
+
+### Environment Variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `SUPERSET_SECRET_KEY` | (generated) | Session encryption key |
+| `SUPERSET_ADMIN_PASSWORD` | `LocalLLM@2024!` | Admin user password |
+| `SUPERSET_PORT` | `8088` | Web UI port |
+| `SUPERSET_VOLUME_NAME` | `local-llm-superset-data` | Data volume name |
+
+### Files
+
+```
+docker/
+├── docker-compose.yml           # Service definition
+├── Dockerfile.superset          # Custom image with SQL Server driver
+└── superset/
+    └── superset_config.py       # Superset configuration
+```
+
+For detailed usage, see [docs/superset-guide.md](../docs/superset-guide.md).
+
+---
+
+*Last Updated: December 2025*

@@ -6,80 +6,103 @@
 
 ## ✨ Features
 
-### Core Features (Phase 1)
+### 🔒 Privacy & Local Processing
 
-| Feature | Status | Description |
-|---------|--------|-------------|
-| 🔒 **Fully Local** | ✅ | No cloud APIs - all processing on your machine |
-| 💬 **Natural Language SQL** | ✅ | Ask questions about your data in plain English |
-| 🔌 **MCP Integration** | ✅ | Extensible tool architecture via Model Context Protocol |
-| ⌨️ **CLI Interface** | ✅ | Command-line chat for development |
-| 🌐 **Streamlit Web UI** | ✅ | User-friendly web interface |
-| 🔐 **Privacy First** | ✅ | Your data never leaves your network |
-| 🗃️ **Sample Database** | ✅ | Docker-based SQL Server with demo data |
-| 🦙 **Multiple LLM Providers** | ✅ | Ollama or Microsoft Foundry Local |
-| ⚡ **Streaming Responses** | ✅ | Real-time token streaming |
+| Feature | Description |
+|---------|-------------|
+| **Fully Local** | No cloud APIs - all LLM processing on your machine |
+| **Privacy First** | Your data never leaves your network |
+| **Multiple LLM Providers** | Ollama or Microsoft Foundry Local |
+| **Streaming Responses** | Real-time token streaming |
 
-### Backend & RAG Features (Phase 2.1)
+### 💬 Natural Language SQL
 
-| Feature | Status | Description |
-|---------|--------|-------------|
-| 🚀 **FastAPI Backend** | ✅ | REST API with automatic OpenAPI docs |
-| 🧠 **RAG Pipeline** | ✅ | Document-augmented question answering |
-| 📦 **Redis Vector Store** | ✅ | Fast similarity search with Redis Stack |
-| 📄 **Document Processing** | ✅ | PDF/DOCX parsing with Docling |
-| 🗄️ **SQLAlchemy ORM** | ✅ | Database models with Alembic migrations |
-| 🔧 **Dynamic MCP** | ✅ | Configure MCP servers at runtime |
+| Feature | Description |
+|---------|-------------|
+| **Natural Language Queries** | Ask questions about your data in plain English |
+| **MCP Integration** | Extensible tool architecture via Model Context Protocol |
+| **Smart Tool Calling** | Agent automatically selects appropriate database operations |
+| **Sample Database** | Docker-based SQL Server with demo data |
 
-### React UI Features (Phase 2.2)
+### 🖥️ User Interfaces
 
-| Feature | Status | Description |
-|---------|--------|-------------|
-| ⚛️ **React Frontend** | ✅ | Modern UI with React 19 + Vite |
-| 🎨 **Dark/Light Theme** | ✅ | System-aware theming with CSS variables |
-| 🔌 **WebSocket Chat** | ✅ | Real-time streaming responses |
-| 📊 **Query History** | ✅ | Browse and favorite SQL queries |
-| 📁 **Document Manager** | ✅ | Upload and search RAG documents |
-| 🖥️ **MCP Server View** | ✅ | Monitor connected MCP servers |
+| Feature | Description |
+|---------|-------------|
+| **React Frontend** | Modern UI with React 19 + Vite + TypeScript |
+| **Streamlit Web UI** | User-friendly web interface |
+| **CLI Interface** | Command-line chat for development |
+| **Dark/Light Theme** | System-aware theming with CSS variables |
+| **WebSocket Chat** | Real-time streaming responses |
 
-### Visualization & Dashboards (Phase 2.3)
+### 🚀 Backend & API
 
-| Feature | Status | Description |
-|---------|--------|-------------|
-| 📊 **Recharts Integration** | ✅ | Bar, Line, Area, Pie, Scatter charts |
-| 🤖 **AI Chart Suggestions** | ✅ | Automatic chart type recommendations |
-| 📈 **KPI Cards** | ✅ | Single-value metric displays |
-| 🎛️ **Dashboard Builder** | ✅ | Create and manage custom dashboards |
-| 📌 **Widget Pinning** | ✅ | Pin query results to dashboards |
-| 🔄 **Drag & Drop Layout** | ✅ | react-grid-layout for positioning |
-| ⏱️ **Auto-Refresh** | ✅ | Per-widget refresh intervals |
-| 💾 **Persistence** | ✅ | Dashboard state saved to SQL Server |
+| Feature | Description |
+|---------|-------------|
+| **FastAPI Backend** | REST API with automatic OpenAPI docs |
+| **SQLAlchemy ORM** | Database models with Alembic migrations |
+| **Dual Database Architecture** | SQL Server 2022 (sample) + SQL Server 2025 (backend) |
+| **SQL Server 2025 Vectors** | Native VECTOR type for embeddings (primary) |
+| **Redis Vector Store** | Fast similarity search (fallback option) |
+| **Dynamic MCP** | Configure MCP servers at runtime |
 
-### Exports & Power BI Integration (Phase 2.4)
+### 🧠 RAG Pipeline (Retrieval-Augmented Generation)
 
-| Feature | Status | Description |
-|---------|--------|-------------|
-| 🖼️ **PNG Export** | ✅ | Export charts as high-resolution PNG images |
-| 📑 **PDF Export** | ✅ | Export dashboards and charts to PDF |
-| 📊 **CSV Export** | ✅ | Export query results to CSV format |
-| 📗 **Excel Export** | ✅ | Export data to Excel spreadsheets |
-| 📋 **Dashboard JSON** | ✅ | Import/export dashboard configurations |
-| 💬 **Chat Export** | ✅ | Export conversations to Markdown or PDF |
-| 📊 **Power BI Dialog** | ✅ | Integration dialog for PBIX export |
+| Feature | Description |
+|---------|-------------|
+| **Document Processing** | PDF/DOCX parsing with local processing |
+| **Ollama Embeddings** | Local document embeddings (nomic-embed-text, 768 dims) |
+| **MSSQL Vector Store** | SQL Server 2025 native VECTOR type (primary) |
+| **Redis Vector Store** | Fallback vector search with Redis Stack |
+| **Schema Indexing** | Database schema for context-aware queries |
+
+### 📊 Dashboards & Visualization
+
+| Feature | Description |
+|---------|-------------|
+| **Recharts Integration** | Bar, Line, Area, Pie, Scatter charts |
+| **AI Chart Suggestions** | Automatic chart type recommendations |
+| **KPI Cards** | Single-value metric displays |
+| **Dashboard Builder** | Create and manage custom dashboards |
+| **Widget Pinning** | Pin query results to dashboards |
+| **Drag & Drop Layout** | react-grid-layout for positioning |
+| **Auto-Refresh** | Per-widget refresh intervals |
+
+### 📤 Export System
+
+| Feature | Description |
+|---------|-------------|
+| **PNG Export** | Export charts as high-resolution PNG images |
+| **PDF Export** | Export dashboards and charts to PDF |
+| **CSV Export** | Export query results to CSV format |
+| **Excel Export** | Export data to Excel spreadsheets |
+| **Dashboard JSON** | Import/export dashboard configurations |
+| **Chat Export** | Export conversations to Markdown or PDF |
+| **Power BI Dialog** | Integration dialog for PBIX export |
+
+### 📈 Apache Superset BI Platform
+
+| Feature | Description |
+|---------|-------------|
+| **Superset Container** | Apache Superset 3.1.0 with SQL Server driver |
+| **SQL Lab** | Full SQL IDE for data exploration |
+| **Dashboard Embedding** | Embed Superset dashboards in React app |
+| **Guest Token Auth** | Secure iframe embedding with guest tokens |
+| **Health Integration** | Superset status in health checks |
 
 ---
 
 ## 📑 Table of Contents
 
 - [Quick Start](#-quick-start)
-- [Docker Setup](#-docker-setup-sql-server--redis-stack)
+- [Docker Setup](#-docker-setup)
 - [MSSQL MCP Server Setup](#-mssql-mcp-server-setup)
 - [Configuration](#️-configuration)
 - [Running the Application](#-running-the-application)
-- [FastAPI Backend](#-fastapi-backend-phase-21)
-- [React Frontend](#️-react-frontend-phase-22)
-- [Dashboards & Visualization](#-dashboards--visualization-phase-23)
-- [Exports & Power BI](#-exports--power-bi-phase-24)
+- [FastAPI Backend](#-fastapi-backend)
+- [React Frontend](#️-react-frontend)
+- [Dashboards & Visualization](#-dashboards--visualization)
+- [Exports & Power BI](#-exports--power-bi)
+- [Apache Superset](#-apache-superset)
 - [Testing the Agent](#-testing-the-agent)
 - [MCP Tools Reference](#-mcp-tools-reference)
 - [Architecture](#️-architecture)
@@ -133,9 +156,9 @@ ollama pull mistral:7b-instruct
 
 ---
 
-## 🐳 Docker Setup (SQL Server + Redis Stack)
+## 🐳 Docker Setup
 
-The project includes a complete Docker setup with SQL Server 2022, Redis Stack for vector search, and a pre-populated research analytics database. All services are nested under the `local-agent-ai-stack` project.
+The project includes a complete Docker setup with SQL Server 2022, Redis Stack for vector search, and a pre-populated research analytics database.
 
 ### ⚠️ Critical: Environment File Requirement
 
@@ -149,23 +172,19 @@ docker-compose -f docker/docker-compose.yml --env-file .env up -d
 docker-compose -f docker/docker-compose.yml up -d
 ```
 
-**Why?** Docker Compose looks for `.env` in the same directory as the compose file. Since `docker-compose.yml` is in the `docker/` subdirectory but `.env` is in the project root, you must explicitly specify the env file path.
-
-**What happens without it?**
-- Port configurations (like `REDIS_INSIGHT_PORT`) won't be loaded
-- Containers may fail to start due to port conflicts
-- Volume names may not be set correctly
-
 ### 📦 Docker Services
 
 | Service | Container Name | Port | Profile | Purpose |
 |---------|---------------|------|---------|---------|
-| **mssql** | `local-agent-mssql` | 1433 | default | SQL Server 2022 database |
-| **redis-stack** | `local-agent-redis` | 6379, 8001* | default | Redis with vector search |
-| **mssql-tools** | `local-agent-mssql-tools` | - | `init` | Database initialization |
+| **mssql** | `local-agent-mssql` | 1433 | default | SQL Server 2022 (sample database) |
+| **mssql-backend** | `local-agent-mssql-backend` | 1434 | default | SQL Server 2025 (backend + vectors) |
+| **redis-stack** | `local-agent-redis` | 6379, 8001* | default | Redis (caching, vector fallback) |
+| **mssql-tools** | `local-agent-mssql-tools` | - | `init` | Sample database initialization |
+| **mssql-backend-tools** | `local-agent-mssql-backend-tools` | - | `init` | Backend database initialization |
 | **agent-ui** | `local-agent-streamlit-ui` | 8501 | default | Streamlit web interface |
 | **agent-cli** | `local-agent-cli` | - | `cli` | Interactive CLI chat |
 | **api** | `local-agent-api` | 8000 | `api` | FastAPI backend |
+| **superset** | `local-agent-superset` | 8088 | `superset` | Apache Superset BI |
 
 > *RedisInsight GUI port is configurable via `REDIS_INSIGHT_PORT` (default: 8001)
 
@@ -187,10 +206,6 @@ The sample database (`ResearchAnalytics`) contains:
 Plus 3 useful views: `vw_ActiveProjects`, `vw_ResearcherPublications`, `vw_ProjectFunding`
 
 ### 🚀 Starting the Services
-
-All docker-compose commands should be run from the **project root** using `-f docker/docker-compose.yml --env-file .env`:
-
-> ⚠️ **Important**: Always include `--env-file .env` when running docker-compose from the project root to ensure environment variables are properly loaded.
 
 #### Option 1: Full Stack Development (Recommended)
 
@@ -237,41 +252,21 @@ docker-compose -f docker/docker-compose.yml --env-file .env --profile init up ms
 ```bash
 # Start all services including the API
 docker-compose -f docker/docker-compose.yml --env-file .env --profile api up -d
-
-# This starts: SQL Server, Redis Stack, and FastAPI backend
 ```
 
-#### Option 5: With Streamlit UI in Docker
+#### Option 5: With Superset BI Platform
 
 ```bash
-# Core services + Streamlit UI
-docker-compose -f docker/docker-compose.yml --env-file .env up -d agent-ui
+# Start with Superset
+docker-compose -f docker/docker-compose.yml --env-file .env --profile superset up -d
 
-# Core services + FastAPI + Streamlit
-docker-compose -f docker/docker-compose.yml --env-file .env --profile api up -d agent-ui
+# Or start everything
+docker-compose -f docker/docker-compose.yml --env-file .env --profile full up -d
 ```
-
-#### Option 6: Interactive CLI in Docker
-
-```bash
-# Run interactive CLI chat
-docker-compose -f docker/docker-compose.yml --env-file .env --profile cli run agent-cli
-```
-
-### 🔴 Redis Stack
-
-Redis Stack provides vector similarity search for the RAG pipeline.
-
-| Service | Default Port | Environment Variable | Purpose |
-|---------|--------------|---------------------|---------|
-| Redis | 6379 | `REDIS_PORT` | Vector store |
-| RedisInsight | 8001 | `REDIS_INSIGHT_PORT` | GUI management |
-
-Access RedisInsight at: http://localhost:8001 (or your configured port)
-
-> 💡 **Tip**: If port 8001 is in use, set `REDIS_INSIGHT_PORT=8008` (or any free port) in your `.env` file.
 
 ### 🔌 Connection Details
+
+**Sample Database (SQL Server 2022):**
 
 | Setting | Value |
 |---------|-------|
@@ -280,32 +275,14 @@ Access RedisInsight at: http://localhost:8001 (or your configured port)
 | **Username** | `sa` |
 | **Password** | `LocalLLM@2024!` (or your `MSSQL_SA_PASSWORD`) |
 
-### 🔧 Testing the Connection
+**Backend Database (SQL Server 2025 with vectors):**
 
-```bash
-# Using sqlcmd (if installed)
-sqlcmd -S localhost,1433 -U sa -P "LocalLLM@2024!" -d ResearchAnalytics -Q "SELECT COUNT(*) FROM Researchers"
-
-# Using Docker exec (note the new container name)
-docker exec -it local-agent-mssql /opt/mssql-tools18/bin/sqlcmd \
-  -S localhost -U sa -P "LocalLLM@2024!" -No \
-  -Q "SELECT COUNT(*) AS ResearcherCount FROM ResearchAnalytics.dbo.Researchers"
-```
-
-### 💾 Data Persistence
-
-Docker volumes preserve data across container rebuilds:
-
-| Volume | Default Name | Environment Variable | Purpose |
-|--------|-------------|---------------------|---------|
-| SQL Server | `local-llm-mssql-data` | `MSSQL_VOLUME_NAME` | Database files |
-| Redis | `local-llm-redis-data` | `REDIS_VOLUME_NAME` | Vector store data |
-
-> ⚠️ **Important**: Volumes are configured as `external: true`. Create them before first run:
-> ```bash
-> docker volume create local-llm-mssql-data
-> docker volume create local-llm-redis-data
-> ```
+| Setting | Value |
+|---------|-------|
+| **Server** | `localhost,1434` |
+| **Database** | `LLM_BackEnd` |
+| **Username** | `sa` |
+| **Password** | `LocalLLM@2024!` (or your `MSSQL_SA_PASSWORD`) |
 
 ### 📋 Managing the Services
 
@@ -319,28 +296,8 @@ docker-compose -f docker/docker-compose.yml logs -f mssql
 # Stop all services (preserves data)
 docker-compose -f docker/docker-compose.yml down
 
-# Clean rebuild (keeps SQL/Redis data)
-docker-compose -f docker/docker-compose.yml --env-file .env down --remove-orphans
-docker-compose -f docker/docker-compose.yml --env-file .env build --no-cache
-docker-compose -f docker/docker-compose.yml --env-file .env up -d --force-recreate
-
-# Clean rebuild with profiles (example: full stack)
-docker-compose -f docker/docker-compose.yml --env-file .env --profile full up -d --build --force-recreate
-
 # Stop and DELETE all data (fresh start)
 docker-compose -f docker/docker-compose.yml down -v
-
-# Nuclear clean rebuild (DELETES SQL/Redis data)
-docker-compose -f docker/docker-compose.yml --env-file .env down -v --remove-orphans
-docker-compose -f docker/docker-compose.yml --env-file .env build --no-cache
-docker-compose -f docker/docker-compose.yml --env-file .env up -d --force-recreate
-
-# Restart with fresh data
-docker-compose -f docker/docker-compose.yml down -v
-docker volume create local-llm-mssql-data
-docker volume create local-llm-redis-data
-docker-compose -f docker/docker-compose.yml --env-file .env up -d
-docker-compose -f docker/docker-compose.yml --env-file .env --profile init up mssql-tools
 ```
 
 ---
@@ -393,8 +350,7 @@ Configure for the Docker database:
 # =============================================================================
 # LLM Provider Configuration
 # =============================================================================
-# Provider: "ollama" or "foundry_local"
-LLM_PROVIDER=ollama
+LLM_PROVIDER=ollama  # or "foundry_local"
 
 # Ollama Configuration
 OLLAMA_HOST=http://localhost:11434
@@ -404,7 +360,7 @@ OLLAMA_MODEL=qwen2.5:7b-instruct
 EMBEDDING_MODEL=nomic-embed-text
 
 # Microsoft Foundry Local Configuration (alternative)
-FOUNDRY_ENDPOINT=http://127.0.0.1:55588
+FOUNDRY_ENDPOINT=http://127.0.0.1:53760
 FOUNDRY_MODEL=phi-4
 FOUNDRY_AUTO_START=true
 
@@ -415,18 +371,13 @@ SQL_SERVER_HOST=localhost
 SQL_SERVER_PORT=1433
 SQL_DATABASE_NAME=ResearchAnalytics
 SQL_TRUST_SERVER_CERTIFICATE=true
-
-# SQL Server Authentication
 SQL_USERNAME=sa
 SQL_PASSWORD=LocalLLM@2024!
 
 # =============================================================================
 # Docker Configuration
 # =============================================================================
-# Docker SA password (must match SQL_PASSWORD for local dev)
 MSSQL_SA_PASSWORD=LocalLLM@2024!
-
-# Docker volume names for data persistence
 MSSQL_VOLUME_NAME=local-llm-mssql-data
 REDIS_VOLUME_NAME=local-llm-redis-data
 
@@ -436,6 +387,21 @@ REDIS_VOLUME_NAME=local-llm-redis-data
 REDIS_URL=redis://localhost:6379
 REDIS_PORT=6379
 REDIS_INSIGHT_PORT=8001  # Change if port 8001 is in use
+
+# =============================================================================
+# Backend Database (SQL Server 2025 with native vectors)
+# =============================================================================
+BACKEND_DB_HOST=localhost
+BACKEND_DB_PORT=1434
+BACKEND_DB_NAME=LLM_BackEnd
+BACKEND_DB_TRUST_CERT=true
+
+# =============================================================================
+# Vector Store Configuration
+# =============================================================================
+# Vector store type: "mssql" (SQL Server 2025) or "redis" (fallback)
+VECTOR_STORE_TYPE=mssql
+VECTOR_DIMENSIONS=768
 
 # =============================================================================
 # RAG Configuration
@@ -462,6 +428,15 @@ API_PORT=8000
 # =============================================================================
 UPLOAD_DIR=./data/uploads
 MAX_UPLOAD_SIZE_MB=100
+
+# =============================================================================
+# Superset Configuration (Optional)
+# =============================================================================
+SUPERSET_URL=http://localhost:8088
+SUPERSET_SECRET_KEY=your_secure_key
+SUPERSET_ADMIN_USER=admin
+SUPERSET_ADMIN_PASSWORD=LocalLLM@2024!
+SUPERSET_PORT=8088
 
 # =============================================================================
 # Application Settings
@@ -499,9 +474,6 @@ uv run python -m src.cli.chat chat --provider foundry_local
 
 # With read-only mode (safer for exploration)
 uv run python -m src.cli.chat --readonly
-
-# With debug output
-uv run python -m src.cli.chat chat --debug
 ```
 
 ### 🌐 Streamlit Web UI
@@ -515,23 +487,26 @@ uv run streamlit run src/ui/streamlit_app.py
 
 > 💡 **Tip**: The web UI includes a provider selector in the sidebar to switch between Ollama and Foundry Local.
 
-### 🚀 FastAPI Backend (Phase 2.1)
+---
+
+## 📡 FastAPI Backend
+
+The FastAPI backend provides a REST API for all agent operations, document management, and RAG search.
+
+### Running the Backend
 
 ```bash
-# Start the FastAPI server
+# Development mode (with hot reload)
 uv run uvicorn src.api.main:app --reload --host 0.0.0.0 --port 8000
+
+# Production mode
+uv run uvicorn src.api.main:app --host 0.0.0.0 --port 8000 --workers 4
 
 # Access points:
 # - API: http://localhost:8000
 # - Swagger UI: http://localhost:8000/docs
 # - ReDoc: http://localhost:8000/redoc
 ```
-
----
-
-## 📡 FastAPI Backend (Phase 2.1)
-
-The FastAPI backend provides a REST API for all agent operations, document management, and RAG search.
 
 ### API Endpoints
 
@@ -552,20 +527,12 @@ The FastAPI backend provides a REST API for all agent operations, document manag
 | `/api/mcp` | GET | List MCP servers |
 | `/api/mcp/{name}/tools` | GET | List MCP server tools |
 | `/api/settings/theme` | GET/PUT | Theme configuration |
+| `/api/settings/providers` | GET | List available LLM providers |
 | `/api/agent/chat` | POST | Send message to agent |
-
-### Running the Backend
-
-```bash
-# Development mode (with hot reload)
-uv run uvicorn src.api.main:app --reload --host 0.0.0.0 --port 8000
-
-# Production mode
-uv run uvicorn src.api.main:app --host 0.0.0.0 --port 8000 --workers 4
-
-# Via Docker
-cd docker && docker compose up -d api
-```
+| `/ws/agent/{conversation_id}` | WS | Real-time WebSocket chat |
+| `/api/superset/health` | GET | Superset status |
+| `/api/superset/dashboards` | GET | List Superset dashboards |
+| `/api/superset/embed/{id}` | GET | Get embed URL with guest token |
 
 ### Database Migrations
 
@@ -582,7 +549,7 @@ uv run alembic downgrade -1
 
 ---
 
-## ⚛️ React Frontend (Phase 2.2)
+## ⚛️ React Frontend
 
 The React frontend provides a modern web interface for interacting with the research agent.
 
@@ -594,6 +561,8 @@ The React frontend provides a modern web interface for interacting with the rese
 - **MCP Server Selection** - Choose which tools the agent can use
 - **Document Management** - Upload and search documents for RAG
 - **Query History** - View and favorite SQL queries
+- **Dashboard Builder** - Create custom analytics dashboards
+- **Export System** - Export to PNG, PDF, CSV, Excel
 
 ### Tech Stack
 
@@ -605,6 +574,7 @@ The React frontend provides a modern web interface for interacting with the rese
 | Zustand | 5.0.9 | Client state management |
 | Tailwind CSS | 3.4.15 | Styling |
 | React Router | 7.10.1 | Routing |
+| Recharts | - | Data visualization |
 
 ### Running the Frontend
 
@@ -636,17 +606,12 @@ npm run preview
 | `/dashboards` | Analytics dashboards with widgets |
 | `/queries` | Query history and favorites |
 | `/mcp-servers` | MCP server status and tools |
+| `/superset` | Superset BI reports and embedding |
 | `/settings` | Theme and app settings |
-
-### Development Notes
-
-- The frontend proxies API requests to `http://localhost:8000` (FastAPI backend)
-- WebSocket connections are proxied to `ws://localhost:8000`
-- Ensure the FastAPI backend is running before starting the frontend
 
 ---
 
-## 📊 Dashboards & Visualization (Phase 2.3)
+## 📊 Dashboards & Visualization
 
 The dashboard system allows you to create custom analytics views with interactive charts and KPI cards.
 
@@ -661,18 +626,6 @@ The dashboard system allows you to create custom analytics views with interactiv
 | **Drag & Drop** | Resize and reposition widgets with react-grid-layout |
 | **Auto-Refresh** | Per-widget refresh intervals (30s, 1m, 5m, etc.) |
 | **Persistence** | Dashboard layout saved to SQL Server |
-
-### API Endpoints
-
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/api/dashboards` | GET/POST | List/create dashboards |
-| `/api/dashboards/{id}` | GET/PUT/DELETE | Manage dashboard |
-| `/api/dashboards/{id}/widgets` | GET/POST | List/add widgets |
-| `/api/dashboards/{id}/widgets/{wid}` | PUT/DELETE | Update/remove widget |
-| `/api/dashboards/{id}/layout` | PUT | Batch update positions |
-| `/api/dashboards/{id}/share` | POST | Create share link |
-| `/api/queries/execute` | POST | Execute SQL for widgets |
 
 ### Widget Types
 
@@ -695,7 +648,7 @@ The dashboard system allows you to create custom analytics views with interactiv
 
 ---
 
-## 📤 Exports & Power BI (Phase 2.4)
+## 📤 Exports & Power BI
 
 Comprehensive export functionality for charts, dashboards, and conversations.
 
@@ -726,31 +679,47 @@ The Power BI export dialog allows you to:
 - Set optional report name
 - Create `.pbix` files ready for Power BI Desktop
 
-### Dashboard Import/Export
+---
+
+## 📊 Apache Superset
+
+Apache Superset provides enterprise-grade BI capabilities alongside the AI-powered React UI.
+
+### Features
+
+| Feature | Description |
+|---------|-------------|
+| **SQL Lab** | Full SQL IDE with syntax highlighting and query history |
+| **40+ Charts** | Extensive visualization library |
+| **Scheduled Reports** | Email reports on schedule |
+| **Dashboard Embedding** | Embed dashboards in the React app |
+| **Role-Based Access** | Native user management and permissions |
+
+### Starting Superset
 
 ```bash
-# Export dashboard configuration
-1. Navigate to /dashboards
-2. Select a dashboard
-3. Click "Export JSON" button
+# Start Superset with dependencies
+docker-compose -f docker/docker-compose.yml --env-file .env --profile superset up -d
 
-# Import dashboard configuration
-1. Navigate to /dashboards
-2. Click "Import" button
-3. Select a .json file exported previously
+# Wait for initialization (~60 seconds), then setup database connection
+python scripts/setup_superset.py
+
+# Access Superset
+# URL: http://localhost:8088
+# Username: admin
+# Password: LocalLLM@2024! (or SUPERSET_ADMIN_PASSWORD)
 ```
 
-### Chat Export
+### Embedding Dashboards
 
-```bash
-# Export conversation to Markdown
-1. Open a conversation in /chat
-2. Click "Export MD" button
+Superset dashboards can be embedded in the React application:
 
-# Export conversation to PDF
-1. Open a conversation in /chat
-2. Click "Export PDF" button
-```
+1. Create and publish a dashboard in Superset
+2. Navigate to **Superset Reports** in the React app sidebar
+3. Click on a dashboard to view it embedded
+4. Use the external link button to open in full Superset
+
+For detailed usage instructions, see [docs/superset-guide.md](docs/superset-guide.md).
 
 ---
 
@@ -834,7 +803,7 @@ Which researchers are assigned to multiple projects?
 +-----------------------------------------------------------------------------+
 |                           User Interfaces                                    |
 |  +------------------+  +----------------------+  +------------------------+  |
-|  |  ⌨️ CLI (Typer)  |  |  🌐 Streamlit Web UI |  |  🚀 FastAPI Backend    | |
+|  |  ⌨️ CLI (Typer)  |  |  🌐 Streamlit Web UI |  |  ⚛️ React Frontend     |  |
 |  +--------+---------+  +-----------+----------+  +-----------+------------+  |
 +-----------|-----------------------|--------------------------|---------------+
             |                       |                          |
@@ -852,35 +821,47 @@ Which researchers are assigned to multiple projects?
 +--------------------+  +----------------------------+  +---------------------+
 |  🦙 LLM Provider   |  |      🔌 MCP Servers        |  |  🧠 RAG Pipeline   |
 |  +--------------+  |  |  +----------------------+ |  |  +---------------+   |
-|  | Ollama       |  |  |  | MSSQL MCP Server     | |  |  | 📄 Docling    |   |
+|  | Ollama       |  |  |  | MSSQL MCP Server     | |  |  | 📄 PDF/DOCX   |   |
 |  | Foundry Local|  |  |  | (SQL Server Access)  | |  |  | 🔢 Embeddings |   |
 |  +--------------+  |  |  +----------------------+ |  |  | 🔍 Search     |   |
 +--------------------+  +----------------------------+  |  +---------------+  |
                                      |                  +----------+----------+
                                      v                             |
-                        +----------------------------+             v
-                        |   🗃️ SQL Server           |  +---------------------+
-                        |   (Docker Container)       |  |  🔴 Redis Stack     |
-                        |   ResearchAnalytics DB     |  |   Vector Store      |
-                        +----------------------------+  +---------------------+
+          +--------------------------+-----------------------------+
+          |                                                        |
+          v                                                        v
++----------------------------+              +--------------------------------+
+|   🗃️ SQL Server 2022      |              |   🗃️ SQL Server 2025          |
+|   (Sample Database)        |              |   (Backend + Vectors)          |
+|   ResearchAnalytics        |              |   LLM_BackEnd                  |
+|   Port: 1433               |              |   Port: 1434                   |
++----------------------------+              |   +------------------------+   |
+                                            |   | VECTOR(768) Native     |   |
++----------------------------+              |   | Cosine Similarity      |   |
+|  🔴 Redis Stack            |              |   +------------------------+   |
+|   (Caching + Fallback)     |              +--------------------------------+
++----------------------------+
 ```
 
 ### 🔧 Tech Stack
 
-| Component | Technology | Icon |
-|-----------|------------|------|
-| LLM Runtime | Ollama / Foundry Local | 🦙 |
-| Agent Framework | Pydantic AI | 🤖 |
-| MCP Server | MSSQL MCP (Node.js) | 🔌 |
-| Web UI | Streamlit | 🌐 |
-| CLI | Typer + Rich | ⌨️ |
-| Database | SQL Server 2022 (Docker) | 🗃️ |
-| Validation | Pydantic v2 | ✅ |
-| **Backend API** | FastAPI + Uvicorn | 🚀 |
-| **ORM** | SQLAlchemy 2.0 + Alembic | 🗄️ |
-| **Vector Store** | Redis Stack | 🔴 |
-| **Embeddings** | Ollama (nomic-embed-text) | 🧠 |
-| **Doc Processing** | Docling | 📄 |
+| Component | Technology | Purpose |
+|-----------|------------|---------|
+| LLM Runtime | Ollama / Foundry Local | Local model inference |
+| Agent Framework | Pydantic AI | Orchestration & tools |
+| MCP Server | MSSQL MCP (Node.js) | SQL Server access |
+| Backend API | FastAPI + Uvicorn | REST API |
+| Frontend | React 19 + Vite | Modern web UI |
+| Web UI | Streamlit | Alternative interface |
+| CLI | Typer + Rich | Terminal interface |
+| Sample Database | SQL Server 2022 | Demo data (ResearchAnalytics) |
+| Backend Database | SQL Server 2025 | App state + native vectors (LLM_BackEnd) |
+| ORM | SQLAlchemy 2.0 + Alembic | Database models |
+| Vector Store (Primary) | SQL Server 2025 VECTOR | Native similarity search |
+| Vector Store (Fallback) | Redis Stack | Alternative vector search |
+| Embeddings | Ollama (nomic-embed-text) | 768-dimensional vectors |
+| BI Platform | Apache Superset | Enterprise analytics |
+| Validation | Pydantic v2 | Type-safe models |
 
 ### 📁 Project Structure
 
@@ -888,30 +869,32 @@ Which researchers are assigned to multiple projects?
 local-llm-research-agent/
 ├── src/
 │   ├── agent/          # 🤖 Pydantic AI agent
-│   ├── api/            # 🚀 FastAPI backend (Phase 2.1)
+│   ├── api/            # 🚀 FastAPI backend
 │   │   ├── models/     # SQLAlchemy ORM models
 │   │   └── routes/     # API endpoints
-│   ├── rag/            # 🧠 RAG pipeline (Phase 2.1)
-│   │   ├── embedder.py          # Ollama embeddings
-│   │   ├── redis_vector_store.py # Vector search
-│   │   ├── document_processor.py # Docling parsing
-│   │   └── schema_indexer.py    # DB schema indexing
+│   ├── rag/            # 🧠 RAG pipeline
+│   │   ├── embedder.py           # Ollama embeddings
+│   │   ├── mssql_vector_store.py # SQL Server 2025 vectors (primary)
+│   │   ├── redis_vector_store.py # Redis vectors (fallback)
+│   │   ├── document_processor.py # PDF/DOCX parsing
+│   │   └── schema_indexer.py     # DB schema indexing
 │   ├── providers/      # 🦙 LLM provider abstraction
 │   ├── mcp/            # 🔌 MCP client and config
 │   ├── cli/            # ⌨️ Command-line interface
 │   ├── ui/             # 🌐 Streamlit web interface
 │   ├── models/         # 📋 Pydantic data models
 │   └── utils/          # ⚙️ Configuration and logging
-├── alembic/            # 🗄️ Database migrations (Phase 2.1)
-├── data/               # 📁 Uploads and cache (Phase 2.1)
-├── docker/
-│   ├── docker-compose.yml    # 🐳 SQL Server + Redis + API
-│   ├── Dockerfile.api        # FastAPI container
-│   └── init/                 # 🗃️ Database init scripts
+├── frontend/           # ⚛️ React frontend
+├── alembic/            # 🗄️ Database migrations
+├── data/               # 📁 Uploads and cache
+├── docker/             # 🐳 Docker configuration
+│   ├── docker-compose.yml
+│   ├── Dockerfile.api
+│   ├── init/           # Sample database init scripts
+│   └── init-backend/   # Backend database init scripts (SQL Server 2025)
 ├── tests/              # 🧪 Test suite
 ├── docs/               # 📚 Documentation
-├── examples/           # 💡 Usage examples
-└── PRPs/               # 📋 Product Requirement Prompts
+└── examples/           # 💡 Usage examples
 ```
 
 ---
@@ -1002,7 +985,8 @@ MIT License - see [LICENSE](LICENSE) file for details.
 - [Microsoft Foundry Local](https://github.com/microsoft/Foundry-Local) - Alternative LLM runtime
 - [MSSQL MCP Server](https://github.com/Azure-Samples/SQL-AI-samples/tree/main/MssqlMcp) - SQL Server MCP integration
 - [Model Context Protocol](https://modelcontextprotocol.io/) - Tool integration standard
+- [Apache Superset](https://superset.apache.org/) - BI platform
 
 ---
 
-*Last Updated: December 2025* (Phase 2.4 Exports & Power BI Integration)
+*Last Updated: December 2025*

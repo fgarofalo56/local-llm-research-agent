@@ -14,9 +14,9 @@
 | [Foundry Local Guide](guides/foundry-local.md) | Install and manage Foundry Local |
 | [Troubleshooting](guides/troubleshooting.md) | Comprehensive problem-solving guide |
 | [API Reference](api/README.md) | Programmatic interface documentation |
-| [FastAPI Backend](api/fastapi.md) | REST API documentation (Phase 2.1) |
-| [RAG Pipeline](api/rag.md) | Document retrieval and vector search (Phase 2.1) |
-| [Exports Guide](guides/exports.md) | Export functionality documentation (Phase 2.4) |
+| [FastAPI Backend](api/fastapi.md) | REST API documentation |
+| [RAG Pipeline](api/rag.md) | Document retrieval and vector search |
+| [Exports Guide](guides/exports.md) | Export functionality documentation |
 
 ---
 
@@ -41,8 +41,8 @@ docs/
 │   ├── mcp-client.md            # MCP client API
 │   ├── models.md                # Data models API
 │   ├── utilities.md             # Utilities API
-│   ├── fastapi.md               # FastAPI REST API (Phase 2.1)
-│   └── rag.md                   # RAG Pipeline (Phase 2.1)
+│   ├── fastapi.md               # FastAPI REST API
+│   └── rag.md                   # RAG Pipeline
 │
 ├── reference/                   # Reference materials
 │   ├── configuration.md         # Full configuration reference
@@ -91,8 +91,8 @@ For developers integrating or extending the agent:
 | [MCP Client API](api/mcp-client.md) | MCP server integration |
 | [Models API](api/models.md) | Data models and schemas |
 | [Utilities API](api/utilities.md) | Config, logging, caching, health |
-| [FastAPI Backend](api/fastapi.md) | REST API endpoints (Phase 2.1) |
-| [RAG Pipeline](api/rag.md) | Vector search and document processing (Phase 2.1) |
+| [FastAPI Backend](api/fastapi.md) | REST API endpoints |
+| [RAG Pipeline](api/rag.md) | Vector search and document processing |
 
 ---
 
@@ -156,56 +156,65 @@ The system architecture is documented in the [architecture diagram](diagrams/arc
 | MCP Server | MSSQL MCP (Node.js) | SQL Server access |
 | Web UI | Streamlit | Browser interface |
 | CLI | Typer + Rich | Terminal interface |
-| Database | SQL Server 2022 / Azure SQL | Data storage |
-| **Backend API** | FastAPI + Uvicorn | REST API (Phase 2.1) |
-| **ORM** | SQLAlchemy 2.0 + Alembic | Database models (Phase 2.1) |
-| **Vector Store** | Redis Stack | Similarity search (Phase 2.1) |
-| **Embeddings** | Ollama (nomic-embed-text) | Document vectors (Phase 2.1) |
-| **Doc Processing** | Docling | PDF/DOCX parsing (Phase 2.1) |
+| Sample Database | SQL Server 2022 | Demo data (ResearchAnalytics) |
+| Backend Database | SQL Server 2025 | App state + native vectors (LLM_BackEnd) |
+| **Backend API** | FastAPI + Uvicorn | REST API server |
+| **ORM** | SQLAlchemy 2.0 + Alembic | Database models & migrations |
+| **Vector Store (Primary)** | SQL Server 2025 VECTOR | Native vector similarity search |
+| **Vector Store (Fallback)** | Redis Stack | Alternative similarity search |
+| **Embeddings** | Ollama (nomic-embed-text) | 768-dimensional vectors |
+| **Doc Processing** | pypdf, python-docx | PDF/DOCX parsing |
 
 ---
 
 ## Features
 
-### Phase 1 Features (Stable)
+### Core Features
 
 | Feature | Status | Description |
 |---------|--------|-------------|
-| Natural Language Queries | Stable | Ask questions in plain English |
-| Multi-Provider Support | Stable | Ollama and Foundry Local |
-| Streaming Responses | Stable | See answers as generated |
-| Response Caching | Stable | Faster repeated queries |
-| Rate Limiting | Stable | Control request throughput |
-| Multi-Auth Support | Stable | SQL, Windows, Azure AD |
-| Session History | Stable | Save and recall conversations |
-| Export (JSON/CSV/MD) | Stable | Export conversations |
-| Read-Only Mode | Stable | Safe database exploration |
+| Natural Language Queries | ✅ Stable | Ask questions in plain English |
+| Multi-Provider Support | ✅ Stable | Ollama and Foundry Local |
+| Streaming Responses | ✅ Stable | See answers as generated |
+| Response Caching | ✅ Stable | Faster repeated queries |
+| Rate Limiting | ✅ Stable | Control request throughput |
+| Multi-Auth Support | ✅ Stable | SQL, Windows, Azure AD |
+| Session History | ✅ Stable | Save and recall conversations |
+| Read-Only Mode | ✅ Stable | Safe database exploration |
 
-### Phase 2.1 Features (Backend + RAG)
-
-| Feature | Status | Description |
-|---------|--------|-------------|
-| FastAPI Backend | Stable | REST API for all operations |
-| SQLAlchemy ORM | Stable | Database models with Alembic migrations |
-| Redis Vector Store | Stable | Vector similarity search |
-| Document Upload | Stable | PDF/DOCX processing with Docling |
-| RAG Search | Stable | Context-aware document retrieval |
-| Schema Indexing | Stable | Database schema for RAG context |
-| Dynamic MCP | Stable | Runtime MCP server configuration |
-| Dashboard API | Stable | Dashboard and widget management |
-| Query History | Stable | Saved queries and favorites |
-
-### Phase 2.4 Features (Exports & Power BI)
+### Backend & API
 
 | Feature | Status | Description |
 |---------|--------|-------------|
-| PNG Export | Stable | High-resolution chart images |
-| PDF Export | Stable | Multi-page dashboard/chart reports |
-| CSV Export | Stable | Standard data export format |
-| Excel Export | Stable | Spreadsheets with auto-column widths |
-| Dashboard JSON | Stable | Import/export dashboard configs |
-| Chat Export | Stable | Conversation to Markdown/PDF |
-| Power BI Dialog | Stable | PBIX file creation interface |
+| FastAPI Backend | ✅ Stable | REST API for all operations |
+| SQLAlchemy ORM | ✅ Stable | Database models with Alembic migrations |
+| WebSocket Chat | ✅ Stable | Real-time streaming responses |
+| Dynamic MCP | ✅ Stable | Runtime MCP server configuration |
+| Dashboard API | ✅ Stable | Dashboard and widget management |
+| Query History | ✅ Stable | Saved queries and favorites |
+
+### RAG Pipeline
+
+| Feature | Status | Description |
+|---------|--------|-------------|
+| SQL Server 2025 Vector Store | ✅ Stable | Native VECTOR type similarity search (primary) |
+| Redis Vector Store | ✅ Stable | Alternative vector search (fallback) |
+| Document Upload | ✅ Stable | PDF/DOCX processing |
+| RAG Search | ✅ Stable | Context-aware document retrieval |
+| Schema Indexing | ✅ Stable | Database schema for RAG context |
+| Ollama Embeddings | ✅ Stable | Local 768-dim embedding generation |
+
+### Export System
+
+| Feature | Status | Description |
+|---------|--------|-------------|
+| PNG Export | ✅ Stable | High-resolution chart images |
+| PDF Export | ✅ Stable | Multi-page dashboard/chart reports |
+| CSV Export | ✅ Stable | Standard data export format |
+| Excel Export | ✅ Stable | Spreadsheets with auto-column widths |
+| Dashboard JSON | ✅ Stable | Import/export dashboard configs |
+| Chat Export | ✅ Stable | Conversation to Markdown/PDF |
+| Power BI Dialog | ✅ Stable | PBIX file creation interface |
 
 ---
 
@@ -246,4 +255,4 @@ Documentation contributions are welcome! Please follow the [Documentation Standa
 
 ---
 
-*Last Updated: December 2025* (Phase 2.4 Exports & Power BI)
+*Last Updated: December 2025*

@@ -144,6 +144,7 @@ The project includes a Docker-based SQL Server and Redis Stack with sample resea
 | **redis-stack** | `local-agent-redis` | 6379, 8001 | Redis + Vector Search |
 | **agent-ui** | `local-agent-streamlit-ui` | 8501 | Web Interface |
 | **api** | `local-agent-api` | 8000 | FastAPI Backend |
+| **superset** | `local-agent-superset` | 8088 | Apache Superset BI (optional) |
 
 ### Quick Setup
 
@@ -258,7 +259,7 @@ OLLAMA_HOST=http://localhost:11434
 OLLAMA_MODEL=qwen2.5:7b-instruct
 
 # Foundry Local Configuration (if using)
-FOUNDRY_ENDPOINT=http://127.0.0.1:55588
+FOUNDRY_ENDPOINT=http://127.0.0.1:53760
 FOUNDRY_MODEL=phi-4
 
 # SQL Server (Docker defaults)
@@ -460,7 +461,8 @@ Now that you're set up:
 2. **Learn Docker services** - [Docker Services Guide](docker-services.md) - Complete guide to all containers
 3. **Read the MCP tools reference** - [MSSQL MCP Tools](../reference/mssql_mcp_tools.md)
 4. **Configure for production** - [Configuration Guide](configuration.md)
-5. **Troubleshoot issues** - [Troubleshooting Guide](troubleshooting.md)
+5. **Try Apache Superset** - [Superset Guide](../superset-guide.md) - Enterprise BI platform
+6. **Troubleshoot issues** - [Troubleshooting Guide](troubleshooting.md)
 
 ---
 
@@ -485,4 +487,4 @@ See the full [Troubleshooting Guide](troubleshooting.md).
 
 ---
 
-*Last Updated: December 2025* (Phase 2.1 - Added Redis Stack, FastAPI, Data Persistence)
+*Last Updated: December 2025*

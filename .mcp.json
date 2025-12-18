@@ -1,14 +1,10 @@
 {
   "mcpServers": {
-   "MCP_DOCKER": {
-      "type": "stdio",
-      "command": "docker",
-      "args": ["mcp", "gateway", "run"],
-      "env": {},
-      "description": "Docker MCP gateway"
+    "archon": {
+      "type": "http",
+      "url": "http://localhost:8051/mcp"
     },
     "serena": {
-      "type": "stdio",
       "command": "uvx",
       "args": [
         "--from",
@@ -17,8 +13,22 @@
         "start-mcp-server",
         "--context",
         "ide-assistant"
-      ],
-      "description": "Serena code intelligence"
+      ]
+    },
+    "microsoft.docs.mcp": {
+      "type": "http",
+      "url": "https://learn.microsoft.com/api/mcp"
+    },
+    "brave-search": {
+      "command": "cmd",
+      "args": ["/c", "npx", "-y", "@brave/brave-search-mcp-server"],
+      "env": {
+        "BRAVE_API_KEY": "${BRAVE_API_KEY}"
+      }
+    },
+    "playwright": {
+      "command": "cmd",
+      "args": ["/c", "npx", "@playwright/mcp@latest"]
     }
   }
 }

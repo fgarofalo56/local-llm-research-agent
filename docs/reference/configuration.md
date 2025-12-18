@@ -43,7 +43,7 @@ OLLAMA_MODEL=qwen2.5:7b-instruct
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `FOUNDRY_ENDPOINT` | `http://127.0.0.1:55588` | Foundry Local API endpoint |
+| `FOUNDRY_ENDPOINT` | `http://127.0.0.1:53760` | Foundry Local API endpoint |
 | `FOUNDRY_MODEL` | `phi-4` | Model alias to use |
 | `FOUNDRY_AUTO_START` | `false` | Auto-start model on agent init |
 
@@ -55,7 +55,7 @@ OLLAMA_MODEL=qwen2.5:7b-instruct
 **Example:**
 ```bash
 LLM_PROVIDER=foundry_local
-FOUNDRY_ENDPOINT=http://127.0.0.1:55588
+FOUNDRY_ENDPOINT=http://127.0.0.1:53760
 FOUNDRY_MODEL=phi-4
 FOUNDRY_AUTO_START=true
 ```

@@ -26,8 +26,13 @@ st.set_page_config(
     layout="wide",
 )
 
-# API base URL
-API_BASE_URL = f"http://localhost:{settings.api_port}"
+# API base URL - try container name first (Docker), fall back to localhost
+# Note: API_HOST=0.0.0.0 is for server binding, not client connections
+import os
+_api_host = os.environ.get("API_HOST", "localhost")
+if _api_host == "0.0.0.0":
+    _api_host = "localhost"  # 0.0.0.0 is bind address, use localhost for client
+API_BASE_URL = f"http://{_api_host}:{settings.api_port}"
 
 
 def run_async(coro):
@@ -200,7 +205,12 @@ def render_provider_settings():
         if selected_provider == "ollama":
             st.info("Start Ollama with: `ollama serve`")
         else:
-            st.info("Install Foundry Local: `pip install foundry-local-sdk`")
+            st.info(
+                "**Foundry Local Setup:**\n"
+                "1. Install: [Download from Microsoft](https://learn.microsoft.com/en-us/azure/ai-foundry/foundry-local/get-started)\n"
+                "2. Start a model: `foundry model run phi-4`\n"
+                "3. Or enable auto-start: Set `FOUNDRY_AUTO_START=true` in .env"
+            )
 
     # Test connection button
     if st.button("🧪 Test Connection", type="secondary"):

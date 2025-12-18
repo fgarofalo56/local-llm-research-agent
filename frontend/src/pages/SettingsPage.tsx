@@ -557,7 +557,7 @@ const defaultSecondaryConfig: ProviderConfig = {
   provider: 'foundry_local',
   model: '',
   embeddingModel: '',
-  host: 'http://127.0.0.1:55588',
+  host: 'http://127.0.0.1:53760',
 };
 
 interface SqlSettings {

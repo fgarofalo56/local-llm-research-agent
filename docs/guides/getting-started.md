@@ -259,7 +259,7 @@ OLLAMA_HOST=http://localhost:11434
 OLLAMA_MODEL=qwen2.5:7b-instruct
 
 # Foundry Local Configuration (if using)
-FOUNDRY_ENDPOINT=http://127.0.0.1:55588
+FOUNDRY_ENDPOINT=http://127.0.0.1:53760
 FOUNDRY_MODEL=phi-4
 
 # SQL Server (Docker defaults)
@@ -487,4 +487,4 @@ See the full [Troubleshooting Guide](troubleshooting.md).
 
 ---
 
-*Last Updated: December 2025* (Phase 3 - Added Apache Superset)
+*Last Updated: December 2025*

@@ -45,7 +45,7 @@ class Settings(BaseSettings):
 
     # Foundry Local Configuration
     foundry_endpoint: str = Field(
-        default="http://127.0.0.1:55588", description="Foundry Local API endpoint"
+        default="http://127.0.0.1:53760", description="Foundry Local API endpoint"
     )
     foundry_model: str = Field(default="phi-4", description="Foundry Local model alias")
     foundry_auto_start: bool = Field(
@@ -119,7 +119,35 @@ class Settings(BaseSettings):
     )
 
     # ===== Phase 2.1 Settings =====
-    # Redis
+
+    # ===== Backend Database (SQL Server 2025 with native vectors) =====
+    backend_db_host: str = Field(
+        default="localhost", description="Backend SQL Server 2025 hostname"
+    )
+    backend_db_port: int = Field(default=1434, description="Backend SQL Server port")
+    backend_db_name: str = Field(
+        default="LLM_BackEnd", description="Backend database name"
+    )
+    backend_db_username: str = Field(
+        default="", description="Backend database username (defaults to sql_username)"
+    )
+    backend_db_password: str = Field(
+        default="", description="Backend database password (defaults to sql_password)"
+    )
+    backend_db_trust_cert: bool = Field(
+        default=True, description="Trust self-signed certificates for backend"
+    )
+
+    # Vector Store Configuration
+    vector_store_type: str = Field(
+        default="mssql",
+        description="Vector store type: 'mssql' (SQL Server 2025) or 'redis'",
+    )
+    vector_dimensions: int = Field(
+        default=768, description="Embedding dimensions (768 for nomic-embed-text)"
+    )
+
+    # Redis (for caching, optional vector fallback)
     redis_url: str = Field(default="redis://localhost:6379", description="Redis connection URL")
 
     # Embeddings
@@ -220,12 +248,36 @@ class Settings(BaseSettings):
 
     @property
     def database_url_async(self) -> str:
-        """Get async database URL for SQLAlchemy."""
+        """Get async database URL for SQLAlchemy (sample database)."""
         password = self.sql_password.replace("@", "%40")
         return (
             f"mssql+aioodbc://{self.sql_username}:{password}@"
             f"{self.sql_server_host}:{self.sql_server_port}/{self.sql_database_name}"
             f"?driver=ODBC+Driver+18+for+SQL+Server&TrustServerCertificate=yes"
+        )
+
+    @property
+    def backend_database_url(self) -> str:
+        """Get sync database URL for backend database (LLM_BackEnd)."""
+        username = self.backend_db_username or self.sql_username
+        password = (self.backend_db_password or self.sql_password).replace("@", "%40")
+        trust_cert = "yes" if self.backend_db_trust_cert else "no"
+        return (
+            f"mssql+pyodbc://{username}:{password}@"
+            f"{self.backend_db_host}:{self.backend_db_port}/{self.backend_db_name}"
+            f"?driver=ODBC+Driver+18+for+SQL+Server&TrustServerCertificate={trust_cert}"
+        )
+
+    @property
+    def backend_database_url_async(self) -> str:
+        """Get async database URL for backend database (LLM_BackEnd with vectors)."""
+        username = self.backend_db_username or self.sql_username
+        password = (self.backend_db_password or self.sql_password).replace("@", "%40")
+        trust_cert = "yes" if self.backend_db_trust_cert else "no"
+        return (
+            f"mssql+aioodbc://{username}:{password}@"
+            f"{self.backend_db_host}:{self.backend_db_port}/{self.backend_db_name}"
+            f"?driver=ODBC+Driver+18+for+SQL+Server&TrustServerCertificate={trust_cert}"
         )
 
     @property

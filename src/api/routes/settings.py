@@ -301,6 +301,8 @@ async def list_providers():
             if response.status_code == 200:
                 foundry_info.available = True
                 foundry_info.version = "local"
+    except httpx.ConnectError:
+        foundry_info.error = f"Not running at {settings.foundry_endpoint}. Start with: foundry model run phi-4"
     except Exception as e:
         foundry_info.error = str(e)[:100]
     providers.append(foundry_info)

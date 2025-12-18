@@ -18,17 +18,6 @@ This is a **100% local** smart chat agent for SQL Server data analytics research
 
 **IMPORTANT:** This project prioritizes privacy and local execution. All LLM inference runs locally via Ollama. No data leaves the local environment.
 
-## Current Phase Status
-
-| Phase | Status | Description |
-|-------|--------|-------------|
-| **Phase 1** | ✅ Complete | CLI + Streamlit + SQL Agent + Docker SQL Server |
-| **Phase 2.1** | ✅ Complete | Backend Infrastructure + RAG Pipeline + FastAPI |
-| **Phase 2.2** | ✅ Complete | React UI + Frontend Integration + WebSocket Chat |
-| **Phase 2.3** | ✅ Complete | Dashboard Builder + Advanced Visualizations |
-| **Phase 2.4** | ✅ Complete | Exports + Power BI MCP Integration |
-| **Phase 3** | ✅ Complete | Apache Superset BI Platform Integration |
-
 ---
 
 ## Archon Integration & Workflow
@@ -94,6 +83,8 @@ manage_task("update", task_id="...", status="doing")
 
 ## Tech Stack
 
+### Core Components
+
 | Component | Technology | Purpose |
 |-----------|------------|---------|
 | LLM Runtime | Ollama | Local LLM inference engine |
@@ -101,17 +92,37 @@ manage_task("update", task_id="...", status="doing")
 | Agent Framework | Pydantic AI | Agent orchestration, tool management |
 | MCP Integration | mcp, pydantic-ai[mcp] | Model Context Protocol for tools |
 | SQL Server MCP | MSSQL MCP Server (Node.js) | SQL Server data access via MCP |
-| Database | SQL Server 2022 (Docker) | Sample ResearchAnalytics database |
-| Web UI | Streamlit | User-friendly chat interface |
-| CLI | Typer + Rich | Command-line chat interface |
+| Sample Database | SQL Server 2022 (Docker, port 1433) | ResearchAnalytics demo data |
+| Backend Database | SQL Server 2025 (Docker, port 1434) | LLM_BackEnd app state + vectors |
 | Data Validation | Pydantic v2 | Type-safe data models |
 | Async Runtime | asyncio | Async operations |
 | Environment | python-dotenv | Environment configuration |
-| **Backend API** | FastAPI + Uvicorn | REST API server (Phase 2.1) |
-| **ORM** | SQLAlchemy 2.0 + Alembic | Database models & migrations |
-| **Vector Store** | Redis Stack | Vector similarity search (RAG) |
-| **Embeddings** | Ollama (nomic-embed-text) | Local document embeddings |
-| **Document Processing** | pypdf, python-docx | PDF/DOCX parsing for RAG (offline-capable) |
+
+### User Interfaces
+
+| Component | Technology | Purpose |
+|-----------|------------|---------|
+| React Frontend | React 19 + Vite + TypeScript | Modern web UI |
+| Web UI | Streamlit | User-friendly chat interface |
+| CLI | Typer + Rich | Command-line chat interface |
+
+### Backend & API
+
+| Component | Technology | Purpose |
+|-----------|------------|---------|
+| Backend API | FastAPI + Uvicorn | REST API server |
+| ORM | SQLAlchemy 2.0 + Alembic | Database models & migrations |
+| Vector Store | SQL Server 2025 (primary) | Native VECTOR type for similarity search |
+| Vector Store | Redis Stack (fallback) | Alternative vector store option |
+| Embeddings | Ollama (nomic-embed-text) | Local document embeddings (768 dimensions) |
+| Document Processing | pypdf, python-docx | PDF/DOCX parsing for RAG |
+
+### BI & Visualization
+
+| Component | Technology | Purpose |
+|-----------|------------|---------|
+| Charts | Recharts | React data visualization |
+| BI Platform | Apache Superset | Enterprise analytics |
 
 ---
 
@@ -127,26 +138,50 @@ local-llm-research-agent/
 ├── .env                         # Local environment config (git-ignored)
 ├── .gitignore                   # Git ignore rules
 ├── mcp_config.json              # MCP server configuration
-├── alembic.ini                  # Alembic migrations config (Phase 2.1)
+├── alembic.ini                  # Alembic migrations config
 │
-├── alembic/                     # Database migrations (Phase 2.1)
+├── alembic/                     # Database migrations
 │   ├── env.py
 │   ├── script.py.mako
 │   └── versions/
 │
-├── data/                        # Data storage (Phase 2.1)
+├── data/                        # Data storage
 │   ├── uploads/                 # Uploaded documents for RAG
 │   └── models/                  # Cached model files
 │
 ├── docker/                      # Docker services setup
-│   ├── docker-compose.yml       # SQL Server, Redis Stack, API containers
-│   ├── Dockerfile.api           # FastAPI container (Phase 2.1)
+│   ├── docker-compose.yml       # SQL Server 2022/2025, Redis Stack, API, Superset
+│   ├── Dockerfile.api           # FastAPI container
 │   ├── setup-database.bat       # Windows setup helper
 │   ├── setup-database.sh        # Linux/Mac setup helper
-│   └── init/                    # Database initialization
-│       ├── 01-create-database.sql
-│       ├── 02-create-schema.sql
-│       └── 03-seed-data.sql
+│   ├── init/                    # Sample database initialization (ResearchAnalytics)
+│   │   ├── 01-create-database.sql
+│   │   ├── 02-create-schema.sql
+│   │   └── 03-seed-data.sql
+│   └── init-backend/            # Backend database initialization (LLM_BackEnd)
+│       ├── 01-create-llm-backend.sql    # Database + schemas
+│       ├── 02-create-app-schema.sql     # App state tables
+│       └── 03-create-vectors-schema.sql # Native vector tables
+│
+├── frontend/                    # React frontend
+│   ├── src/
+│   │   ├── api/                 # REST API client
+│   │   ├── components/          # React components
+│   │   │   ├── chat/            # Chat components
+│   │   │   ├── charts/          # Recharts wrappers
+│   │   │   ├── dashboard/       # Dashboard components
+│   │   │   ├── export/          # Export components
+│   │   │   ├── layout/          # Layout components
+│   │   │   └── ui/              # Reusable UI components
+│   │   ├── contexts/            # React contexts
+│   │   ├── hooks/               # Custom hooks
+│   │   ├── lib/exports/         # Export utilities
+│   │   ├── pages/               # Route pages
+│   │   ├── stores/              # Zustand state
+│   │   └── types/               # TypeScript interfaces
+│   ├── package.json
+│   ├── vite.config.ts
+│   └── tailwind.config.js
 │
 ├── src/
 │   ├── __init__.py
@@ -157,7 +192,7 @@ local-llm-research-agent/
 │   │   ├── research_agent.py    # Main Pydantic AI agent
 │   │   └── prompts.py           # System prompts and templates
 │   │
-│   ├── api/                     # FastAPI backend (Phase 2.1)
+│   ├── api/                     # FastAPI backend
 │   │   ├── __init__.py
 │   │   ├── main.py              # FastAPI app with lifespan
 │   │   ├── deps.py              # Dependency injection
@@ -173,13 +208,15 @@ local-llm-research-agent/
 │   │       ├── dashboards.py    # Dashboard widgets
 │   │       ├── mcp_servers.py   # Dynamic MCP management
 │   │       ├── settings.py      # App settings/themes
+│   │       ├── superset.py      # Superset integration
 │   │       └── agent.py         # Agent chat endpoint
 │   │
-│   ├── rag/                     # RAG pipeline (Phase 2.1)
+│   ├── rag/                     # RAG pipeline
 │   │   ├── __init__.py
 │   │   ├── embedder.py          # Ollama embeddings
-│   │   ├── redis_vector_store.py # Redis vector search
-│   │   ├── document_processor.py # PDF/DOCX parsing (pypdf, python-docx)
+│   │   ├── mssql_vector_store.py # SQL Server 2025 native vector store
+│   │   ├── redis_vector_store.py # Redis vector search (fallback)
+│   │   ├── document_processor.py # PDF/DOCX parsing
 │   │   └── schema_indexer.py    # Database schema indexing
 │   │
 │   ├── providers/
@@ -194,7 +231,7 @@ local-llm-research-agent/
 │   │   ├── client.py            # MCP client wrapper
 │   │   ├── mssql_config.py      # MSSQL MCP server configuration
 │   │   ├── server_manager.py    # MCP server lifecycle management
-│   │   └── dynamic_manager.py   # Runtime MCP config (Phase 2.1)
+│   │   └── dynamic_manager.py   # Runtime MCP config
 │   │
 │   ├── cli/
 │   │   ├── __init__.py
@@ -244,22 +281,15 @@ local-llm-research-agent/
 │   └── mssql_mcp_tools.md       # MSSQL MCP tools reference
 │
 ├── docs/                        # Extended documentation
-│   ├── README.md
-│   └── api/                     # API documentation (Phase 2.1)
+│   ├── README.md                # Documentation index
+│   ├── superset-guide.md        # Superset usage guide
+│   ├── api/                     # API documentation
+│   ├── guides/                  # User guides
+│   └── reference/               # Technical reference
 │
-├── PRPs/                        # Product Requirement Prompts
-│   ├── README.md
-│   ├── templates/
-│   │   └── prp_base.md
-│   ├── local-llm-research-agent-prp.md    # Phase 1 PRP
-│   ├── phase2-rag-react-ui-prp.md         # Phase 2 overview PRP
-│   └── phase2.1-backend-rag-prp.md        # Phase 2.1 Backend PRP
-│
-└── .claude/
-    ├── commands/
-    │   ├── generate-prp.md
-    │   └── execute-prp.md
-    └── settings.local.json
+└── PRPs/                        # Product Requirement Prompts
+    ├── README.md
+    └── templates/
 ```
 
 ---
@@ -325,8 +355,8 @@ OLLAMA_MODEL=qwen3:30b
 - SQL Server runs in local Docker container
 
 ### 5. Preserve Existing Functionality
-- Phase 2 additions must NOT break Phase 1 features
-- CLI and Streamlit interfaces must remain functional
+- New additions must NOT break existing features
+- CLI, Streamlit, and React interfaces must remain functional
 - Add new files, don't replace working implementations
 
 ---
@@ -340,13 +370,30 @@ OLLAMA_MODEL=qwen3:30b
 OLLAMA_HOST=http://localhost:11434
 OLLAMA_MODEL=qwen3:30b
 
-# SQL Server Configuration (Docker)
+# Foundry Local Configuration (alternative)
+FOUNDRY_ENDPOINT=http://127.0.0.1:53760
+FOUNDRY_MODEL=phi-4
+FOUNDRY_AUTO_START=true
+
+# SQL Server 2022 - Sample Database (ResearchAnalytics)
 SQL_SERVER_HOST=localhost
 SQL_SERVER_PORT=1433
 SQL_DATABASE_NAME=ResearchAnalytics
 SQL_TRUST_SERVER_CERTIFICATE=true
 SQL_USERNAME=sa
 SQL_PASSWORD=LocalLLM@2024!
+
+# SQL Server 2025 - Backend Database (LLM_BackEnd)
+BACKEND_DB_HOST=localhost
+BACKEND_DB_PORT=1434
+BACKEND_DB_NAME=LLM_BackEnd
+BACKEND_DB_USERNAME=        # Defaults to SQL_USERNAME
+BACKEND_DB_PASSWORD=        # Defaults to SQL_PASSWORD
+BACKEND_DB_TRUST_CERT=true
+
+# Vector Store Configuration
+VECTOR_STORE_TYPE=mssql     # mssql (SQL Server 2025) or redis
+VECTOR_DIMENSIONS=768       # nomic-embed-text dimensions
 
 # MSSQL MCP Server
 MCP_MSSQL_PATH=E:/path/to/SQL-AI-samples/MssqlMcp/Node/dist/index.js
@@ -357,9 +404,7 @@ LOG_LEVEL=INFO
 STREAMLIT_PORT=8501
 DEBUG=false
 
-# === Phase 2.1 Configuration ===
-
-# Redis Stack (Vector Store)
+# Redis Stack (caching + fallback vector store)
 REDIS_URL=redis://localhost:6379
 
 # Embeddings
@@ -378,8 +423,12 @@ MAX_UPLOAD_SIZE_MB=50
 API_HOST=0.0.0.0
 API_PORT=8000
 
-# Database Connection (SQLAlchemy async)
-DATABASE_URL=mssql+aioodbc://sa:LocalLLM%402024%21@localhost:1433/ResearchAnalytics?driver=ODBC+Driver+18+for+SQL+Server&TrustServerCertificate=yes
+# Superset (Optional)
+SUPERSET_URL=http://localhost:8088
+SUPERSET_SECRET_KEY=your_secure_key
+SUPERSET_ADMIN_USER=admin
+SUPERSET_ADMIN_PASSWORD=LocalLLM@2024!
+SUPERSET_PORT=8088
 ```
 
 ### MCP Configuration (mcp_config.json)
@@ -525,7 +574,7 @@ uv run python -m src.cli.chat
 # Run Streamlit UI
 uv run streamlit run src/ui/streamlit_app.py
 
-# Run FastAPI backend (Phase 2.1)
+# Run FastAPI backend
 uv run uvicorn src.api.main:app --reload --host 0.0.0.0 --port 8000
 
 # Run tests
@@ -538,7 +587,7 @@ uv run ruff format .
 uv run ruff check .
 ```
 
-### React Frontend (Phase 2.2)
+### React Frontend
 
 ```bash
 # Install frontend dependencies
@@ -566,24 +615,23 @@ npm run lint
 **⚠️ CRITICAL: When running from project root, ALWAYS include `--env-file .env`:**
 
 ```bash
-# From project root - Start all services (SQL Server + Redis Stack)
+# From project root - Start all services (SQL Server 2022/2025 + Redis Stack)
 docker-compose -f docker/docker-compose.yml --env-file .env up -d
 
-# Initialize database (first time)
+# Initialize sample database - ResearchAnalytics (first time)
 docker-compose -f docker/docker-compose.yml --env-file .env --profile init up mssql-tools
+
+# Initialize backend database - LLM_BackEnd with native vectors (first time)
+docker-compose -f docker/docker-compose.yml --env-file .env --profile init up mssql-backend-tools
 
 # Start with FastAPI backend
 docker-compose -f docker/docker-compose.yml --env-file .env --profile api up -d
 
-# Or from docker/ directory (no --env-file needed, but must copy .env there)
-cd docker
-docker compose up -d
+# Start with Superset
+docker-compose -f docker/docker-compose.yml --env-file .env --profile superset up -d
 
-# Windows helper script
-cd docker && .\setup-database.bat
-
-# View Redis Stack GUI (port from REDIS_INSIGHT_PORT in .env, default 8001)
-# Open http://localhost:8008 (or your configured port)
+# Start full stack
+docker-compose -f docker/docker-compose.yml --env-file .env --profile full up -d
 
 # Stop all services
 docker-compose -f docker/docker-compose.yml down
@@ -620,6 +668,44 @@ npm install
 
 # Note path to dist/index.js for .env
 ```
+
+---
+
+## Service Ports
+
+| Service | Port | URL |
+|---------|------|-----|
+| React UI | 5173 | http://localhost:5173 |
+| FastAPI | 8000 | http://localhost:8000 |
+| Streamlit | 8501 | http://localhost:8501 |
+| RedisInsight | 8001 | http://localhost:8001 |
+| Superset | 8088 | http://localhost:8088 |
+| SQL Server 2022 (Sample) | 1433 | localhost:1433 |
+| SQL Server 2025 (Backend) | 1434 | localhost:1434 |
+
+---
+
+## API Endpoints
+
+| Route | Description |
+|-------|-------------|
+| `/api/health` | Health checks, metrics, service status |
+| `/api/documents` | Document upload, listing, delete |
+| `/api/documents/{id}/reprocess` | Reprocess failed/completed documents |
+| `/api/documents/search` | RAG vector search |
+| `/api/conversations` | Chat history CRUD |
+| `/api/queries` | Query history, saved queries, favorites |
+| `/api/dashboards` | Dashboard and widget management |
+| `/api/mcp` | MCP server status, tool listing |
+| `/api/mcp/{id}/enable` | Enable MCP server |
+| `/api/mcp/{id}/disable` | Disable MCP server |
+| `/api/settings` | Theme config, app settings |
+| `/api/settings/providers` | List available LLM providers |
+| `/api/agent` | Agent chat endpoint |
+| `/ws/agent/{conversation_id}` | Real-time WebSocket chat |
+| `/api/superset/health` | Superset status |
+| `/api/superset/dashboards` | List Superset dashboards |
+| `/api/superset/embed/{id}` | Get embed URL with guest token |
 
 ---
 
@@ -660,375 +746,6 @@ async def test_mssql_connection():
 
 ---
 
-## Phase 2.1 Features (Implemented)
-
-### Backend Infrastructure
-
-| Feature | Description |
-|---------|-------------|
-| **FastAPI Backend** | REST API at `http://localhost:8000` with CORS, lifespan management |
-| **SQLAlchemy ORM** | 11 database models (Conversations, Messages, Dashboards, etc.) |
-| **Alembic Migrations** | Database schema version control |
-| **Redis Vector Store** | Vector similarity search using Redis Stack |
-| **RAG Pipeline** | Document processing with pypdf/python-docx, Ollama embeddings |
-| **Dynamic MCP** | Load/configure MCP servers from `mcp_config.json` at runtime |
-
-### API Endpoints (Phase 2.1)
-
-| Route | Description |
-|-------|-------------|
-| `/api/health` | Health checks, metrics, service status |
-| `/api/documents` | Document upload, listing, delete |
-| `/api/documents/{id}/reprocess` | Reprocess failed/completed documents |
-| `/api/documents/{id}/tags` | Update document tags (placeholder) |
-| `/api/conversations` | Chat history CRUD |
-| `/api/queries` | Query history, saved queries, favorites |
-| `/api/dashboards` | Dashboard and widget management |
-| `/api/mcp` | MCP server status, tool listing |
-| `/api/mcp/{id}/enable` | Enable MCP server |
-| `/api/mcp/{id}/disable` | Disable MCP server |
-| `/api/settings` | Theme config, app settings |
-| `/api/agent` | Agent chat endpoint |
-
-### Service Ports
-
-| Service | Port | URL |
-|---------|------|-----|
-| React UI | 5173 | http://localhost:5173 |
-| FastAPI | 8000 | http://localhost:8000 |
-| Streamlit | 8501 | http://localhost:8501 |
-| RedisInsight | 8001 | http://localhost:8001 |
-| Superset | 8088 | http://localhost:8088 |
-| SQL Server | 1433 | localhost:1433 |
-
-### Streamlit Multi-Page App
-
-The Streamlit UI is a multi-page application with the following pages:
-
-| Page | File | Description |
-|------|------|-------------|
-| **Chat** | `streamlit_app.py` | Main chat interface with RAG toggle, provider selection, response actions |
-| **Documents** | `pages/1_Documents.py` | Upload files, view processing status, reprocess failed, delete documents |
-| **MCP Servers** | `pages/2_MCP_Servers.py` | List servers, enable/disable, add custom servers (stdio/http), delete |
-| **Settings** | `pages/3_Settings.py` | LLM provider config, model parameters, system prompt, themes |
-
-#### Streamlit Features
-
-- **RAG Integration Toggle**: Enable/disable document context for chat queries
-- **Provider Selection**: Switch between Ollama and Foundry Local providers
-- **Model Selection**: Dynamic model list from active provider
-- **Response Actions**: Copy response, like/dislike feedback buttons
-- **Document Upload**: Drag-and-drop file upload with processing status
-- **MCP Server Management**: Full CRUD for MCP server configurations
-- **Theme Configuration**: Switch between available themes via API
-
----
-
-## Phase 2.2 Features (Implemented)
-
-### React Frontend
-
-| Feature | Description |
-|---------|-------------|
-| **React UI** | Modern full-stack UI with Vite, TypeScript, React 19 |
-| **Theming** | Dark/light/system mode with CSS variables |
-| **Chat Interface** | Real-time WebSocket chat with streaming responses |
-| **MCP Server Selection** | Select active MCP servers for agent tools |
-| **Conversation History** | View and manage past conversations |
-| **Document Management** | Upload and search documents for RAG |
-| **Query History** | Browse and favorite SQL queries |
-
-### Frontend Tech Stack
-
-| Package | Version | Purpose |
-|---------|---------|---------|
-| React | 19.1.0 | UI framework |
-| Vite | 7.2.7 | Build tool |
-| TanStack Query | 5.90.12 | API state management |
-| Zustand | 5.0.9 | Client state management |
-| React Router | 7.10.1 | Routing |
-| Tailwind CSS | 3.4.15 | Styling |
-| Radix UI | - | Accessible components |
-| Lucide React | 0.513.0 | Icons |
-
-### Frontend Structure
-
-```
-├── frontend/
-│   ├── src/
-│   │   ├── api/client.ts           # REST API client
-│   │   ├── components/
-│   │   │   ├── chat/               # Chat components
-│   │   │   ├── layout/             # Layout (Sidebar, Header)
-│   │   │   └── ui/                 # Reusable UI components
-│   │   ├── contexts/ThemeContext.tsx
-│   │   ├── hooks/
-│   │   │   ├── useConversations.ts # React Query hooks
-│   │   │   └── useWebSocket.ts     # WebSocket connection
-│   │   ├── pages/                  # Route pages
-│   │   ├── stores/chatStore.ts     # Zustand state
-│   │   └── types/index.ts          # TypeScript interfaces
-│   ├── package.json
-│   ├── vite.config.ts
-│   └── tailwind.config.js
-```
-
-### WebSocket Endpoints
-
-| Endpoint | Description |
-|----------|-------------|
-| `/ws/agent/{conversation_id}` | Real-time agent chat (top-level) |
-| `/api/agent/ws/{conversation_id}` | Agent WebSocket (router mount) |
-
----
-
-## Phase 2.3 Features (Implemented)
-
-### Visualization & Dashboard System
-
-| Feature | Description |
-|---------|-------------|
-| **Recharts Integration** | Bar, Line, Area, Pie, Scatter charts |
-| **AI Chart Suggestions** | Automatic chart type recommendations |
-| **KPI Cards** | Single-value metric displays |
-| **Dashboard CRUD** | Create, edit, delete dashboards |
-| **Widget Pinning** | Pin query results to dashboards |
-| **Drag & Drop Layout** | react-grid-layout for positioning |
-| **Auto-Refresh** | Per-widget refresh intervals |
-| **Persistence** | Dashboard state saved to SQL Server |
-| **Query Execution** | Direct SQL execution for widgets |
-
-### Dashboard API Endpoints
-
-| Route | Description |
-|-------|-------------|
-| `/api/dashboards` | List/create dashboards |
-| `/api/dashboards/{id}` | Get/update/delete dashboard |
-| `/api/dashboards/{id}/widgets` | List/add widgets |
-| `/api/dashboards/{id}/widgets/{wid}` | Update/delete widget |
-| `/api/dashboards/{id}/layout` | Batch update positions |
-| `/api/dashboards/{id}/share` | Create share link |
-| `/api/queries/execute` | Execute SQL for widgets |
-
-### Widget Types
-
-| Type | Best For |
-|------|----------|
-| `bar` | Comparisons, categories |
-| `line` | Time series, trends |
-| `area` | Volumes, accumulation |
-| `pie` | Proportions, distributions |
-| `scatter` | Correlations, clusters |
-| `kpi` | Key metrics, counts |
-
-### Frontend Components (Phase 2.3)
-
-```
-frontend/src/
-├── components/
-│   ├── charts/              # Recharts wrappers
-│   │   ├── BarChart.tsx
-│   │   ├── LineChart.tsx
-│   │   ├── AreaChart.tsx
-│   │   ├── PieChart.tsx
-│   │   ├── ScatterChart.tsx
-│   │   └── KPICard.tsx
-│   ├── dashboard/           # Dashboard components
-│   │   ├── DashboardGrid.tsx
-│   │   ├── WidgetContainer.tsx
-│   │   └── WidgetEditor.tsx
-│   └── ...
-├── pages/
-│   ├── DashboardsPage.tsx
-│   └── DashboardDetailPage.tsx
-└── hooks/
-    └── useDashboards.ts
-```
-
----
-
-## Phase 2.4 Features (Implemented)
-
-### Export System
-
-| Feature | Description |
-|---------|-------------|
-| **PNG Export** | High-resolution chart images (2x scale) |
-| **PDF Export** | Multi-page dashboard/chart reports with titles |
-| **CSV Export** | Standard data export format |
-| **Excel Export** | Spreadsheets with auto-calculated column widths |
-| **JSON Export** | Dashboard configuration import/export |
-| **Chat Export** | Conversation to Markdown or PDF |
-| **Power BI Dialog** | Integration dialog for PBIX export |
-
-### Export Components
-
-```
-frontend/src/
-├── components/
-│   └── export/
-│       ├── ExportMenu.tsx        # Unified export dropdown
-│       └── PowerBIDialog.tsx     # Power BI export modal
-├── lib/
-│   └── exports/
-│       ├── pngExport.ts          # html2canvas PNG export
-│       ├── pdfExport.ts          # jspdf PDF generation
-│       ├── csvExport.ts          # CSV file export
-│       ├── excelExport.ts        # xlsx spreadsheet export
-│       ├── jsonExport.ts         # Dashboard JSON import/export
-│       └── chatExport.ts         # Conversation export
-```
-
-### React Frontend Enhancements (Phase 2.4)
-
-| Feature | Description |
-|---------|-------------|
-| **Settings Page** | Theme selector, provider config, model selection, connection testing |
-| **Chat Page** | Model parameters panel, token counter, system prompt, RAG controls |
-| **Message List** | Enhanced markdown formatting, copy/rate actions, source citations |
-| **State Persistence** | Settings persisted via zustand middleware |
-
-### Settings Page Features
-
-| Component | Description |
-|-----------|-------------|
-| **ThemeSelector** | Light/dark/system mode with icons |
-| **ProviderSelector** | Dropdown with provider availability status |
-| **ModelSelector** | Dynamic model list from API with refresh |
-| **ConnectionTestButton** | Test connection with latency display |
-| **Dual Provider Config** | Primary and secondary provider settings |
-
-### Chat Page Features
-
-| Component | Description |
-|-----------|-------------|
-| **TokenCounter** | Prompt/completion/total/remaining with color coding |
-| **ChatModelSelector** | In-chat model switching dropdown |
-| **ModelParametersPanel** | Temperature, top_p, max_tokens sliders |
-| **SystemPromptConfig** | Custom system prompt textarea |
-| **RAGSettings** | Enable toggle, hybrid search toggle, topK slider |
-
-### Message List Features
-
-| Feature | Description |
-|---------|-------------|
-| **Rich Markdown** | remark-gfm with syntax highlighting |
-| **Copy Button** | Copy response to clipboard |
-| **Rating Buttons** | Thumbs up/down with toggle behavior |
-| **Source Citations** | Display RAG sources with links |
-
-### New API Endpoints (Phase 2.4)
-
-| Route | Description |
-|-------|-------------|
-| `GET /api/settings/providers` | List available providers with status |
-| `GET /api/settings/providers/{id}/models` | List models for a provider |
-| `POST /api/settings/providers/test` | Test provider connection |
-
-### Frontend Dependencies Added (Phase 2.4)
-
-| Package | Purpose |
-|---------|---------|
-| `html2canvas` | DOM to canvas for PNG export |
-| `jspdf` | PDF document generation |
-| `xlsx` | Excel file creation |
-| `file-saver` | Cross-browser file downloads |
-| `remark-gfm` | GitHub-flavored markdown |
-| `@radix-ui/react-slider` | Slider components |
-
-### Chat Store State (chatStore.ts)
-
-```typescript
-interface ChatState {
-  // Model configuration
-  selectedProvider: string;
-  selectedModel: string;
-  modelParameters: {
-    temperature: number;
-    topP: number;
-    maxTokens: number;
-  };
-  systemPrompt: string;
-
-  // Token tracking
-  tokenCount: {
-    prompt: number;
-    completion: number;
-    total: number;
-    contextWindowSize: number;
-  };
-
-  // RAG settings
-  ragSettings: {
-    enabled: boolean;
-    hybridSearch: boolean;
-    topK: number;
-  };
-
-  // Message ratings
-  messageRatings: Record<number, 'up' | 'down' | null>;
-}
-```
-
----
-
-## Phase 3 Features (Implemented)
-
-### Apache Superset Integration
-
-| Feature | Description |
-|---------|-------------|
-| **Superset Container** | Apache Superset 3.1.0 with SQL Server driver |
-| **SQL Lab** | Full SQL IDE for data exploration |
-| **Dashboard Embedding** | Embed Superset dashboards in React app |
-| **Guest Token Auth** | Secure iframe embedding with guest tokens |
-| **Health Integration** | Superset status in health checks |
-
-### Superset API Endpoints
-
-| Route | Description |
-|-------|-------------|
-| `GET /api/superset/health` | Check Superset status |
-| `GET /api/superset/dashboards` | List all dashboards |
-| `GET /api/superset/embed/{id}` | Get embed URL with guest token |
-| `GET /api/superset/charts` | List all charts |
-| `GET /api/superset/databases` | List database connections |
-
-### Frontend Components (Phase 3)
-
-```
-frontend/src/
-├── components/
-│   └── superset/
-│       ├── SupersetEmbed.tsx    # Iframe dashboard embedding
-│       └── index.ts
-└── pages/
-    └── SupersetPage.tsx         # Superset dashboards page
-```
-
-### Docker Profiles
-
-```bash
-# Start with Superset
-docker-compose -f docker/docker-compose.yml --env-file .env --profile superset up -d
-
-# Start everything including Superset
-docker-compose -f docker/docker-compose.yml --env-file .env --profile full up -d
-```
-
-### Environment Variables (Phase 3)
-
-```bash
-# Superset Configuration
-SUPERSET_URL=http://localhost:8088
-SUPERSET_SECRET_KEY=your_secure_key
-SUPERSET_ADMIN_USER=admin
-SUPERSET_ADMIN_PASSWORD=LocalLLM@2024!
-SUPERSET_PORT=8088
-```
-
----
-
 ## Security Considerations
 
 1. **Never commit .env files** - Use .env.example as template
@@ -1057,6 +774,19 @@ ollama pull qwen3:30b
 curl http://localhost:11434/api/show -d '{"name":"qwen3:30b"}' | jq '.template'
 ```
 
+### Foundry Local Issues
+
+```bash
+# Check Foundry Local is running
+curl http://127.0.0.1:53760/v1/models
+
+# Start a model
+foundry model run phi-4
+
+# Check model status
+foundry service status
+```
+
 ### Docker SQL Server Issues
 
 ```bash
@@ -1064,20 +794,20 @@ curl http://localhost:11434/api/show -d '{"name":"qwen3:30b"}' | jq '.template'
 docker ps -a | grep mssql
 
 # View logs
-docker logs local-llm-mssql
+docker logs local-agent-mssql
 
 # Restart container
 docker compose restart mssql
 ```
 
-### Redis Stack Issues (Phase 2.1)
+### Redis Stack Issues
 
 ```bash
 # Check container status
 docker ps -a | grep redis
 
 # View logs
-docker logs local-llm-redis
+docker logs local-agent-redis
 
 # Test Redis connection
 redis-cli ping
@@ -1089,7 +819,7 @@ redis-cli ping
 docker compose restart redis-stack
 ```
 
-### FastAPI Issues (Phase 2.1)
+### FastAPI Issues
 
 ```bash
 # Test API is running
@@ -1115,10 +845,11 @@ node --version  # Should be 18+
 
 ### Connection Issues
 
-- Ensure SQL Server container is running: `docker ps`
-- Check port 1433 is not blocked
+- Ensure SQL Server containers are running: `docker ps | grep mssql`
+- Check ports 1433 (sample) and 1434 (backend) are not blocked
 - Verify credentials match docker-compose.yml
-- Test connection: `sqlcmd -S localhost,1433 -U sa -P "LocalLLM@2024!"`
+- Test sample database: `sqlcmd -S localhost,1433 -U sa -P "LocalLLM@2024!" -d ResearchAnalytics`
+- Test backend database: `sqlcmd -S localhost,1434 -U sa -P "LocalLLM@2024!" -d LLM_BackEnd`
 
 ---
 

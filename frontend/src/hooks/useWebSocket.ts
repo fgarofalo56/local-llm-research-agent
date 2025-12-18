@@ -28,6 +28,8 @@ export function useAgentWebSocket(conversationId: number | null) {
     setIsStreaming,
     addMessage,
     selectedMCPServers,
+    selectedProvider,
+    selectedModel,
   } = useChatStore();
 
   // Process pending messages when connection opens
@@ -41,11 +43,13 @@ export function useAgentWebSocket(conversationId: number | null) {
           type: 'message',
           content: pending.content,
           mcp_servers: selectedMCPServers,
+          provider: selectedProvider,
+          model: selectedModel,
         }));
         pending.resolve();
       }
     }
-  }, [clearStreamingContent, setIsStreaming, selectedMCPServers]);
+  }, [clearStreamingContent, setIsStreaming, selectedMCPServers, selectedProvider, selectedModel]);
 
   const connect = useCallback(() => {
     if (!conversationId) return;
@@ -115,6 +119,8 @@ export function useAgentWebSocket(conversationId: number | null) {
           type: 'message',
           content,
           mcp_servers: selectedMCPServers,
+          provider: selectedProvider,
+          model: selectedModel,
         }));
         resolve();
       } else {
@@ -139,7 +145,7 @@ export function useAgentWebSocket(conversationId: number | null) {
         }, 10000);
       }
     });
-  }, [clearStreamingContent, setIsStreaming, selectedMCPServers]);
+  }, [clearStreamingContent, setIsStreaming, selectedMCPServers, selectedProvider, selectedModel]);
 
   const disconnect = useCallback(() => {
     if (wsRef.current) {

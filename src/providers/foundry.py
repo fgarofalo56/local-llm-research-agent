@@ -16,7 +16,9 @@ from src.utils.logger import get_logger
 logger = get_logger(__name__)
 
 # Default Foundry Local endpoint
-FOUNDRY_DEFAULT_ENDPOINT = "http://127.0.0.1:55588"
+# Note: Foundry Local SDK typically runs on dynamic ports, but 53760 is a common default
+# The SDK's FoundryLocalManager will provide the actual endpoint when auto-start is used
+FOUNDRY_DEFAULT_ENDPOINT = "http://127.0.0.1:53760"
 
 # Models known to support tool calling in Foundry Local
 FOUNDRY_TOOL_CAPABLE_MODELS = [
@@ -33,7 +35,7 @@ class FoundryLocalProvider(LLMProvider):
     Microsoft Foundry Local LLM provider.
 
     Uses Foundry Local's OpenAI-compatible API endpoint for inference.
-    Default endpoint: http://127.0.0.1:55588
+    Default endpoint: http://127.0.0.1:53760
 
     Foundry Local can be installed via:
         pip install foundry-local-sdk
@@ -56,7 +58,7 @@ class FoundryLocalProvider(LLMProvider):
 
         Args:
             model_name: Model alias to use (e.g., "phi-4", "mistral-7b")
-            endpoint: Foundry Local API endpoint (default from settings or http://127.0.0.1:55588)
+            endpoint: Foundry Local API endpoint (default from settings or http://127.0.0.1:53760)
             api_key: API key (optional, not required for local usage)
             timeout: Request timeout in seconds
             auto_start: Whether to auto-start Foundry Local using SDK (default from settings)
@@ -222,7 +224,10 @@ class FoundryLocalProvider(LLMProvider):
                 provider_type=self.provider_type,
                 model_name=self._model_name,
                 endpoint=self._endpoint,
-                error="Cannot connect to Foundry Local. Start it with: foundry-local-sdk or set FOUNDRY_AUTO_START=true",
+                error=(
+                    f"Cannot connect to Foundry Local at {self._endpoint}. "
+                    "Start it with: 'foundry model run phi-4' or set FOUNDRY_AUTO_START=true in .env"
+                ),
             )
         except Exception as e:
             logger.error("foundry_check_connection_error", error=str(e))
@@ -266,7 +271,10 @@ class FoundryLocalProvider(LLMProvider):
                 provider_type=self.provider_type,
                 model_name=self._model_name,
                 endpoint=self._endpoint,
-                error="foundry-local-sdk not installed. Install with: pip install foundry-local-sdk",
+                error=(
+                    "foundry-local-sdk not installed. Install with: "
+                    "'uv sync --extra foundry' or 'pip install foundry-local-sdk'"
+                ),
             )
         except Exception as e:
             logger.error("foundry_auto_start_error", error=str(e))

@@ -234,7 +234,7 @@ class FoundryLocalProvider(LLMProvider):
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
 | `model_name` | `str` | `"phi-4"` | Model alias |
-| `endpoint` | `str \| None` | `"http://127.0.0.1:55588"` | API endpoint |
+| `endpoint` | `str \| None` | `"http://127.0.0.1:53760"` | API endpoint |
 | `api_key` | `str` | `""` | API key (optional for local) |
 | `timeout` | `int` | `120` | Request timeout (seconds) |
 
@@ -245,7 +245,7 @@ from src.providers.foundry import FoundryLocalProvider
 
 provider = FoundryLocalProvider(
     model_name="phi-4",
-    endpoint="http://127.0.0.1:55588",
+    endpoint="http://127.0.0.1:53760",
 )
 
 # Check connection
@@ -296,7 +296,7 @@ from src.providers.foundry import FOUNDRY_TOOL_CAPABLE_MODELS
 | `endpoint` | `str` | OpenAI-compatible endpoint (with `/v1`) |
 
 ```python
-print(provider.endpoint)  # http://127.0.0.1:55588/v1
+print(provider.endpoint)  # http://127.0.0.1:53760/v1
 ```
 
 ---

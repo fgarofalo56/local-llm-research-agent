@@ -26,8 +26,13 @@ st.set_page_config(
     layout="wide",
 )
 
-# API base URL
-API_BASE_URL = f"http://localhost:{settings.api_port}"
+# API base URL - try container name first (Docker), fall back to localhost
+# Note: API_HOST=0.0.0.0 is for server binding, not client connections
+import os
+_api_host = os.environ.get("API_HOST", "localhost")
+if _api_host == "0.0.0.0":
+    _api_host = "localhost"  # 0.0.0.0 is bind address, use localhost for client
+API_BASE_URL = f"http://{_api_host}:{settings.api_port}"
 
 
 def run_async(coro):
@@ -45,7 +50,7 @@ async def fetch_mcp_servers() -> dict:
     async with httpx.AsyncClient() as client:
         try:
             response = await client.get(
-                f"{API_BASE_URL}/api/mcp",
+                f"{API_BASE_URL}/api/mcp-servers",
                 timeout=10.0,
             )
             response.raise_for_status()
@@ -60,7 +65,7 @@ async def toggle_server(server_id: str, enable: bool) -> dict:
     async with httpx.AsyncClient() as client:
         try:
             response = await client.post(
-                f"{API_BASE_URL}/api/mcp/{server_id}/{endpoint}",
+                f"{API_BASE_URL}/api/mcp-servers/{server_id}/{endpoint}",
                 timeout=10.0,
             )
             response.raise_for_status()
@@ -74,7 +79,7 @@ async def create_mcp_server(data: dict) -> dict:
     async with httpx.AsyncClient() as client:
         try:
             response = await client.post(
-                f"{API_BASE_URL}/api/mcp",
+                f"{API_BASE_URL}/api/mcp-servers",
                 json=data,
                 timeout=10.0,
             )
@@ -93,7 +98,7 @@ async def delete_mcp_server(server_id: str) -> dict:
     async with httpx.AsyncClient() as client:
         try:
             response = await client.delete(
-                f"{API_BASE_URL}/api/mcp/{server_id}",
+                f"{API_BASE_URL}/api/mcp-servers/{server_id}",
                 timeout=10.0,
             )
             response.raise_for_status()
@@ -309,7 +314,11 @@ def render_server_list():
 
     if "error" in result:
         st.error(f"Failed to load MCP servers: {result['error']}")
-        st.info("Make sure the API server is running at " + API_BASE_URL)
+        st.warning(
+            "**The FastAPI server needs to be running.**\n\n"
+            f"Start it with:\n```\nuv run uvicorn src.api.main:app --reload --host 0.0.0.0 --port {settings.api_port}\n```\n\n"
+            f"Expected API URL: {API_BASE_URL}"
+        )
         return
 
     servers = result.get("servers", [])

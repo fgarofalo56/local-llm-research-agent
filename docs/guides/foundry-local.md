@@ -99,7 +99,7 @@ from foundry_local import FoundryLocalManager
 manager = FoundryLocalManager("phi-4")
 
 # Access endpoint info
-print(manager.endpoint)  # http://127.0.0.1:55588
+print(manager.endpoint)  # http://127.0.0.1:53760
 ```
 
 **Using CLI (if available):**
@@ -156,7 +156,7 @@ Configure Foundry Local in `.env`:
 LLM_PROVIDER=foundry_local
 
 # Foundry Local endpoint (default)
-FOUNDRY_ENDPOINT=http://127.0.0.1:55588
+FOUNDRY_ENDPOINT=http://127.0.0.1:53760
 
 # Model alias to use
 FOUNDRY_MODEL=phi-4
@@ -188,7 +188,7 @@ from src.providers.foundry import FoundryLocalProvider
 # Manual configuration
 provider = FoundryLocalProvider(
     model_name="phi-4",
-    endpoint="http://127.0.0.1:55588",
+    endpoint="http://127.0.0.1:53760",
 )
 
 # Using SDK auto-start
@@ -208,7 +208,7 @@ from foundry_local import FoundryLocalManager
 manager = FoundryLocalManager("phi-4")
 
 # Get connection info
-endpoint = manager.endpoint  # http://127.0.0.1:55588
+endpoint = manager.endpoint  # http://127.0.0.1:53760
 api_key = manager.api_key    # Generated API key
 
 # Use with OpenAI client
@@ -319,7 +319,7 @@ manager = FoundryLocalManager("phi-4")
 print(manager.endpoint)
 
 # Verify with curl
-# curl http://127.0.0.1:55588/v1/models
+# curl http://127.0.0.1:53760/v1/models
 ```
 
 #### Model Download Failed
@@ -358,12 +358,12 @@ manager = FoundryLocalManager("phi-3-mini")
 
 **Solutions:**
 ```bash
-# Find process using port 55588
+# Find process using port 53760
 # Windows
-netstat -ano | findstr 55588
+netstat -ano | findstr 53760
 
 # Linux/Mac
-lsof -i :55588
+lsof -i :53760
 
 # Kill the process or use different port
 ```
@@ -443,7 +443,7 @@ provider = FoundryLocalProvider.start_with_sdk("phi-4")
 
 ```bash
 LLM_PROVIDER=foundry_local
-FOUNDRY_ENDPOINT=http://127.0.0.1:55588
+FOUNDRY_ENDPOINT=http://127.0.0.1:53760
 FOUNDRY_MODEL=phi-4
 FOUNDRY_AUTO_START=true
 ```

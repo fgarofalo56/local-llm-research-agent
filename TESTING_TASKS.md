@@ -1,6 +1,6 @@
 # Feature Testing Checklist
 
-> Generated from PRP analysis - All features that need validation
+> All features that need validation for the Local LLM Research Agent
 > Last tested: December 16, 2025 (Playwright Automated Testing)
 
 ## Prerequisites
@@ -19,7 +19,7 @@ docker-compose -f docker/docker-compose.yml --env-file .env --profile superset u
 
 ---
 
-## Phase 1: Foundation
+## Foundation
 
 | # | Feature | Test Method | Status |
 |---|---------|-------------|--------|
@@ -30,7 +30,7 @@ docker-compose -f docker/docker-compose.yml --env-file .env --profile superset u
 
 ---
 
-## Phase 2.1: Backend & RAG
+## Backend & API
 
 | # | Feature | Test Method | Status |
 |---|---------|-------------|--------|
@@ -48,7 +48,7 @@ docker-compose -f docker/docker-compose.yml --env-file .env --profile superset u
 
 ---
 
-## Phase 2.2: React UI & Chat
+## React UI & Chat
 
 | # | Feature | Test Method | Status |
 |---|---------|-------------|--------|
@@ -69,7 +69,7 @@ docker-compose -f docker/docker-compose.yml --env-file .env --profile superset u
 
 ---
 
-## Phase 2.3: Visualization & Dashboards
+## Dashboards & Visualization
 
 | # | Feature | Test Method | Status |
 |---|---------|-------------|--------|
@@ -91,7 +91,7 @@ docker-compose -f docker/docker-compose.yml --env-file .env --profile superset u
 
 ---
 
-## Phase 2.4: Exports
+## Export System
 
 | # | Feature | Test Method | Status |
 |---|---------|-------------|--------|
@@ -107,7 +107,7 @@ docker-compose -f docker/docker-compose.yml --env-file .env --profile superset u
 
 ---
 
-## Phase 3: Apache Superset
+## Apache Superset
 
 | # | Feature | Test Method | Status |
 |---|---------|-------------|--------|
@@ -123,7 +123,7 @@ docker-compose -f docker/docker-compose.yml --env-file .env --profile superset u
 
 ---
 
-## Phase 2.4+ Advanced Features
+## Advanced Features
 
 | # | Feature | Test Method | Status |
 |---|---------|-------------|--------|
@@ -139,15 +139,15 @@ docker-compose -f docker/docker-compose.yml --env-file .env --profile superset u
 
 ## Testing Summary
 
-| Phase | Total | Passed | Manual | Failed |
-|-------|-------|--------|--------|--------|
-| 1 | 4 | 3 | 1 | 0 |
-| 2.1 | 11 | 11 | 0 | 0 |
-| 2.2 | 14 | 14 | 0 | 0 |
-| 2.3 | 15 | 5 | 10 | 0 |
-| 2.4 | 9 | 4 | 5 | 0 |
-| 3 | 9 | 8 | 1 | 0 |
-| Advanced | 7 | 7 | 0 | 0 |
+| Section | Total | Passed | Manual | Failed |
+|---------|-------|--------|--------|--------|
+| Foundation | 4 | 3 | 1 | 0 |
+| Backend & API | 11 | 11 | 0 | 0 |
+| React UI & Chat | 14 | 14 | 0 | 0 |
+| Dashboards & Visualization | 15 | 5 | 10 | 0 |
+| Export System | 9 | 4 | 5 | 0 |
+| Apache Superset | 9 | 8 | 1 | 0 |
+| Advanced Features | 7 | 7 | 0 | 0 |
 | **Total** | **69** | **52** | **17** | **0** |
 
 ---
@@ -155,7 +155,7 @@ docker-compose -f docker/docker-compose.yml --env-file .env --profile superset u
 ## Issues Found & Fixed
 
 ### Issue #1: Database tables missing
-- **Phase:** 2.1
+- **Area:** Backend & API
 - **Feature:** Conversations, Dashboards API
 - **Description:** API returning Internal Server Error
 - **Root Cause:** Alembic migrations not run
@@ -163,7 +163,7 @@ docker-compose -f docker/docker-compose.yml --env-file .env --profile superset u
 - **Status:** Fixed
 
 ### Issue #2: Superset API not accessible from Docker API container
-- **Phase:** 3
+- **Area:** Apache Superset
 - **Feature:** Superset health check
 - **Description:** SUPERSET_URL defaulting to localhost:8088 doesn't work inside Docker
 - **Root Cause:** Docker container can't reach host's localhost
@@ -171,7 +171,7 @@ docker-compose -f docker/docker-compose.yml --env-file .env --profile superset u
 - **Status:** Fixed
 
 ### Issue #3: Superset CSRF token missing
-- **Phase:** 3
+- **Area:** Apache Superset
 - **Feature:** Superset setup script
 - **Description:** Failed to add database connection - CSRF token missing
 - **Root Cause:** POST requests require CSRF token in session
@@ -179,7 +179,7 @@ docker-compose -f docker/docker-compose.yml --env-file .env --profile superset u
 - **Status:** Fixed
 
 ### Issue #4: Duplicate variable declaration in MCPServerSelector
-- **Phase:** 2.2
+- **Area:** React UI & Chat
 - **Feature:** Frontend compilation
 - **Description:** `const servers` declared twice
 - **Root Cause:** Code error in MCPServerSelector.tsx
@@ -187,7 +187,7 @@ docker-compose -f docker/docker-compose.yml --env-file .env --profile superset u
 - **Status:** Fixed
 
 ### Issue #5: Vite dev server not accessible from Docker
-- **Phase:** 2.2
+- **Area:** React UI & Chat
 - **Feature:** Playwright testing
 - **Description:** Playwright browser in Docker couldn't reach localhost:5173
 - **Root Cause:** Vite dev server only binds to localhost by default
@@ -229,4 +229,4 @@ docker-compose -f docker/docker-compose.yml --env-file .env --profile superset u
 
 ---
 
-*Last Updated: December 16, 2025 (Playwright Automated Testing Session)*
+*Last Updated: December 2025*

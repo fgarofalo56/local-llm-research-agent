@@ -25,12 +25,14 @@ The Local LLM Research Agent runs as a set of Docker services under the `local-a
 
 | Service | Container | Port(s) | Description |
 |---------|-----------|---------|-------------|
-| **mssql** | `local-agent-mssql` | 1433 | SQL Server 2022 database |
-| **redis-stack** | `local-agent-redis` | 6379, 8001* | Redis + Vector Search + RedisInsight |
+| **mssql** | `local-agent-mssql` | 1433 | SQL Server 2022 (sample database) |
+| **mssql-backend** | `local-agent-mssql-backend` | 1434 | SQL Server 2025 (backend + native vectors) |
+| **redis-stack** | `local-agent-redis` | 6379, 8001* | Redis (caching + vector fallback) |
 | **agent-ui** | `local-agent-streamlit-ui` | 8501 | Streamlit web interface |
 | **api** | `local-agent-api` | 8000 | FastAPI backend with RAG |
 | **agent-cli** | `local-agent-cli` | - | Interactive CLI chat |
-| **mssql-tools** | `local-agent-mssql-tools` | - | Database initialization |
+| **mssql-tools** | `local-agent-mssql-tools` | - | Sample database initialization |
+| **mssql-backend-tools** | `local-agent-mssql-backend-tools` | - | Backend database initialization |
 | **superset** | `local-agent-superset` | 8088 | Apache Superset BI platform |
 
 > *RedisInsight port is configurable via `REDIS_INSIGHT_PORT`
@@ -48,6 +50,7 @@ The Local LLM Research Agent runs as a set of Docker services under the `local-a
 4. **Docker volumes** created:
    ```bash
    docker volume create local-llm-mssql-data
+   docker volume create local-llm-backend-data
    docker volume create local-llm-redis-data
    ```
 
@@ -60,13 +63,15 @@ The Local LLM Research Agent runs as a set of Docker services under the `local-a
 ```bash
 # 1. Create volumes (one time only)
 docker volume create local-llm-mssql-data
+docker volume create local-llm-backend-data
 docker volume create local-llm-redis-data
 
 # 2. Start core services
 docker-compose -f docker/docker-compose.yml --env-file .env up -d
 
-# 3. Initialize database with sample data
+# 3. Initialize databases with sample and backend data
 docker-compose -f docker/docker-compose.yml --env-file .env --profile init up mssql-tools
+docker-compose -f docker/docker-compose.yml --env-file .env --profile init up mssql-backend-tools
 
 # 4. Verify all services are healthy
 docker ps -a --filter name=local-agent
@@ -123,9 +128,9 @@ docker-compose -f docker/docker-compose.yml --env-file .env --profile cli run --
 
 ## Individual Services
 
-### 1. SQL Server (mssql)
+### 1. SQL Server 2022 - Sample Database (mssql)
 
-**Purpose:** Primary database for research analytics data.
+**Purpose:** Sample database for research analytics demo data.
 
 **Connection Details:**
 | Setting | Value |
@@ -166,6 +171,59 @@ JOIN Funding f ON p.ProjectId = f.ProjectId
 GROUP BY p.ProjectName
 ORDER BY TotalFunding DESC;
 ```
+
+---
+
+### 1b. SQL Server 2025 - Backend Database (mssql-backend)
+
+**Purpose:** Backend database for application state and native vector storage using SQL Server 2025's VECTOR type.
+
+**Connection Details:**
+| Setting | Value |
+|---------|-------|
+| Server | `localhost,1434` |
+| Database | `LLM_BackEnd` |
+| Username | `sa` |
+| Password | See `MSSQL_SA_PASSWORD` in `.env` |
+| Trust Certificate | Yes |
+
+**Start:**
+```bash
+docker-compose -f docker/docker-compose.yml --env-file .env up -d mssql-backend
+```
+
+**Test Connection:**
+```bash
+# From host (requires sqlcmd installed)
+sqlcmd -S localhost,1434 -U sa -P "LocalLLM@2024!" -C -Q "SELECT @@VERSION"
+
+# From inside container
+docker exec local-agent-mssql-backend /opt/mssql-tools18/bin/sqlcmd \
+  -S localhost -U sa -P "$MSSQL_SA_PASSWORD" -C -Q "SELECT name FROM sys.databases"
+```
+
+**Database Schemas:**
+| Schema | Purpose |
+|--------|---------|
+| `app` | Application state tables (conversations, dashboards, etc.) |
+| `vectors` | Vector storage tables using native VECTOR(768) type |
+
+**Sample Queries:**
+```sql
+-- List all tables in LLM_BackEnd
+SELECT TABLE_SCHEMA, TABLE_NAME FROM LLM_BackEnd.INFORMATION_SCHEMA.TABLES;
+
+-- Check vector index
+SELECT * FROM vectors.document_chunks_index;
+
+-- Search documents using native vector distance
+EXEC vectors.SearchDocuments @query_vector = @embedding, @top_n = 5;
+```
+
+**Key Features:**
+- **Native VECTOR(768) type** - No external vector database needed
+- **VECTOR_DISTANCE function** - Cosine similarity built into SQL Server
+- **Stored procedures** - Optimized vector search operations
 
 ---
 
@@ -563,18 +621,56 @@ docker-compose -f docker/docker-compose.yml --env-file .env --profile init up ms
 
 ## Environment Variables Reference
 
+### Database Configuration
+
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `MSSQL_SA_PASSWORD` | `LocalLLM@2024!` | SQL Server SA password |
-| `MSSQL_VOLUME_NAME` | `local-llm-mssql-data` | SQL Server volume name |
+| `MSSQL_VOLUME_NAME` | `local-llm-mssql-data` | Sample database volume name |
+| `BACKEND_VOLUME_NAME` | `local-llm-backend-data` | Backend database volume name |
+| `SQL_SERVER_HOST` | `localhost` | Sample database host |
+| `SQL_SERVER_PORT` | `1433` | Sample database port |
+| `SQL_DATABASE_NAME` | `ResearchAnalytics` | Sample database name |
+
+### Backend Database (SQL Server 2025)
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `BACKEND_DB_HOST` | `localhost` | Backend database host |
+| `BACKEND_DB_PORT` | `1434` | Backend database port |
+| `BACKEND_DB_NAME` | `LLM_BackEnd` | Backend database name |
+| `BACKEND_DB_TRUST_CERT` | `true` | Trust self-signed certificates |
+
+### Vector Store Configuration
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `VECTOR_STORE_TYPE` | `mssql` | Vector store: `mssql` (primary) or `redis` (fallback) |
+| `VECTOR_DIMENSIONS` | `768` | Embedding dimensions (768 for nomic-embed-text) |
+
+### Redis Configuration
+
+| Variable | Default | Description |
+|----------|---------|-------------|
 | `REDIS_VOLUME_NAME` | `local-llm-redis-data` | Redis volume name |
 | `REDIS_PORT` | `6379` | Redis server port |
 | `REDIS_INSIGHT_PORT` | `8001` | RedisInsight GUI port |
+| `REDIS_URL` | `redis://localhost:6379` | Redis connection URL |
+
+### Application Configuration
+
+| Variable | Default | Description |
+|----------|---------|-------------|
 | `API_PORT` | `8000` | FastAPI backend port |
 | `STREAMLIT_PORT` | `8501` | Streamlit UI port |
 | `OLLAMA_HOST` | `http://host.docker.internal:11434` | Ollama server URL |
 | `OLLAMA_MODEL` | `qwen2.5:7b-instruct` | LLM model to use |
 | `LLM_PROVIDER` | `ollama` | LLM provider (ollama/foundry_local) |
+
+### Superset Configuration
+
+| Variable | Default | Description |
+|----------|---------|-------------|
 | `SUPERSET_SECRET_KEY` | (generated) | Superset session encryption key |
 | `SUPERSET_ADMIN_PASSWORD` | `LocalLLM@2024!` | Superset admin password |
 | `SUPERSET_PORT` | `8088` | Superset web UI port |
@@ -582,4 +678,4 @@ docker-compose -f docker/docker-compose.yml --env-file .env --profile init up ms
 
 ---
 
-*Last Updated: December 2025* (Phase 3 - Added Apache Superset)
+*Last Updated: December 2025*

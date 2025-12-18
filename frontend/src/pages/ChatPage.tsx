@@ -311,18 +311,24 @@ export function ChatPage() {
     loadSavedSettings();
   }, [loadSavedSettings]);
 
-  // Set current conversation
+  // Set current conversation and clear stale messages when conversation changes
   useEffect(() => {
     if (parsedId) {
+      // Clear messages first to prevent showing stale data
+      setMessages([]);
       setCurrentConversation(parsedId);
     }
-  }, [parsedId, setCurrentConversation]);
+  }, [parsedId, setCurrentConversation, setMessages]);
+
+  // Use parsedId directly for queries to ensure sync with URL
+  // (avoids race condition with store update)
+  const effectiveConversationId = parsedId ?? currentConversationId;
 
   // Fetch conversation details
-  const { data: conversation } = useConversation(currentConversationId);
+  const { data: conversation } = useConversation(effectiveConversationId);
 
   // Fetch messages
-  const { data: messagesData } = useMessages(currentConversationId);
+  const { data: messagesData } = useMessages(effectiveConversationId);
 
   // Update messages in store
   useEffect(() => {

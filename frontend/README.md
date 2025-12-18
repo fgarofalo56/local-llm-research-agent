@@ -17,7 +17,7 @@
 | **Document Management** | Upload and search documents for RAG |
 | **Query History** | View and favorite SQL queries |
 
-### Dashboard Features (Phase 2.3)
+### Dashboard Features
 
 | Feature | Description |
 |---------|-------------|
@@ -28,7 +28,7 @@
 | **Drag & Drop** | Resize and reposition widgets with react-grid-layout |
 | **Auto-Refresh** | Per-widget refresh intervals |
 
-### Export Features (Phase 2.4)
+### Export Features
 
 | Feature | Description |
 |---------|-------------|
@@ -110,7 +110,7 @@ frontend/
 │   │   │   ├── MCPServerSelector.tsx
 │   │   │   └── ...
 │   │   │
-│   │   ├── charts/             # Recharts wrappers (Phase 2.3)
+│   │   ├── charts/             # Recharts chart components
 │   │   │   ├── BarChartComponent.tsx
 │   │   │   ├── LineChartComponent.tsx
 │   │   │   ├── AreaChartComponent.tsx
@@ -122,7 +122,7 @@ frontend/
 │   │   │   ├── QueryResultPanel.tsx
 │   │   │   └── index.ts
 │   │   │
-│   │   ├── dashboard/          # Dashboard components (Phase 2.3)
+│   │   ├── dashboard/          # Dashboard components
 │   │   │   ├── DashboardGrid.tsx
 │   │   │   ├── WidgetContainer.tsx
 │   │   │   └── WidgetEditor.tsx
@@ -130,7 +130,7 @@ frontend/
 │   │   ├── dialogs/            # Modal dialogs
 │   │   │   └── PowerBIExportDialog.tsx
 │   │   │
-│   │   ├── export/             # Export components (Phase 2.4)
+│   │   ├── export/             # Export components
 │   │   │   └── ExportMenu.tsx
 │   │   │
 │   │   ├── layout/             # Layout components
@@ -154,7 +154,7 @@ frontend/
 │   │
 │   ├── lib/
 │   │   ├── chartSuggestion.ts  # Chart type suggestion logic
-│   │   └── exports/            # Export utilities (Phase 2.4)
+│   │   └── exports/            # Export utilities
 │   │       ├── pngExport.ts
 │   │       ├── pdfExport.ts
 │   │       ├── csvExport.ts
@@ -375,4 +375,4 @@ Theme is managed via `ThemeContext` with system detection and localStorage persi
 
 ---
 
-*Last Updated: December 2025* (Phase 2.4 Exports & Power BI)
+*Last Updated: December 2025*

@@ -244,62 +244,189 @@ async def process_document_task(
     chunk_overlap: int,
 ):
     """Background task to process document."""
-    from src.api.deps import _session_factory, _vector_store
+    from src.api.deps import _backend_session_factory, _vector_store
 
-    if _session_factory is None:
+    if _backend_session_factory is None:
         logger.error("database_not_available", document_id=document_id)
         return
+
+    # Alias for readability
+    _session_factory = _backend_session_factory
 
     processor = DocumentProcessor(
         chunk_size=chunk_size,
         chunk_overlap=chunk_overlap,
     )
 
-    async with _session_factory() as db:
-        try:
-            # Update status
+    error_message = None
+
+    # First, try to set status to "processing"
+    try:
+        async with _session_factory() as db:
             doc = await db.get(Document, document_id)
             if not doc:
+                logger.warning("document_not_found", document_id=document_id)
                 return
             doc.processing_status = "processing"
             await db.commit()
+    except Exception as e:
+        logger.error(
+            "document_status_update_failed",
+            document_id=document_id,
+            error=str(e),
+        )
+        return
 
-            # Process file
-            result = await processor.process_file(file_path)
+    # Now process the document
+    try:
+        # Process file
+        result = await processor.process_file(file_path)
 
-            # Add to vector store if available
-            if _vector_store:
-                await _vector_store.add_document(
-                    document_id=str(document_id),
-                    chunks=result["chunks"],
-                    source=doc.original_filename,
-                    source_type="document",
-                    metadata=result["metadata"],
-                )
-
-            # Update record
-            doc.chunk_count = len(result["chunks"])
-            doc.processing_status = "completed"
-            doc.processed_at = datetime.utcnow()
-            await db.commit()
-
-            logger.info(
-                "document_processed",
-                document_id=document_id,
-                chunks=len(result["chunks"]),
+        # Add to vector store if available
+        if _vector_store:
+            await _vector_store.add_document(
+                document_id=str(document_id),
+                chunks=result["chunks"],
+                source=file_path.name,  # Use filename since we may not have doc reference
+                source_type="document",
+                metadata=result["metadata"],
             )
 
-        except Exception as e:
-            logger.error(
-                "document_processing_failed",
-                document_id=document_id,
-                error=str(e),
-            )
+        # Update record with success
+        async with _session_factory() as db:
+            doc = await db.get(Document, document_id)
+            if doc:
+                doc.chunk_count = len(result["chunks"])
+                doc.processing_status = "completed"
+                doc.processed_at = datetime.utcnow()
+                await db.commit()
+
+        logger.info(
+            "document_processed",
+            document_id=document_id,
+            chunks=len(result["chunks"]),
+        )
+        return
+
+    except Exception as e:
+        error_message = str(e)[:500]
+        logger.error(
+            "document_processing_failed",
+            document_id=document_id,
+            error=error_message,
+        )
+
+    # If we got here, processing failed - update status in a separate try block
+    # to ensure we always try to mark as failed even if the first exception
+    # occurred during database operations
+    try:
+        async with _session_factory() as db:
             doc = await db.get(Document, document_id)
             if doc:
                 doc.processing_status = "failed"
-                doc.error_message = str(e)[:500]
+                doc.error_message = error_message or "Unknown error"
                 await db.commit()
+                logger.info(
+                    "document_marked_failed",
+                    document_id=document_id,
+                )
+    except Exception as e2:
+        logger.error(
+            "document_failed_status_update_error",
+            document_id=document_id,
+            original_error=error_message,
+            status_update_error=str(e2),
+        )
+
+
+class RecoverStuckResponse(BaseModel):
+    """Response model for recover stuck documents."""
+
+    recovered_count: int
+    document_ids: list[int]
+    message: str
+
+
+# NOTE: /recover-stuck MUST be defined BEFORE /{document_id} routes to prevent
+# "recover-stuck" from being matched as a document_id
+@router.post("/recover-stuck", response_model=RecoverStuckResponse)
+async def recover_stuck_documents(
+    background_tasks: BackgroundTasks,
+    db: AsyncSession = Depends(get_db),
+    vector_store=Depends(get_vector_store_optional),
+):
+    """
+    Recover documents stuck in 'processing' status.
+
+    This endpoint finds all documents with 'processing' status and requeues them
+    for processing. Useful after server restarts or crashes that left documents
+    in an incomplete state.
+    """
+    settings = get_settings()
+
+    # Find all stuck documents
+    query = select(Document).where(Document.processing_status == "processing")
+    result = await db.execute(query)
+    stuck_documents = result.scalars().all()
+
+    if not stuck_documents:
+        return RecoverStuckResponse(
+            recovered_count=0,
+            document_ids=[],
+            message="No documents stuck in processing status",
+        )
+
+    recovered_ids = []
+
+    for document in stuck_documents:
+        # Check file still exists
+        file_path = Path(settings.upload_dir) / document.filename
+        if not file_path.exists():
+            # Mark as failed if file is missing
+            document.processing_status = "failed"
+            document.error_message = "Document file not found on disk during recovery"
+            logger.warning(
+                "document_file_missing_during_recovery",
+                document_id=document.id,
+                filename=document.filename,
+            )
+            continue
+
+        # Delete existing embeddings if any
+        if vector_store:
+            with contextlib.suppress(Exception):
+                await vector_store.delete_document(str(document.id))
+
+        # Reset status to pending
+        document.processing_status = "pending"
+        document.error_message = None
+        document.chunk_count = None
+        document.processed_at = None
+        recovered_ids.append(document.id)
+
+        # Queue for reprocessing
+        if vector_store:
+            background_tasks.add_task(
+                process_document_task,
+                document.id,
+                file_path,
+                settings.chunk_size,
+                settings.chunk_overlap,
+            )
+
+    await db.commit()
+
+    logger.info(
+        "stuck_documents_recovered",
+        recovered_count=len(recovered_ids),
+        document_ids=recovered_ids,
+    )
+
+    return RecoverStuckResponse(
+        recovered_count=len(recovered_ids),
+        document_ids=recovered_ids,
+        message=f"Recovered {len(recovered_ids)} stuck document(s) and queued for reprocessing",
+    )
 
 
 @router.get("/{document_id}", response_model=DocumentResponse)
@@ -349,12 +476,13 @@ async def reprocess_document(
     db: AsyncSession = Depends(get_db),
     vector_store=Depends(get_vector_store_optional),
 ):
-    """Reprocess a failed document."""
+    """Reprocess a failed or stuck document."""
     document = await db.get(Document, document_id)
     if not document:
         raise HTTPException(status_code=404, detail="Document not found")
 
-    if document.processing_status not in ("failed", "completed"):
+    # Allow reprocessing for failed, completed, or stuck "processing" documents
+    if document.processing_status not in ("failed", "completed", "processing"):
         raise HTTPException(
             status_code=400,
             detail=f"Cannot reprocess document with status '{document.processing_status}'",

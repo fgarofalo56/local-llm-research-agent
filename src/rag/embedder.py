@@ -1,9 +1,10 @@
 """
 Ollama Embedder
-Phase 2.1: Backend Infrastructure & RAG Pipeline
 
 Generates vector embeddings using Ollama's embedding models.
 """
+
+import asyncio
 
 import httpx
 import structlog
@@ -18,6 +19,7 @@ class OllamaEmbedder:
         self,
         base_url: str = "http://localhost:11434",
         model: str = "nomic-embed-text",
+        timeout: float = 60.0,
     ):
         """
         Initialize the Ollama embedder.
@@ -25,9 +27,11 @@ class OllamaEmbedder:
         Args:
             base_url: Ollama server URL
             model: Embedding model name (default: nomic-embed-text)
+            timeout: Timeout for individual embedding requests in seconds
         """
         self.base_url = base_url.rstrip("/")
         self.model = model
+        self.timeout = timeout
         self._dimensions: int | None = None
 
     async def embed(self, text: str) -> list[float]:
@@ -39,12 +43,16 @@ class OllamaEmbedder:
 
         Returns:
             List of floats representing the embedding vector
+
+        Raises:
+            httpx.TimeoutException: If request times out
+            httpx.HTTPStatusError: If Ollama returns an error
         """
         async with httpx.AsyncClient() as client:
             response = await client.post(
                 f"{self.base_url}/api/embeddings",
                 json={"model": self.model, "prompt": text},
-                timeout=30.0,
+                timeout=self.timeout,
             )
             response.raise_for_status()
             data = response.json()
@@ -60,21 +68,104 @@ class OllamaEmbedder:
 
             return embedding
 
-    async def embed_batch(self, texts: list[str]) -> list[list[float]]:
+    async def embed_batch(
+        self,
+        texts: list[str],
+        batch_size: int = 10,
+        max_retries: int = 3,
+    ) -> list[list[float]]:
         """
-        Generate embeddings for multiple texts.
+        Generate embeddings for multiple texts with progress logging and retry logic.
 
         Args:
             texts: List of texts to embed
+            batch_size: Number of concurrent embedding requests
+            max_retries: Maximum retries for failed embeddings
 
         Returns:
             List of embedding vectors
         """
-        embeddings = []
-        for text in texts:
-            embedding = await self.embed(text)
-            embeddings.append(embedding)
+        total = len(texts)
+        if total == 0:
+            return []
+
+        logger.info("embedding_batch_started", total_chunks=total)
+
+        embeddings = [None] * total
+        failed_indices = list(range(total))
+
+        for retry in range(max_retries):
+            if not failed_indices:
+                break
+
+            if retry > 0:
+                logger.warning(
+                    "embedding_batch_retry",
+                    retry=retry,
+                    remaining=len(failed_indices),
+                )
+                # Exponential backoff
+                await asyncio.sleep(2**retry)
+
+            # Process in batches
+            new_failed = []
+            for batch_start in range(0, len(failed_indices), batch_size):
+                batch_indices = failed_indices[batch_start : batch_start + batch_size]
+
+                # Create tasks for this batch
+                tasks = []
+                for idx in batch_indices:
+                    tasks.append(self._embed_with_error_handling(texts[idx], idx))
+
+                # Execute batch concurrently
+                results = await asyncio.gather(*tasks, return_exceptions=True)
+
+                # Process results
+                for idx, result in zip(batch_indices, results, strict=True):
+                    if isinstance(result, Exception):
+                        new_failed.append(idx)
+                        logger.debug(
+                            "embedding_chunk_failed",
+                            chunk_index=idx,
+                            error=str(result),
+                        )
+                    else:
+                        embeddings[idx] = result
+
+                # Log progress
+                completed = total - len(new_failed) - len(
+                    [i for i in failed_indices if i not in batch_indices and embeddings[i] is None]
+                )
+                if batch_start % (batch_size * 5) == 0 or batch_start + batch_size >= len(failed_indices):
+                    logger.info(
+                        "embedding_batch_progress",
+                        completed=completed,
+                        total=total,
+                        percent=round(completed / total * 100, 1),
+                    )
+
+            failed_indices = new_failed
+
+        if failed_indices:
+            raise RuntimeError(
+                f"Failed to generate embeddings for {len(failed_indices)} chunks after {max_retries} retries"
+            )
+
+        logger.info("embedding_batch_completed", total_chunks=total)
         return embeddings
+
+    async def _embed_with_error_handling(self, text: str, index: int) -> list[float]:
+        """Embed a single text with error handling for batch processing."""
+        try:
+            return await self.embed(text)
+        except Exception as e:
+            logger.debug(
+                "embedding_error",
+                chunk_index=index,
+                error_type=type(e).__name__,
+                error=str(e)[:100],
+            )
+            raise
 
     @property
     def dimensions(self) -> int:

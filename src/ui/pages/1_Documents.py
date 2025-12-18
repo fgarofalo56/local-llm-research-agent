@@ -26,8 +26,13 @@ st.set_page_config(
     layout="wide",
 )
 
-# API base URL - use environment variable or default to localhost
-API_BASE_URL = f"http://localhost:{settings.api_port}"
+# API base URL - try container name first (Docker), fall back to localhost
+# Note: API_HOST=0.0.0.0 is for server binding, not client connections
+import os
+_api_host = os.environ.get("API_HOST", "localhost")
+if _api_host == "0.0.0.0":
+    _api_host = "localhost"  # 0.0.0.0 is bind address, use localhost for client
+API_BASE_URL = f"http://{_api_host}:{settings.api_port}"
 
 
 def run_async(coro):
@@ -146,7 +151,11 @@ def render_document_list():
 
     if "error" in result:
         st.error(f"Failed to load documents: {result['error']}")
-        st.info("Make sure the API server is running at " + API_BASE_URL)
+        st.warning(
+            "**The FastAPI server needs to be running.**\n\n"
+            f"Start it with:\n```\nuv run uvicorn src.api.main:app --reload --host 0.0.0.0 --port {settings.api_port}\n```\n\n"
+            f"Expected API URL: {API_BASE_URL}"
+        )
         return
 
     documents = result.get("documents", [])

@@ -217,17 +217,81 @@ OLLAMA_MODEL=custom-research
 
 ## 🗄️ Database Configuration
 
-### Docker SQL Server (Default)
+### Dual Database Architecture
 
-The Docker setup uses these defaults:
+The system uses two SQL Server instances:
+
+| Database | Version | Port | Purpose |
+|----------|---------|------|---------|
+| **ResearchAnalytics** | SQL Server 2022 | 1433 | Sample demo data for queries |
+| **LLM_BackEnd** | SQL Server 2025 | 1434 | Application state + native vectors |
+
+### Docker SQL Server (Sample Database)
+
+The Docker setup uses these defaults for the sample database:
 
 | Setting | Value |
 |---------|-------|
 | Image | `mcr.microsoft.com/mssql/server:2022-latest` |
-| Container | `local-llm-mssql` |
+| Container | `local-agent-mssql` |
 | Port | `1433` |
 | SA Password | `LocalLLM@2024!` |
 | Database | `ResearchAnalytics` |
+
+### Docker SQL Server 2025 (Backend Database)
+
+The backend database uses SQL Server 2025 with native vector support:
+
+| Setting | Value |
+|---------|-------|
+| Image | `mcr.microsoft.com/mssql/server:2025-latest` |
+| Container | `local-agent-mssql-backend` |
+| Port | `1434` |
+| SA Password | `LocalLLM@2024!` |
+| Database | `LLM_BackEnd` |
+| Schemas | `app` (tables), `vectors` (embeddings) |
+
+**SQL Server 2025 Features Used:**
+- **Native VECTOR(768) type** - Store embeddings directly in SQL
+- **VECTOR_DISTANCE function** - Cosine similarity search
+- **Preview features enabled** - Required for vector operations
+
+### Backend Database Configuration
+
+Configure the backend database connection:
+
+```bash
+# .env - Backend Database (SQL Server 2025)
+BACKEND_DB_HOST=localhost
+BACKEND_DB_PORT=1434
+BACKEND_DB_NAME=LLM_BackEnd
+BACKEND_DB_USERNAME=               # Defaults to SQL_USERNAME if empty
+BACKEND_DB_PASSWORD=               # Defaults to SQL_PASSWORD if empty
+BACKEND_DB_TRUST_CERT=true
+```
+
+### Vector Store Configuration
+
+Choose between SQL Server 2025 native vectors (primary) or Redis Stack (fallback):
+
+```bash
+# .env - Vector Store
+# Options: "mssql" (SQL Server 2025) or "redis" (Redis Stack)
+VECTOR_STORE_TYPE=mssql
+
+# Embedding dimensions (768 for nomic-embed-text, 384 for all-MiniLM-L6-v2)
+VECTOR_DIMENSIONS=768
+```
+
+**Vector Store Comparison:**
+
+| Feature | SQL Server 2025 (mssql) | Redis Stack (redis) |
+|---------|-------------------------|---------------------|
+| Storage | Relational tables | In-memory + persistence |
+| Index Type | Native VECTOR type | HNSW index |
+| Similarity | VECTOR_DISTANCE (cosine) | Cosine similarity |
+| Scalability | SQL Server capabilities | Redis clustering |
+| Dependencies | None (built-in) | Requires Redis Stack |
 
 ### Custom SA Password
 
@@ -392,7 +456,7 @@ OLLAMA_MODEL=qwen2.5:7b-instruct
 OLLAMA_TIMEOUT=120
 
 # ======================
-# SQL Server Configuration
+# SQL Server Configuration (Sample Database)
 # ======================
 SQL_SERVER_HOST=localhost
 SQL_SERVER_PORT=1433
@@ -400,6 +464,27 @@ SQL_DATABASE_NAME=ResearchAnalytics
 SQL_TRUST_SERVER_CERTIFICATE=true
 SQL_USERNAME=sa
 SQL_PASSWORD=LocalLLM@2024!
+
+# ======================
+# Backend Database (SQL Server 2025)
+# ======================
+BACKEND_DB_HOST=localhost
+BACKEND_DB_PORT=1434
+BACKEND_DB_NAME=LLM_BackEnd
+BACKEND_DB_USERNAME=
+BACKEND_DB_PASSWORD=
+BACKEND_DB_TRUST_CERT=true
+
+# ======================
+# Vector Store Configuration
+# ======================
+VECTOR_STORE_TYPE=mssql
+VECTOR_DIMENSIONS=768
+
+# ======================
+# Redis Configuration (fallback)
+# ======================
+REDIS_URL=redis://localhost:6379
 
 # ======================
 # MCP Configuration
@@ -419,8 +504,9 @@ DEBUG=false
 # Docker (if using custom password)
 # ======================
 MSSQL_SA_PASSWORD=LocalLLM@2024!
+BACKEND_VOLUME_NAME=local-llm-backend-data
 ```
 
 ---
 
-*Last Updated: December 2024*
+*Last Updated: December 2025*

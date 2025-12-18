@@ -160,7 +160,7 @@ class TestSettings:
         with patch.dict(
             os.environ,
             {
-                "FOUNDRY_ENDPOINT": "http://custom:55588",
+                "FOUNDRY_ENDPOINT": "http://custom:53760",
                 "FOUNDRY_MODEL": "custom-model",
                 "FOUNDRY_AUTO_START": "true",
             },
@@ -168,7 +168,7 @@ class TestSettings:
         ):
             settings = Settings()
 
-        assert settings.foundry_endpoint == "http://custom:55588"
+        assert settings.foundry_endpoint == "http://custom:53760"
         assert settings.foundry_model == "custom-model"
         assert settings.foundry_auto_start is True
 

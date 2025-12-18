@@ -16,9 +16,105 @@ from src.utils.config import get_settings
 
 logger = structlog.get_logger()
 
+# Preset themes configuration
+PRESET_THEMES = [
+    {
+        "name": "default",
+        "display_name": "Default (Light)",
+        "config": """{
+            "primaryColor": "#FF4B4B",
+            "backgroundColor": "#FFFFFF",
+            "secondaryBackgroundColor": "#F0F2F6",
+            "textColor": "#262730",
+            "font": "sans serif"
+        }""",
+        "is_active": True,
+    },
+    {
+        "name": "dark",
+        "display_name": "Dark Mode",
+        "config": """{
+            "primaryColor": "#FF4B4B",
+            "backgroundColor": "#0E1117",
+            "secondaryBackgroundColor": "#262730",
+            "textColor": "#FAFAFA",
+            "font": "sans serif"
+        }""",
+        "is_active": False,
+    },
+    {
+        "name": "blue",
+        "display_name": "Professional Blue",
+        "config": """{
+            "primaryColor": "#1E88E5",
+            "backgroundColor": "#FFFFFF",
+            "secondaryBackgroundColor": "#E3F2FD",
+            "textColor": "#1A237E",
+            "font": "sans serif"
+        }""",
+        "is_active": False,
+    },
+    {
+        "name": "green",
+        "display_name": "Forest Green",
+        "config": """{
+            "primaryColor": "#43A047",
+            "backgroundColor": "#FFFFFF",
+            "secondaryBackgroundColor": "#E8F5E9",
+            "textColor": "#1B5E20",
+            "font": "sans serif"
+        }""",
+        "is_active": False,
+    },
+    {
+        "name": "purple",
+        "display_name": "Royal Purple",
+        "config": """{
+            "primaryColor": "#7E57C2",
+            "backgroundColor": "#FFFFFF",
+            "secondaryBackgroundColor": "#EDE7F6",
+            "textColor": "#311B92",
+            "font": "sans serif"
+        }""",
+        "is_active": False,
+    },
+]
+
+
+async def _seed_preset_themes(session_factory) -> None:
+    """Seed preset themes into the database if they don't exist."""
+    from sqlalchemy import select
+
+    from src.api.models.database import ThemeConfig
+
+    async with session_factory() as session:
+        # Check if any preset themes exist
+        result = await session.execute(
+            select(ThemeConfig).where(ThemeConfig.is_preset == True)
+        )
+        existing_presets = {t.name for t in result.scalars().all()}
+
+        # Add missing preset themes
+        for theme_data in PRESET_THEMES:
+            if theme_data["name"] not in existing_presets:
+                theme = ThemeConfig(
+                    name=theme_data["name"],
+                    display_name=theme_data["display_name"],
+                    config=theme_data["config"],
+                    is_preset=True,
+                    is_active=theme_data["is_active"],
+                )
+                session.add(theme)
+                logger.info("theme_added", name=theme_data["name"])
+
+        await session.commit()
+
+
 # Global instances (initialized on startup)
-_engine = None
-_session_factory = None
+_engine = None  # Sample database (ResearchAnalytics)
+_session_factory = None  # Sample database sessions
+_backend_engine = None  # Backend database (LLM_BackEnd)
+_backend_session_factory = None  # Backend database sessions
 _redis_client: Redis | None = None
 _vector_store = None
 _embedder = None
@@ -29,12 +125,13 @@ _query_scheduler = None
 
 async def init_services() -> None:
     """Initialize all services on application startup."""
-    global _engine, _session_factory, _redis_client, _vector_store, _embedder, _mcp_manager
+    global _engine, _session_factory, _backend_engine, _backend_session_factory
+    global _redis_client, _vector_store, _embedder, _mcp_manager
     global _alert_scheduler, _query_scheduler
 
     settings = get_settings()
 
-    # Initialize database engine
+    # Initialize sample database engine (ResearchAnalytics - for demo queries)
     try:
         _engine = create_async_engine(
             settings.database_url_async,
@@ -42,12 +139,27 @@ async def init_services() -> None:
             pool_pre_ping=True,
         )
         _session_factory = async_sessionmaker(_engine, expire_on_commit=False)
-        logger.info("database_engine_initialized")
+        logger.info("sample_database_engine_initialized", database="ResearchAnalytics")
     except Exception as e:
-        logger.warning("database_engine_failed", error=str(e))
-        # Continue without database for basic API functionality
+        logger.warning("sample_database_engine_failed", error=str(e))
 
-    # Initialize Redis client
+    # Initialize backend database engine (LLM_BackEnd - app state + vectors)
+    try:
+        _backend_engine = create_async_engine(
+            settings.backend_database_url_async,
+            echo=settings.debug,
+            pool_pre_ping=True,
+        )
+        _backend_session_factory = async_sessionmaker(_backend_engine, expire_on_commit=False)
+        logger.info("backend_database_engine_initialized", database="LLM_BackEnd")
+    except Exception as e:
+        logger.warning("backend_database_engine_failed", error=str(e))
+        # Fall back to sample database for app state if backend not available
+        if _session_factory:
+            _backend_session_factory = _session_factory
+            logger.info("using_sample_database_for_backend_fallback")
+
+    # Initialize Redis client (for caching, optional vector fallback)
     try:
         _redis_client = Redis.from_url(settings.redis_url, decode_responses=True)
         await _redis_client.ping()
@@ -56,32 +168,55 @@ async def init_services() -> None:
         logger.warning("redis_connection_failed", error=str(e))
         _redis_client = None
 
-    # Initialize embedder (lazy, only if Redis is available)
-    if _redis_client:
-        try:
-            from src.rag.embedder import OllamaEmbedder
+    # Initialize embedder (required for vector operations)
+    try:
+        from src.rag.embedder import OllamaEmbedder
 
-            _embedder = OllamaEmbedder(
-                base_url=settings.ollama_host,
-                model=settings.embedding_model,
-            )
-            logger.info("embedder_initialized")
-        except Exception as e:
-            logger.warning("embedder_init_failed", error=str(e))
+        _embedder = OllamaEmbedder(
+            base_url=settings.ollama_host,
+            model=settings.embedding_model,
+        )
+        logger.info("embedder_initialized", model=settings.embedding_model)
+    except Exception as e:
+        logger.warning("embedder_init_failed", error=str(e))
 
-    # Initialize vector store (only if Redis and embedder are available)
-    if _redis_client and _embedder:
-        try:
-            from src.rag.redis_vector_store import RedisVectorStore
+    # Initialize vector store based on configuration
+    if _embedder:
+        vector_store_type = settings.vector_store_type.lower()
 
-            _vector_store = RedisVectorStore(
-                redis_client=_redis_client,
-                embedder=_embedder,
-            )
-            await _vector_store.create_index()
-            logger.info("vector_store_initialized")
-        except Exception as e:
-            logger.warning("vector_store_init_failed", error=str(e))
+        # Try MSSQL vector store first (SQL Server 2025)
+        if vector_store_type == "mssql" and _backend_session_factory:
+            try:
+                from src.rag.mssql_vector_store import MSSQLVectorStore
+
+                _vector_store = MSSQLVectorStore(
+                    session_factory=_backend_session_factory,
+                    embedder=_embedder,
+                    dimensions=settings.vector_dimensions,
+                )
+                await _vector_store.create_index()
+                logger.info("vector_store_initialized", type="mssql", dimensions=settings.vector_dimensions)
+            except Exception as e:
+                logger.warning("mssql_vector_store_init_failed", error=str(e))
+                # Fall back to Redis if MSSQL fails
+                if _redis_client:
+                    logger.info("falling_back_to_redis_vector_store")
+                    vector_store_type = "redis"
+
+        # Redis vector store (fallback or explicit choice)
+        if vector_store_type == "redis" and _redis_client and _vector_store is None:
+            try:
+                from src.rag.redis_vector_store import RedisVectorStore
+
+                _vector_store = RedisVectorStore(
+                    redis_client=_redis_client,
+                    embedder=_embedder,
+                    dimensions=settings.vector_dimensions,
+                )
+                await _vector_store.create_index()
+                logger.info("vector_store_initialized", type="redis", dimensions=settings.vector_dimensions)
+            except Exception as e:
+                logger.warning("redis_vector_store_init_failed", error=str(e))
 
     # Initialize MCP manager
     try:
@@ -93,26 +228,34 @@ async def init_services() -> None:
     except Exception as e:
         logger.warning("mcp_manager_init_failed", error=str(e))
 
-    # Initialize schedulers (only if database is available)
-    if _session_factory:
+    # Initialize schedulers (only if backend database is available)
+    if _backend_session_factory:
         try:
             from src.services.alert_scheduler import AlertScheduler
             from src.services.query_scheduler import QueryScheduler
 
-            _alert_scheduler = AlertScheduler(session_factory=_session_factory)
+            _alert_scheduler = AlertScheduler(session_factory=_backend_session_factory)
             await _alert_scheduler.start()
             logger.info("alert_scheduler_initialized")
 
-            _query_scheduler = QueryScheduler(session_factory=_session_factory)
+            _query_scheduler = QueryScheduler(session_factory=_backend_session_factory)
             await _query_scheduler.start()
             logger.info("query_scheduler_initialized")
         except Exception as e:
             logger.warning("schedulers_init_failed", error=str(e))
 
+        # Seed preset themes
+        try:
+            await _seed_preset_themes(_backend_session_factory)
+            logger.info("preset_themes_seeded")
+        except Exception as e:
+            logger.warning("theme_seeding_failed", error=str(e))
+
 
 async def shutdown_services() -> None:
     """Cleanup services on application shutdown."""
-    global _engine, _redis_client, _mcp_manager, _alert_scheduler, _query_scheduler
+    global _engine, _backend_engine, _redis_client, _mcp_manager
+    global _alert_scheduler, _query_scheduler
 
     # Stop schedulers first
     if _alert_scheduler:
@@ -139,19 +282,52 @@ async def shutdown_services() -> None:
         except Exception as e:
             logger.error("redis_close_error", error=str(e))
 
+    # Dispose backend database engine
+    if _backend_engine:
+        try:
+            await _backend_engine.dispose()
+            logger.info("backend_database_disposed")
+        except Exception as e:
+            logger.error("backend_database_dispose_error", error=str(e))
+
+    # Dispose sample database engine
     if _engine:
         try:
             await _engine.dispose()
+            logger.info("sample_database_disposed")
         except Exception as e:
-            logger.error("database_dispose_error", error=str(e))
+            logger.error("sample_database_dispose_error", error=str(e))
 
     logger.info("all_services_shutdown")
 
 
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
-    """Get database session for dependency injection."""
+    """Get backend database session for dependency injection.
+
+    This is the primary database connection for application state,
+    including conversations, messages, dashboards, documents, and vectors.
+    Uses LLM_BackEnd database (SQL Server 2025 with native vector support).
+    """
+    if _backend_session_factory is None:
+        raise RuntimeError("Backend database not initialized")
+
+    async with _backend_session_factory() as session:
+        try:
+            yield session
+            await session.commit()
+        except Exception:
+            await session.rollback()
+            raise
+
+
+async def get_sample_db() -> AsyncGenerator[AsyncSession, None]:
+    """Get sample database session for dependency injection.
+
+    This is the sample/demo database (ResearchAnalytics) used for
+    demonstrating SQL queries and LLM capabilities. Not for app state.
+    """
     if _session_factory is None:
-        raise RuntimeError("Database not initialized")
+        raise RuntimeError("Sample database not initialized")
 
     async with _session_factory() as session:
         try:
@@ -160,6 +336,11 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
         except Exception:
             await session.rollback()
             raise
+
+
+def get_backend_session_factory():
+    """Get the backend session factory for background tasks."""
+    return _backend_session_factory
 
 
 def get_redis() -> Redis:

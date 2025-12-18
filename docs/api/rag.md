@@ -1,6 +1,6 @@
 # RAG Pipeline API Reference
 
-> **Phase 2.1: Backend Infrastructure & RAG Pipeline**
+> **Document Processing & Vector Search**
 
 The RAG (Retrieval-Augmented Generation) pipeline provides document processing, embedding generation, vector storage, and similarity search capabilities.
 
@@ -8,12 +8,13 @@ The RAG (Retrieval-Augmented Generation) pipeline provides document processing, 
 
 ## Overview
 
-The RAG pipeline consists of four main components:
+The RAG pipeline consists of five main components:
 
 | Component | Module | Purpose |
 |-----------|--------|---------|
 | **Embedder** | `src/rag/embedder.py` | Generate vector embeddings via Ollama |
-| **Vector Store** | `src/rag/redis_vector_store.py` | Store and search vectors in Redis |
+| **MSSQL Vector Store** | `src/rag/mssql_vector_store.py` | Store and search vectors in SQL Server 2025 (primary) |
+| **Redis Vector Store** | `src/rag/redis_vector_store.py` | Store and search vectors in Redis (fallback) |
 | **Document Processor** | `src/rag/document_processor.py` | Parse PDF/DOCX documents |
 | **Schema Indexer** | `src/rag/schema_indexer.py` | Index database schema |
 
@@ -45,14 +46,27 @@ The RAG pipeline consists of four main components:
 │  └────────────────────────────────────────────────────┘    │
 └───────────┬─────────────────────────────────────────────────┘
             │
-            ▼
-┌─────────────────────────────────────────────────────────────┐
-│                 Redis Vector Store                           │
-│  ┌─────────────────────────────────────────────────────┐    │
-│  │  HNSW Index → Cosine Similarity Search              │    │
-│  └────────────────────────────────────────────────────┘    │
-└─────────────────────────────────────────────────────────────┘
+            ├──────────────────────────────┐
+            ▼                              ▼
+┌───────────────────────────────┐  ┌───────────────────────────────┐
+│   SQL Server 2025 (Primary)   │  │   Redis Stack (Fallback)      │
+│  ┌─────────────────────────┐  │  │  ┌─────────────────────────┐  │
+│  │  VECTOR(768) native     │  │  │  │  HNSW Index             │  │
+│  │  VECTOR_DISTANCE cosine │  │  │  │  Cosine Similarity      │  │
+│  └─────────────────────────┘  │  │  └─────────────────────────┘  │
+└───────────────────────────────┘  └───────────────────────────────┘
 ```
+
+### Vector Store Selection
+
+The vector store is selected based on `VECTOR_STORE_TYPE` in `.env`:
+
+| Value | Vector Store | Database | Features |
+|-------|--------------|----------|----------|
+| `mssql` (default) | MSSQLVectorStore | SQL Server 2025 | Native VECTOR type, VECTOR_DISTANCE |
+| `redis` | RedisVectorStore | Redis Stack | HNSW index, in-memory |
+
+If the primary store fails to initialize, the system automatically falls back to Redis.
 
 ---
 
@@ -111,11 +125,151 @@ embeddings = await embedder.embed_batch(texts)
 
 ---
 
+## MSSQLVectorStore
+
+### `src/rag/mssql_vector_store.py`
+
+Vector store implementation using SQL Server 2025's native VECTOR type.
+
+### Class: `MSSQLVectorStore`
+
+```python
+from sqlalchemy.ext.asyncio import async_sessionmaker
+from src.rag.embedder import OllamaEmbedder
+from src.rag.mssql_vector_store import MSSQLVectorStore
+
+session_factory = async_sessionmaker(engine)
+embedder = OllamaEmbedder()
+vector_store = MSSQLVectorStore(
+    session_factory=session_factory,
+    embedder=embedder,
+    dimensions=768
+)
+```
+
+#### Constructor Parameters
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `session_factory` | async_sessionmaker | Required | SQLAlchemy async session factory |
+| `embedder` | OllamaEmbedder | Required | Embedding generator |
+| `dimensions` | int | 768 | Vector dimensions (must match embedding model) |
+
+#### Methods
+
+##### `async create_index(overwrite: bool = False) -> None`
+
+Create the vector tables and stored procedures in SQL Server.
+
+```python
+await vector_store.create_index(overwrite=True)
+```
+
+This creates:
+- `vectors.document_chunks` table with VECTOR(768) column
+- `vectors.schema_chunks` table for database schema embeddings
+- `vectors.SearchDocuments` stored procedure
+- `vectors.SearchSchema` stored procedure
+
+##### `async add_document(...) -> None`
+
+Add document chunks to the vector store.
+
+```python
+await vector_store.add_document(
+    document_id="doc_123",
+    chunks=["Chunk 1 text", "Chunk 2 text"],
+    source="report.pdf",
+    source_type="document",  # or "schema"
+    metadata={"author": "John Doe"}
+)
+```
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `document_id` | str | Unique document identifier |
+| `chunks` | list[str] | Text chunks to index |
+| `source` | str | Source name (filename) |
+| `source_type` | str | `"document"` or `"schema"` |
+| `metadata` | dict | Optional metadata |
+
+##### `async search(query: str, top_k: int = 5, source_type: str = None, document_id: str = None) -> list[dict]`
+
+Search for similar documents using VECTOR_DISTANCE.
+
+```python
+results = await vector_store.search(
+    query="What are the project requirements?",
+    top_k=5,
+    source_type="document"
+)
+
+for result in results:
+    print(f"Distance: {result['distance']}")
+    print(f"Content: {result['content']}")
+    print(f"Source: {result['source']}")
+```
+
+**Returns:**
+```python
+[
+    {
+        "content": "The project requires...",
+        "source": "requirements.pdf",
+        "source_type": "document",
+        "document_id": "doc_123",
+        "chunk_index": 3,
+        "metadata": {"author": "John"},
+        "distance": 0.15  # Lower is more similar (cosine distance)
+    }
+]
+```
+
+##### `async delete_document(document_id: str) -> int`
+
+Delete all chunks for a document.
+
+```python
+deleted_count = await vector_store.delete_document("doc_123")
+print(f"Deleted {deleted_count} chunks")
+```
+
+##### `async get_stats() -> dict`
+
+Get vector store statistics.
+
+```python
+stats = await vector_store.get_stats()
+# Returns: {"document_chunks": 100, "schema_chunks": 50}
+```
+
+### Database Schema
+
+The MSSQL vector store uses these tables:
+
+**vectors.document_chunks:**
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | INT IDENTITY | Primary key |
+| `document_id` | INT | Document reference |
+| `chunk_index` | INT | Chunk position |
+| `content` | NVARCHAR(MAX) | Chunk text |
+| `embedding` | VECTOR(768) | Vector embedding |
+| `source` | NVARCHAR(255) | Source filename |
+| `source_type` | NVARCHAR(50) | Type: document/schema |
+| `metadata` | NVARCHAR(MAX) | JSON metadata |
+
+**Stored Procedures:**
+- `vectors.SearchDocuments` - Vector similarity search with optional filters
+- `vectors.SearchSchema` - Schema-specific vector search
+
+---
+
 ## RedisVectorStore
 
 ### `src/rag/redis_vector_store.py`
 
-Vector store implementation using Redis Stack with HNSW indexing.
+Vector store implementation using Redis Stack with HNSW indexing. This is the fallback option when SQL Server 2025 is not available.
 
 ### Class: `RedisVectorStore`
 
@@ -353,11 +507,21 @@ chunks_created = await indexer.index_schema_text(schema)
 ### Environment Variables
 
 ```bash
-# Redis Vector Store
+# Vector Store Selection
+VECTOR_STORE_TYPE=mssql            # "mssql" (primary) or "redis" (fallback)
+VECTOR_DIMENSIONS=768              # Must match embedding model
+
+# Backend Database (SQL Server 2025 for MSSQL vector store)
+BACKEND_DB_HOST=localhost
+BACKEND_DB_PORT=1434
+BACKEND_DB_NAME=LLM_BackEnd
+BACKEND_DB_TRUST_CERT=true
+
+# Redis Vector Store (fallback)
 REDIS_URL=redis://localhost:6379
 
 # Embedding Model
-EMBEDDING_MODEL=nomic-embed-text
+EMBEDDING_MODEL=nomic-embed-text   # 768 dimensions
 
 # Document Processing
 CHUNK_SIZE=512
@@ -388,7 +552,56 @@ print(settings.rag_top_k)          # 5
 
 ## Usage Examples
 
-### Full RAG Pipeline
+### Full RAG Pipeline with MSSQL Vector Store
+
+```python
+import asyncio
+from pathlib import Path
+from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
+from src.rag.embedder import OllamaEmbedder
+from src.rag.mssql_vector_store import MSSQLVectorStore
+from src.rag.document_processor import DocumentProcessor
+
+async def main():
+    # Initialize database connection
+    engine = create_async_engine(
+        "mssql+aioodbc://sa:password@localhost:1434/LLM_BackEnd"
+        "?driver=ODBC+Driver+18+for+SQL+Server&TrustServerCertificate=yes"
+    )
+    session_factory = async_sessionmaker(engine, expire_on_commit=False)
+
+    # Initialize components
+    embedder = OllamaEmbedder()
+    vector_store = MSSQLVectorStore(session_factory, embedder, dimensions=768)
+    processor = DocumentProcessor()
+
+    # Create index (tables and stored procedures)
+    await vector_store.create_index()
+
+    # Process and index a document
+    result = await processor.process_file(Path("report.pdf"))
+    await vector_store.add_document(
+        document_id="report_001",
+        chunks=result["chunks"],
+        source="report.pdf",
+        source_type="document"
+    )
+
+    # Search using native VECTOR_DISTANCE
+    results = await vector_store.search(
+        query="What are the main findings?",
+        top_k=5
+    )
+
+    for result in results:
+        print(f"[{result['distance']:.3f}] {result['content'][:100]}...")
+
+    await engine.dispose()
+
+asyncio.run(main())
+```
+
+### Full RAG Pipeline with Redis Vector Store (Fallback)
 
 ```python
 import asyncio
@@ -409,10 +622,10 @@ async def main():
     await vector_store.create_index()
 
     # Process and index a document
-    chunks = await processor.process_file(Path("report.pdf"))
+    result = await processor.process_file(Path("report.pdf"))
     await vector_store.add_document(
         document_id="report_001",
-        chunks=chunks,
+        chunks=result["chunks"],
         source="report.pdf",
         source_type="document"
     )
@@ -483,4 +696,4 @@ User question: {user_query}
 
 ---
 
-*Last Updated: December 2025* (Phase 2.1)
+*Last Updated: December 2025*

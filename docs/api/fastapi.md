@@ -1,6 +1,6 @@
 # FastAPI Backend API Reference
 
-> **Phase 2.1: Backend Infrastructure**
+> **REST API Reference**
 
 The FastAPI backend provides a REST API for all agent operations, document management, conversations, and RAG search.
 
@@ -366,8 +366,7 @@ List tools available on an MCP server.
 | `/api/settings/providers/{id}/models` | GET | List models for a provider |
 | `/api/settings/providers/test` | POST | Test provider connection |
 
-#### GET `/api/settings/providers` (Phase 2.4)
-
+#### GET `/api/settings/providers`
 List available LLM providers with their connection status.
 
 **Response:**
@@ -394,8 +393,7 @@ List available LLM providers with their connection status.
 ]
 ```
 
-#### GET `/api/settings/providers/{id}/models` (Phase 2.4)
-
+#### GET `/api/settings/providers/{id}/models`
 List available models for a specific provider.
 
 **Response:**
@@ -424,8 +422,7 @@ List available models for a specific provider.
 }
 ```
 
-#### POST `/api/settings/providers/test` (Phase 2.4)
-
+#### POST `/api/settings/providers/test`
 Test connection to a provider with optional model verification.
 
 **Request:**
@@ -483,8 +480,7 @@ Send a message to the research agent.
 }
 ```
 
-#### POST `/api/agent/powerbi-export` (Phase 2.4)
-
+#### POST `/api/agent/powerbi-export`
 Export query results to Power BI format.
 
 **Request:**
@@ -555,10 +551,25 @@ Environment variables for the API:
 API_HOST=0.0.0.0
 API_PORT=8000
 
-# Database
-DATABASE_URL=mssql+aioodbc://sa:password@localhost:1433/ResearchAnalytics?driver=ODBC+Driver+18+for+SQL+Server&TrustServerCertificate=yes
+# Sample Database (SQL Server 2022)
+SQL_SERVER_HOST=localhost
+SQL_SERVER_PORT=1433
+SQL_DATABASE_NAME=ResearchAnalytics
+SQL_USERNAME=sa
+SQL_PASSWORD=LocalLLM@2024!
+SQL_TRUST_SERVER_CERTIFICATE=true
 
-# Redis
+# Backend Database (SQL Server 2025 with native vectors)
+BACKEND_DB_HOST=localhost
+BACKEND_DB_PORT=1434
+BACKEND_DB_NAME=LLM_BackEnd
+BACKEND_DB_TRUST_CERT=true
+
+# Vector Store Configuration
+VECTOR_STORE_TYPE=mssql           # "mssql" (primary) or "redis" (fallback)
+VECTOR_DIMENSIONS=768             # Match embedding model dimensions
+
+# Redis (caching and vector fallback)
 REDIS_URL=redis://localhost:6379
 
 # Uploads
@@ -568,4 +579,4 @@ MAX_UPLOAD_SIZE_MB=50
 
 ---
 
-*Last Updated: December 2025* (Phase 2.4 - Added Power BI export endpoint)*
+*Last Updated: December 2025*

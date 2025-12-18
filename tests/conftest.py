@@ -13,7 +13,7 @@ import pytest
 os.environ.setdefault("OLLAMA_HOST", "http://localhost:11434")
 os.environ.setdefault("OLLAMA_MODEL", "qwen2.5:7b-instruct")
 os.environ.setdefault("LLM_PROVIDER", "ollama")
-os.environ.setdefault("FOUNDRY_ENDPOINT", "http://127.0.0.1:55588")
+os.environ.setdefault("FOUNDRY_ENDPOINT", "http://127.0.0.1:53760")
 os.environ.setdefault("FOUNDRY_MODEL", "phi-4")
 os.environ.setdefault("SQL_SERVER_HOST", "localhost")
 os.environ.setdefault("SQL_DATABASE_NAME", "test_db")
@@ -37,7 +37,7 @@ def mock_settings():
         mock.ollama_host = "http://localhost:11434"
         mock.ollama_model = "qwen2.5:7b-instruct"
         mock.llm_provider = "ollama"
-        mock.foundry_endpoint = "http://127.0.0.1:55588"
+        mock.foundry_endpoint = "http://127.0.0.1:53760"
         mock.foundry_model = "phi-4"
         mock.foundry_auto_start = False
         mock.sql_server_host = "localhost"
@@ -82,14 +82,14 @@ def mock_foundry_provider():
     mock = MagicMock()
     mock.provider_type = ProviderType.FOUNDRY_LOCAL
     mock.model_name = "phi-4"
-    mock.endpoint = "http://127.0.0.1:55588"
+    mock.endpoint = "http://127.0.0.1:53760"
     mock.get_model.return_value = MagicMock()
 
     status = MagicMock()
     status.available = True
     status.provider_type = ProviderType.FOUNDRY_LOCAL
     status.model_name = "phi-4"
-    status.endpoint = "http://127.0.0.1:55588"
+    status.endpoint = "http://127.0.0.1:53760"
     status.error = None
     status.version = None
     mock.check_connection = AsyncMock(return_value=status)

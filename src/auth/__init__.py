@@ -24,6 +24,11 @@ from src.auth.password import (
     validate_password_strength,
     verify_password,
 )
+from src.auth.rate_limit import (
+    AuthRateLimiter,
+    get_login_limiter,
+    get_register_limiter,
+)
 
 __all__ = [
     # JWT
@@ -43,4 +48,8 @@ __all__ = [
     "verify_password",
     "generate_password",
     "validate_password_strength",
+    # Rate Limiting
+    "AuthRateLimiter",
+    "get_login_limiter",
+    "get_register_limiter",
 ]

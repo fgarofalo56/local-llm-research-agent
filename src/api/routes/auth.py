@@ -9,7 +9,7 @@ import hashlib
 from datetime import datetime, timedelta, timezone
 
 import structlog
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy import select
@@ -30,6 +30,7 @@ from src.auth import (
     verify_password,
     verify_refresh_token,
 )
+from src.auth.rate_limit import get_login_limiter, get_register_limiter
 
 router = APIRouter()
 logger = structlog.get_logger()
@@ -241,13 +242,19 @@ async def get_current_user_optional(
 @router.post("/register", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
 async def register(
     request: RegisterRequest,
+    http_request: Request,
     db: AsyncSession = Depends(get_db),
 ):
     """
     Register a new user account.
 
     Returns access and refresh tokens on successful registration.
+
+    Rate limited to prevent abuse (3 requests per minute per IP).
     """
+    # Apply rate limiting
+    get_register_limiter().check_rate_limit(http_request)
+
     # Validate password strength
     is_valid, error_msg = validate_password_strength(request.password)
     if not is_valid:
@@ -304,13 +311,19 @@ async def register(
 @router.post("/login", response_model=TokenResponse)
 async def login(
     request: LoginRequest,
+    http_request: Request,
     db: AsyncSession = Depends(get_db),
 ):
     """
     Authenticate user and return tokens.
 
     Returns access and refresh tokens on successful login.
+
+    Rate limited to prevent brute force attacks (5 requests per minute per IP).
     """
+    # Apply rate limiting
+    get_login_limiter().check_rate_limit(http_request)
+
     # Find user by email
     user = await get_user_by_email(db, request.email)
 

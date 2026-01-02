@@ -141,9 +141,16 @@ JWT_REFRESH_TOKEN_EXPIRE_DAYS=7
 | JWT token validation | ✅ Implemented | - |
 | Refresh token rotation | ✅ Implemented | - |
 | Password strength validation | ✅ Implemented | - |
-| Rate limiting on auth endpoints | 🔜 Planned | HIGH |
+| Rate limiting on auth endpoints | ✅ Implemented | - |
 | Account lockout after failed attempts | 🔜 Planned | MEDIUM |
 | Expired token cleanup job | 🔜 Planned | LOW |
+
+### Rate Limiting Details
+
+| Endpoint | Limit | Block Duration |
+|----------|-------|----------------|
+| `/api/auth/login` | 5 requests/min per IP | 5 minutes |
+| `/api/auth/register` | 3 requests/min per IP | 10 minutes |
 
 ---
 

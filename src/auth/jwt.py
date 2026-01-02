@@ -15,10 +15,23 @@ import structlog
 logger = structlog.get_logger()
 
 # JWT Configuration
-JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", "your-super-secret-key-change-in-production")
+_DEFAULT_SECRET = "your-super-secret-key-change-in-production"
+JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", _DEFAULT_SECRET)
 JWT_ALGORITHM = "HS256"
 JWT_ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("JWT_ACCESS_TOKEN_EXPIRE_MINUTES", "30"))
 JWT_REFRESH_TOKEN_EXPIRE_DAYS = int(os.getenv("JWT_REFRESH_TOKEN_EXPIRE_DAYS", "7"))
+
+# Security warning for default secret key
+if JWT_SECRET_KEY == _DEFAULT_SECRET:
+    import warnings
+
+    warnings.warn(
+        "SECURITY WARNING: Using default JWT_SECRET_KEY! "
+        "Set JWT_SECRET_KEY environment variable in production. "
+        "Generate with: python -c \"import secrets; print(secrets.token_urlsafe(32))\"",
+        UserWarning,
+        stacklevel=1,
+    )
 
 
 class TokenError(Exception):

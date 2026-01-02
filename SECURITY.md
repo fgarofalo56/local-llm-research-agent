@@ -106,6 +106,47 @@ MCP_MSSQL_READONLY=true
 
 ---
 
+## 🔐 Authentication Security (Phase 4.5)
+
+The JWT authentication system implements:
+
+| Feature | Implementation |
+|---------|----------------|
+| **Password Hashing** | bcrypt with 12 rounds via passlib |
+| **JWT Algorithm** | HS256 (HMAC-SHA256) |
+| **Access Token TTL** | 30 minutes (configurable) |
+| **Refresh Token TTL** | 7 days (configurable) |
+| **Token Rotation** | Refresh tokens are invalidated on use |
+| **Token Storage** | Refresh tokens hashed (SHA256) before DB storage |
+| **Password Policy** | Min 8 chars, upper/lower/digit/special required |
+
+### JWT Configuration
+
+```bash
+# CRITICAL: Set a strong secret key for production!
+# Generate with: python -c "import secrets; print(secrets.token_urlsafe(32))"
+JWT_SECRET_KEY=your-generated-secret-key
+
+# Token expiration settings
+JWT_ACCESS_TOKEN_EXPIRE_MINUTES=30
+JWT_REFRESH_TOKEN_EXPIRE_DAYS=7
+```
+
+> ⚠️ **Warning:** The application will emit a security warning if using the default JWT secret key.
+
+### Auth Security Roadmap
+
+| Item | Status | Priority |
+|------|--------|----------|
+| JWT token validation | ✅ Implemented | - |
+| Refresh token rotation | ✅ Implemented | - |
+| Password strength validation | ✅ Implemented | - |
+| Rate limiting on auth endpoints | 🔜 Planned | HIGH |
+| Account lockout after failed attempts | 🔜 Planned | MEDIUM |
+| Expired token cleanup job | 🔜 Planned | LOW |
+
+---
+
 ## ⚠️ Known Security Considerations
 
 ### 🦙 Local LLM (Ollama)
@@ -168,4 +209,4 @@ We monitor dependencies for known vulnerabilities:
 
 ---
 
-*Last Updated: December 2024*
+*Last Updated: January 2026*

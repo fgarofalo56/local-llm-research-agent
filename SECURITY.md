@@ -142,8 +142,17 @@ JWT_REFRESH_TOKEN_EXPIRE_DAYS=7
 | Refresh token rotation | ✅ Implemented | - |
 | Password strength validation | ✅ Implemented | - |
 | Rate limiting on auth endpoints | ✅ Implemented | - |
-| Account lockout after failed attempts | 🔜 Planned | MEDIUM |
+| Account lockout after failed attempts | ✅ Implemented | - |
 | Expired token cleanup job | 🔜 Planned | LOW |
+
+### Account Lockout Details
+
+| Setting | Value |
+|---------|-------|
+| Max failed attempts | 5 |
+| Lockout duration | 15 minutes |
+| Counter reset | On successful login |
+| HTTP status when locked | 423 Locked |
 
 ### Rate Limiting Details
 

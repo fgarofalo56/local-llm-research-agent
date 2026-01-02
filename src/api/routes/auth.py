@@ -308,6 +308,45 @@ async def register(
     )
 
 
+# Account lockout configuration
+MAX_FAILED_ATTEMPTS = 5
+LOCKOUT_DURATION_MINUTES = 15
+
+
+async def check_account_lockout(user: User) -> tuple[bool, str | None]:
+    """Check if a user account is locked."""
+    if user.locked_until and user.locked_until > datetime.now(timezone.utc):
+        remaining = (user.locked_until - datetime.now(timezone.utc)).seconds // 60
+        return True, f"Account locked. Try again in {remaining + 1} minutes."
+    return False, None
+
+
+async def record_failed_login(db: AsyncSession, user: User) -> None:
+    """Record a failed login attempt and lock account if threshold exceeded."""
+    user.failed_login_attempts = (user.failed_login_attempts or 0) + 1
+    user.last_failed_login_at = datetime.now(timezone.utc)
+
+    if user.failed_login_attempts >= MAX_FAILED_ATTEMPTS:
+        user.locked_until = datetime.now(timezone.utc) + timedelta(minutes=LOCKOUT_DURATION_MINUTES)
+        logger.warning(
+            "account_locked",
+            user_id=user.id,
+            email=user.email,
+            failed_attempts=user.failed_login_attempts,
+        )
+
+    await db.commit()
+
+
+async def reset_failed_login_attempts(db: AsyncSession, user: User) -> None:
+    """Reset failed login attempts on successful login."""
+    if user.failed_login_attempts or user.locked_until:
+        user.failed_login_attempts = 0
+        user.locked_until = None
+        user.last_failed_login_at = None
+        await db.commit()
+
+
 @router.post("/login", response_model=TokenResponse)
 async def login(
     request: LoginRequest,
@@ -320,6 +359,7 @@ async def login(
     Returns access and refresh tokens on successful login.
 
     Rate limited to prevent brute force attacks (5 requests per minute per IP).
+    Account is locked after 5 failed attempts for 15 minutes.
     """
     # Apply rate limiting
     get_login_limiter().check_rate_limit(http_request)
@@ -327,7 +367,25 @@ async def login(
     # Find user by email
     user = await get_user_by_email(db, request.email)
 
+    # Check if account is locked (before revealing if user exists)
+    if user:
+        is_locked, lock_message = await check_account_lockout(user)
+        if is_locked:
+            logger.warning("login_attempt_on_locked_account", email=request.email)
+            raise HTTPException(
+                status_code=status.HTTP_423_LOCKED,
+                detail=lock_message,
+            )
+
     if not user or not verify_password(request.password, user.password_hash):
+        # Record failed attempt if user exists
+        if user:
+            await record_failed_login(db, user)
+            logger.warning(
+                "failed_login_attempt",
+                email=request.email,
+                failed_attempts=user.failed_login_attempts,
+            )
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid email or password",
@@ -338,6 +396,9 @@ async def login(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="User account is disabled",
         )
+
+    # Reset failed attempts on successful login
+    await reset_failed_login_attempts(db, user)
 
     # Update last login
     user.last_login_at = datetime.now(timezone.utc)

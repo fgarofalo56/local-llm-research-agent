@@ -42,6 +42,7 @@ dependencies = [
     # Configuration & Environment
     "python-dotenv>=1.0.0",
     "pydantic-settings>=2.0.0",
+    "pyyaml>=6.0.0",
 
     # Logging
     "structlog>=24.0.0",
@@ -72,6 +73,11 @@ dependencies = [
 
     # Scheduling
     "apscheduler>=3.10.0",
+
+    # ===== Phase 4.5 Dependencies =====
+    # Authentication
+    "pyjwt>=2.8.0",
+    "passlib[bcrypt]>=1.7.4",
 ]
 
 [project.optional-dependencies]
@@ -79,11 +85,25 @@ foundry = [
     # Microsoft Foundry Local SDK for alternative LLM provider
     "foundry-local-sdk>=0.1.0",
 ]
+postgres = [
+    # PostgreSQL async driver for multi-database support
+    "asyncpg>=0.29.0",
+]
+mysql = [
+    # MySQL async driver for multi-database support
+    "aiomysql>=0.2.0",
+]
+all-databases = [
+    # All database drivers for full multi-database support
+    "asyncpg>=0.29.0",
+    "aiomysql>=0.2.0",
+]
 dev = [
     # Testing
     "pytest>=8.0.0",
     "pytest-asyncio>=0.23.0",
     "pytest-cov>=4.0.0",
+    "locust>=2.0.0",
 
     # Linting & Formatting
     "ruff>=0.1.0",
@@ -178,6 +198,7 @@ module = [
     "streamlit.*",
     "typer.*",
     "rich.*",
+    "locust.*",
 ]
 ignore_missing_imports = true
 
@@ -208,6 +229,7 @@ dev = [
     "pytest>=8.0.0",
     "pytest-asyncio>=0.23.0",
     "pytest-cov>=4.0.0",
+    "locust>=2.0.0",
     "ruff>=0.1.0",
     "mypy>=1.0.0",
     "ipdb>=0.13.0",

@@ -33,9 +33,7 @@
 # QUICK START COMMANDS (run from project root with --env-file .env)
 # =============================================================================
 #
-# First time setup:
-#   docker volume create local-llm-mssql-data
-#   docker volume create local-llm-backend-data
+# First time setup (volumes are created automatically):
 #   docker-compose -f docker/docker-compose.yml --env-file .env up -d
 #   docker-compose -f docker/docker-compose.yml --env-file .env --profile init up mssql-tools
 #   docker-compose -f docker/docker-compose.yml --env-file .env --profile init up mssql-backend-tools
@@ -113,9 +111,11 @@
 # DATA PERSISTENCE
 # =============================================================================
 #
-# Volumes are EXTERNAL to preserve data across rebuilds:
+# Named volumes are automatically created to preserve data across rebuilds:
 #   - local-llm-mssql-data (SQL Server 2022 sample data)
 #   - local-llm-backend-data (SQL Server 2025 backend data)
+#   - local-llm-redis-data (Redis Stack data)
+#   - local-llm-superset-data (Apache Superset configuration)
 #
 # IMPORTANT:
 #   - "docker compose down" preserves data (safe)
@@ -420,8 +420,9 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     profiles:
-      - api   # Runs with: docker compose --profile api up
-      - full  # Runs with: docker compose --profile full up
+      - api       # Runs with: docker compose --profile api up
+      - frontend  # Also starts with frontend profile (frontend depends on api)
+      - full      # Runs with: docker compose --profile full up
 
   # ==========================================================================
   # React Frontend Service
@@ -499,21 +500,18 @@ services:
 volumes:
   mssql_data:
     # SQL Server 2022 - Sample ResearchAnalytics database
-    # Use existing volume to preserve data from previous "docker" project
-    # If you have data in local-llm-mssql-data, change this name to match
-    # Or run: docker volume create local-agent-mssql-data
-    #         docker run --rm -v local-llm-mssql-data:/from -v local-agent-mssql-data:/to alpine cp -av /from/. /to/
+    # Docker will automatically create this volume if it doesn't exist
+    # Data persists across container rebuilds unless explicitly removed with -v flag
     name: ${MSSQL_VOLUME_NAME:-local-llm-mssql-data}
-    external: true
   backend_data:
     # SQL Server 2025 - LLM_BackEnd application database with native vector support
-    # Create with: docker volume create local-llm-backend-data
+    # Docker will automatically create this volume if it doesn't exist
     name: ${BACKEND_VOLUME_NAME:-local-llm-backend-data}
-    external: true
   redis_data:
+    # Redis Stack data - automatically created by Docker
     name: ${REDIS_VOLUME_NAME:-local-llm-redis-data}
-    external: true
   superset_home:
+    # Apache Superset configuration and metadata - automatically created by Docker
     name: ${SUPERSET_VOLUME_NAME:-local-llm-superset-data}
 
 networks:

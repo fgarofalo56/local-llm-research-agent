@@ -244,7 +244,7 @@ class ProviderModelsResponse(BaseModel):
     error: str | None = None
 
 
-class ConnectionTestResult(BaseModel):
+class ProviderConnectionTestResult(BaseModel):
     """Result of a provider connection test."""
 
     success: bool
@@ -629,7 +629,7 @@ async def list_foundry_models_cli():
         )
 
 
-@router.post("/providers/test", response_model=ConnectionTestResult)
+@router.post("/providers/test", response_model=ProviderConnectionTestResult)
 async def test_provider_connection(request: ConnectionTestRequest):
     """Test connection to a provider with optional model."""
     settings = get_settings()
@@ -662,7 +662,7 @@ async def test_provider_connection(request: ConnectionTestRequest):
                     response.raise_for_status()
 
                 latency = (time.time() - start_time) * 1000
-                return ConnectionTestResult(
+                return ProviderConnectionTestResult(
                     success=True,
                     provider=request.provider,
                     model=request.model,
@@ -671,7 +671,7 @@ async def test_provider_connection(request: ConnectionTestRequest):
                     version=version,
                 )
         except Exception as e:
-            return ConnectionTestResult(
+            return ProviderConnectionTestResult(
                 success=False,
                 provider=request.provider,
                 model=request.model,
@@ -689,7 +689,7 @@ async def test_provider_connection(request: ConnectionTestRequest):
                 response.raise_for_status()
 
                 latency = (time.time() - start_time) * 1000
-                return ConnectionTestResult(
+                return ProviderConnectionTestResult(
                     success=True,
                     provider=request.provider,
                     model=request.model,
@@ -697,7 +697,7 @@ async def test_provider_connection(request: ConnectionTestRequest):
                     latency_ms=round(latency, 2),
                 )
         except Exception as e:
-            return ConnectionTestResult(
+            return ProviderConnectionTestResult(
                 success=False,
                 provider=request.provider,
                 model=request.model,
@@ -716,3 +716,222 @@ def _format_size(size_bytes: int) -> str:
             return f"{size_bytes:.1f} {unit}"
         size_bytes /= 1024
     return f"{size_bytes:.1f} TB"
+
+
+# ================= Database Settings Endpoints =================
+
+
+class DatabaseSettings(BaseModel):
+    """Request model for database settings."""
+
+    host: str = "localhost"
+    port: int = 1434
+    database: str = "LLM_BackEnd"
+    username: str = ""
+    password: str = ""  # Will be masked in responses
+    trust_certificate: bool = True
+
+
+class DatabaseSettingsResponse(BaseModel):
+    """Response model for database settings."""
+
+    host: str
+    port: int
+    database: str
+    username: str
+    password_set: bool  # Don't return actual password
+    trust_certificate: bool
+
+
+class DatabaseConnectionTestResult(BaseModel):
+    """Result of a database connection test."""
+
+    success: bool
+    message: str
+    latency_ms: float | None = None
+    error: str | None = None
+
+
+# In-memory storage for runtime database settings
+# Note: This is NOT persisted to .env for security reasons
+_runtime_db_settings: DatabaseSettings | None = None
+
+
+@router.get("/database", response_model=DatabaseSettingsResponse)
+async def get_database_settings():
+    """
+    Get current backend database settings.
+
+    Returns settings from runtime override if set, otherwise from environment variables.
+    Password is never returned - only a boolean indicating if it's set.
+    """
+    settings = get_settings()
+
+    # Use runtime settings if available, otherwise use env vars
+    if _runtime_db_settings:
+        db_config = _runtime_db_settings
+    else:
+        db_config = DatabaseSettings(
+            host=settings.backend_db_host,
+            port=settings.backend_db_port,
+            database=settings.backend_db_name,
+            username=settings.backend_db_username or settings.sql_username,
+            password=settings.backend_db_password or settings.sql_password,
+            trust_certificate=settings.backend_db_trust_cert,
+        )
+
+    return DatabaseSettingsResponse(
+        host=db_config.host,
+        port=db_config.port,
+        database=db_config.database,
+        username=db_config.username,
+        password_set=bool(db_config.password),
+        trust_certificate=db_config.trust_certificate,
+    )
+
+
+@router.put("/database", response_model=DatabaseSettingsResponse)
+async def update_database_settings(settings_update: DatabaseSettings):
+    """
+    Update backend database settings.
+
+    Note: Settings are stored in memory only and NOT persisted to .env file.
+    These settings will be lost when the API server restarts.
+
+    For permanent changes, update the .env file manually.
+    """
+    global _runtime_db_settings
+
+    logger.info(
+        "updating_database_settings",
+        host=settings_update.host,
+        port=settings_update.port,
+        database=settings_update.database,
+        username=settings_update.username,
+    )
+
+    # Store in runtime settings
+    _runtime_db_settings = settings_update
+
+    return DatabaseSettingsResponse(
+        host=settings_update.host,
+        port=settings_update.port,
+        database=settings_update.database,
+        username=settings_update.username,
+        password_set=bool(settings_update.password),
+        trust_certificate=settings_update.trust_certificate,
+    )
+
+
+@router.post("/database/test", response_model=DatabaseConnectionTestResult)
+async def test_database_connection(settings_test: DatabaseSettings | None = None):
+    """
+    Test connection to the backend database.
+
+    If settings are provided in the request body, those will be tested.
+    Otherwise, the current settings (runtime or env) will be tested.
+
+    Returns success/failure with connection latency and meaningful error messages.
+    """
+    import aioodbc
+
+    settings = get_settings()
+
+    # Use provided settings, runtime settings, or env settings
+    if settings_test:
+        db_config = settings_test
+    elif _runtime_db_settings:
+        db_config = _runtime_db_settings
+    else:
+        db_config = DatabaseSettings(
+            host=settings.backend_db_host,
+            port=settings.backend_db_port,
+            database=settings.backend_db_name,
+            username=settings.backend_db_username or settings.sql_username,
+            password=settings.backend_db_password or settings.sql_password,
+            trust_certificate=settings.backend_db_trust_cert,
+        )
+
+    # Build connection string
+    trust_cert = "yes" if db_config.trust_certificate else "no"
+    connection_string = (
+        f"Driver={{ODBC Driver 18 for SQL Server}};"
+        f"Server={db_config.host},{db_config.port};"
+        f"Database={db_config.database};"
+        f"UID={db_config.username};"
+        f"PWD={db_config.password};"
+        f"TrustServerCertificate={trust_cert};"
+        f"Encrypt=yes;"
+    )
+
+    logger.info(
+        "testing_database_connection",
+        host=db_config.host,
+        port=db_config.port,
+        database=db_config.database,
+        username=db_config.username,
+    )
+
+    try:
+        start_time = time.time()
+
+        # Attempt connection
+        conn = await aioodbc.connect(dsn=connection_string, timeout=10)
+
+        try:
+            # Execute simple query
+            cursor = await conn.cursor()
+            await cursor.execute("SELECT 1 AS test")
+            result = await cursor.fetchone()
+            await cursor.close()
+
+            latency = (time.time() - start_time) * 1000
+
+            if result and result[0] == 1:
+                logger.info(
+                    "database_connection_success",
+                    host=db_config.host,
+                    port=db_config.port,
+                    latency_ms=round(latency, 2),
+                )
+                return DatabaseConnectionTestResult(
+                    success=True,
+                    message=f"Successfully connected to {db_config.database} at {db_config.host}:{db_config.port}",
+                    latency_ms=round(latency, 2),
+                )
+            else:
+                return DatabaseConnectionTestResult(
+                    success=False,
+                    message="Query failed to return expected result",
+                    error="SELECT 1 did not return 1",
+                )
+        finally:
+            await conn.close()
+
+    except Exception as e:
+        # aioodbc can raise various exceptions including pyodbc.Error
+        error_msg = str(e)
+        logger.error(
+            "database_connection_failed",
+            host=db_config.host,
+            port=db_config.port,
+            error=error_msg,
+        )
+
+        # Provide helpful error messages
+        if "Login failed" in error_msg or "Login timeout" in error_msg:
+            message = "Authentication failed - check username and password"
+        elif "Cannot open database" in error_msg:
+            message = f"Database '{db_config.database}' not found or not accessible"
+        elif "Named Pipes Provider" in error_msg or "TCP Provider" in error_msg:
+            message = f"Cannot connect to server {db_config.host}:{db_config.port} - check host and port"
+        elif "SSL Provider" in error_msg or "certificate" in error_msg.lower():
+            message = "SSL/Certificate error - try enabling 'Trust Certificate'"
+        else:
+            message = "Connection failed"
+
+        return DatabaseConnectionTestResult(
+            success=False,
+            message=message,
+            error=error_msg[:300],  # Truncate long error messages
+        )

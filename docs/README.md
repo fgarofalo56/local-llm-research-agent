@@ -12,11 +12,17 @@
 | [Configuration](guides/configuration.md) | Environment variables and settings |
 | [Ollama Guide](guides/ollama.md) | Install and manage Ollama |
 | [Foundry Local Guide](guides/foundry-local.md) | Install and manage Foundry Local |
+| [MCP Server Guide](mcp/README.md) | Model Context Protocol setup and usage |
 | [Troubleshooting](guides/troubleshooting.md) | Comprehensive problem-solving guide |
 | [API Reference](api/README.md) | Programmatic interface documentation |
 | [FastAPI Backend](api/fastapi.md) | REST API documentation |
 | [RAG Pipeline](api/rag.md) | Document retrieval and vector search |
 | [Exports Guide](guides/exports.md) | Export functionality documentation |
+| [Frontend Developer Guide](frontend/README.md) | React frontend development guide |
+| [Implementation Summaries](implementation/README.md) | Technical implementation details |
+| [Planning & Roadmap](planning/README.md) | Future development plans |
+| [Architecture Decisions](adr/README.md) | ADRs for key design choices |
+| [Deployment Guide](deployment/README.md) | Docker and production deployment |
 
 ---
 
@@ -32,10 +38,39 @@ docs/
 │   ├── ollama.md                # Ollama management guide
 │   ├── foundry-local.md         # Foundry Local management guide
 │   ├── troubleshooting.md       # Problem-solving guide
+│   ├── redis-caching.md         # Redis caching guide
+│   ├── query-profiling.md       # Query profiling guide
 │   └── DOCUMENTATION-STANDARDS.md  # Doc style guide
+│
+├── implementation/              # Implementation summaries
+│   ├── README.md                # Implementation docs index
+│   ├── CONFIG_SERVICE_SUMMARY.md    # Config service architecture
+│   ├── QUERY_OPTIMIZATION_SUMMARY.md # Query profiling system
+│   ├── REDIS_CACHE_IMPLEMENTATION.md # Redis caching layer
+│   ├── RETRY_IMPLEMENTATION.md      # Retry logic patterns
+│   └── websocket-refactor-summary.md # WebSocket system
+│
+├── planning/                    # Roadmaps and future plans
+│   ├── README.md                # Planning docs index
+│   └── PHASE4_ROADMAP.md        # Phase 4 roadmap
+│
+├── adr/                         # Architecture Decision Records
+│   ├── README.md                # ADR index
+│   ├── template.md              # ADR template
+│   └── 001-007-*.md             # Decision records
+│
+├── mcp/                         # MCP (Model Context Protocol) documentation
+│   ├── README.md                # MCP overview and quick start
+│   ├── mssql-server-setup.md    # MSSQL MCP Server installation
+│   ├── custom-server-development.md  # Build custom MCP servers
+│   └── troubleshooting.md       # MCP-specific troubleshooting
 │
 ├── api/                         # API documentation
 │   ├── README.md                # API overview
+│   ├── INDEX.md                 # API quick reference
+│   ├── reference.md             # Full API reference
+│   ├── errors.md                # Error handling
+│   ├── websockets.md            # WebSocket API
 │   ├── agent.md                 # ResearchAgent API
 │   ├── providers.md             # LLM providers API
 │   ├── mcp-client.md            # MCP client API
@@ -43,6 +78,19 @@ docs/
 │   ├── utilities.md             # Utilities API
 │   ├── fastapi.md               # FastAPI REST API
 │   └── rag.md                   # RAG Pipeline
+│
+├── frontend/                    # Frontend development documentation
+│   ├── README.md                # Frontend developer guide overview
+│   ├── architecture.md          # Component architecture and patterns
+│   ├── state-management.md      # Zustand and TanStack Query guide
+│   ├── styling-guide.md         # Tailwind CSS conventions
+│   └── api-integration.md       # Backend API communication patterns
+│
+├── deployment/                  # Deployment guides
+│   ├── README.md                # Deployment overview
+│   ├── docker-compose.md        # Docker Compose setup
+│   ├── monitoring.md            # Monitoring and observability
+│   └── security-checklist.md    # Security best practices
 │
 ├── reference/                   # Reference materials
 │   ├── configuration.md         # Full configuration reference
@@ -76,6 +124,30 @@ New to the project? Follow this path:
 | [Foundry Local Guide](guides/foundry-local.md) | Install, configure Foundry Local | Foundry users |
 | [Troubleshooting](guides/troubleshooting.md) | Fix common issues | All users |
 | [Documentation Standards](guides/DOCUMENTATION-STANDARDS.md) | How to write docs | Contributors |
+
+---
+
+## Frontend Development Guides
+
+| Guide | Purpose | Audience |
+|-------|---------|----------|
+| [Frontend Overview](frontend/README.md) | Quick start, tech stack, project structure | Frontend developers |
+| [Architecture](frontend/architecture.md) | Component hierarchy, data flow, patterns | Frontend developers |
+| [State Management](frontend/state-management.md) | Zustand and TanStack Query patterns | Frontend developers |
+| [Styling Guide](frontend/styling-guide.md) | Tailwind CSS conventions and theming | Frontend developers |
+| [API Integration](frontend/api-integration.md) | REST and WebSocket communication | Frontend developers |
+| [Component Reference](frontend/components/README.md) | Complete React component documentation | Frontend developers |
+
+---
+
+## MCP (Model Context Protocol) Guides
+
+| Guide | Purpose | Audience |
+|-------|---------|----------|
+| [MCP Overview](mcp/README.md) | What is MCP and how it works | All users |
+| [MSSQL Server Setup](mcp/mssql-server-setup.md) | Install and configure MSSQL MCP Server | Developers, admins |
+| [Custom Server Development](mcp/custom-server-development.md) | Build your own MCP servers | Advanced developers |
+| [MCP Troubleshooting](mcp/troubleshooting.md) | Fix MCP-specific issues | All users |
 
 ---
 

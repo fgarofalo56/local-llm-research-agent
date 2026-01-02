@@ -212,5 +212,64 @@ class ThemeConfig(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 
+class DatabaseConnection(Base):
+    """Database connection profile for multi-database support."""
+
+    __tablename__ = "database_connections"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    name = Column(String(100), unique=True, nullable=False)
+    display_name = Column(String(255))
+    db_type = Column(String(50), nullable=False)  # 'mssql', 'postgresql', 'mysql'
+    host = Column(String(255), nullable=False)
+    port = Column(Integer, nullable=False)
+    database = Column(String(255), nullable=False)
+    username = Column(String(255))
+    # Encrypted password storage (base64 encoded for now, should use proper encryption)
+    password_encrypted = Column(Text)
+    ssl_enabled = Column(Boolean, default=True)
+    trust_certificate = Column(Boolean, default=False)
+    additional_options = Column(Text)  # JSON object for extra connection options
+    is_default = Column(Boolean, default=False)
+    is_active = Column(Boolean, default=True)
+    last_tested_at = Column(DateTime)
+    last_test_success = Column(Boolean)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class User(Base):
+    """User model for authentication."""
+
+    __tablename__ = "users"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    email = Column(String(255), unique=True, nullable=False, index=True)
+    username = Column(String(100), unique=True, nullable=False, index=True)
+    password_hash = Column(String(255), nullable=False)
+    display_name = Column(String(255))
+    is_active = Column(Boolean, default=True)
+    is_admin = Column(Boolean, default=False)
+    last_login_at = Column(DateTime)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class RefreshToken(Base):
+    """Refresh token storage for token invalidation."""
+
+    __tablename__ = "refresh_tokens"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    token_hash = Column(String(255), nullable=False, index=True)
+    expires_at = Column(DateTime, nullable=False)
+    revoked_at = Column(DateTime)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    # Relationship
+    user = relationship("User")
+
+
 # Alias for backwards compatibility
 DashboardWidget = Widget

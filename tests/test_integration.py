@@ -18,9 +18,9 @@ class TestAgentWithOllamaProvider:
     """Integration tests for agent with Ollama provider."""
 
     @pytest.mark.asyncio
-    @patch("src.agent.research_agent.MCPClientManager")
+    @patch("src.agent.core.MCPClientManager")
     @patch("src.providers.ollama.OllamaProvider.check_connection")
-    @patch("src.agent.research_agent.Agent")
+    @patch("src.agent.core.Agent")
     async def test_agent_chat_with_ollama(self, mock_agent_cls, mock_check_conn, mock_mcp_cls):
         """Test complete chat flow with Ollama provider."""
         # Setup MCP mock
@@ -53,8 +53,8 @@ class TestAgentWithOllamaProvider:
         assert agent.turn_count == 1
 
     @pytest.mark.asyncio
-    @patch("src.agent.research_agent.MCPClientManager")
-    @patch("src.agent.research_agent.Agent")
+    @patch("src.agent.core.MCPClientManager")
+    @patch("src.agent.core.Agent")
     async def test_agent_streaming_with_ollama(self, mock_agent_cls, mock_mcp_cls):
         """Test streaming responses with Ollama provider."""
         # Setup MCP mock
@@ -95,9 +95,9 @@ class TestAgentWithFoundryProvider:
     """Integration tests for agent with Foundry Local provider."""
 
     @pytest.mark.asyncio
-    @patch("src.agent.research_agent.MCPClientManager")
+    @patch("src.agent.core.MCPClientManager")
     @patch("src.providers.foundry.FoundryLocalProvider.check_connection")
-    @patch("src.agent.research_agent.Agent")
+    @patch("src.agent.core.Agent")
     async def test_agent_chat_with_foundry(self, mock_agent_cls, mock_check_conn, mock_mcp_cls):
         """Test complete chat flow with Foundry Local provider."""
         # Setup MCP mock
@@ -132,8 +132,8 @@ class TestAgentWithFoundryProvider:
 class TestProviderSwitching:
     """Tests for switching between providers."""
 
-    @patch("src.agent.research_agent.MCPClientManager")
-    @patch("src.agent.research_agent.Agent")
+    @patch("src.agent.core.MCPClientManager")
+    @patch("src.agent.core.Agent")
     def test_create_agent_with_ollama(self, mock_agent_cls, mock_mcp_cls):
         """Test creating agent with Ollama provider."""
         mock_mcp = MagicMock()
@@ -144,8 +144,8 @@ class TestProviderSwitching:
 
         assert agent.provider.provider_type == ProviderType.OLLAMA
 
-    @patch("src.agent.research_agent.MCPClientManager")
-    @patch("src.agent.research_agent.Agent")
+    @patch("src.agent.core.MCPClientManager")
+    @patch("src.agent.core.Agent")
     def test_create_agent_with_foundry(self, mock_agent_cls, mock_mcp_cls):
         """Test creating agent with Foundry Local provider."""
         mock_mcp = MagicMock()
@@ -156,8 +156,8 @@ class TestProviderSwitching:
 
         assert agent.provider.provider_type == ProviderType.FOUNDRY_LOCAL
 
-    @patch("src.agent.research_agent.MCPClientManager")
-    @patch("src.agent.research_agent.Agent")
+    @patch("src.agent.core.MCPClientManager")
+    @patch("src.agent.core.Agent")
     def test_legacy_ollama_parameters(self, mock_agent_cls, mock_mcp_cls):
         """Test legacy ollama_host and ollama_model parameters still work."""
         mock_mcp = MagicMock()
@@ -179,8 +179,8 @@ class TestConversationManagement:
     """Tests for conversation history management across providers."""
 
     @pytest.mark.asyncio
-    @patch("src.agent.research_agent.MCPClientManager")
-    @patch("src.agent.research_agent.Agent")
+    @patch("src.agent.core.MCPClientManager")
+    @patch("src.agent.core.Agent")
     async def test_conversation_history_tracking(self, mock_agent_cls, mock_mcp_cls):
         """Test that conversation history is properly tracked."""
         mock_mcp = MagicMock()
@@ -217,8 +217,8 @@ class TestConversationManagement:
         history = agent.get_history()
         assert len(history) == 4  # 2 user + 2 assistant messages
 
-    @patch("src.agent.research_agent.MCPClientManager")
-    @patch("src.agent.research_agent.Agent")
+    @patch("src.agent.core.MCPClientManager")
+    @patch("src.agent.core.Agent")
     def test_clear_history(self, mock_agent_cls, mock_mcp_cls):
         """Test clearing conversation history."""
         mock_mcp = MagicMock()
@@ -237,8 +237,8 @@ class TestErrorHandling:
     """Tests for error handling in integration scenarios."""
 
     @pytest.mark.asyncio
-    @patch("src.agent.research_agent.MCPClientManager")
-    @patch("src.agent.research_agent.Agent")
+    @patch("src.agent.core.MCPClientManager")
+    @patch("src.agent.core.Agent")
     async def test_mcp_connection_error(self, mock_agent_cls, mock_mcp_cls):
         """Test handling MCP server connection errors."""
         mock_mcp = MagicMock()
@@ -259,8 +259,8 @@ class TestErrorHandling:
         assert "Chat failed" in str(exc_info.value)
 
     @pytest.mark.asyncio
-    @patch("src.agent.research_agent.MCPClientManager")
-    @patch("src.agent.research_agent.Agent")
+    @patch("src.agent.core.MCPClientManager")
+    @patch("src.agent.core.Agent")
     async def test_stream_error_handling(self, mock_agent_cls, mock_mcp_cls):
         """Test error handling during streaming."""
         mock_mcp = MagicMock()
@@ -297,8 +297,8 @@ class TestErrorHandling:
 class TestReadOnlyMode:
     """Tests for read-only mode functionality."""
 
-    @patch("src.agent.research_agent.MCPClientManager")
-    @patch("src.agent.research_agent.Agent")
+    @patch("src.agent.core.MCPClientManager")
+    @patch("src.agent.core.Agent")
     def test_readonly_mode_prompt(self, mock_agent_cls, mock_mcp_cls):
         """Test that read-only mode is reflected in system prompt."""
         mock_mcp = MagicMock()
@@ -310,8 +310,8 @@ class TestReadOnlyMode:
         # Agent was created with readonly flag
         assert agent.readonly is True
 
-    @patch("src.agent.research_agent.MCPClientManager")
-    @patch("src.agent.research_agent.Agent")
+    @patch("src.agent.core.MCPClientManager")
+    @patch("src.agent.core.Agent")
     def test_write_mode(self, mock_agent_cls, mock_mcp_cls):
         """Test write mode configuration."""
         mock_mcp = MagicMock()

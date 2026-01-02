@@ -17,11 +17,12 @@ from redisvl.query import VectorQuery
 from redisvl.schema import IndexSchema
 
 from src.rag.embedder import OllamaEmbedder
+from src.rag.vector_store_base import VectorStoreBase
 
 logger = structlog.get_logger()
 
 
-class RedisVectorStore:
+class RedisVectorStore(VectorStoreBase):
     """Vector store using Redis Stack."""
 
     INDEX_NAME = "documents"
@@ -41,9 +42,8 @@ class RedisVectorStore:
             embedder: Ollama embedder for generating vectors
             dimensions: Embedding dimensions (default: 768 for nomic-embed-text)
         """
+        super().__init__(embedder=embedder, dimensions=dimensions)
         self.redis = redis_client
-        self.embedder = embedder
-        self.dimensions = dimensions
         self._index: AsyncSearchIndex | None = None
 
     def _get_schema(self) -> dict:

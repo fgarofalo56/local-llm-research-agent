@@ -3,6 +3,9 @@ Configuration Management
 
 Loads configuration from environment variables and provides a typed settings object.
 Supports .env files via python-dotenv.
+
+NOTE: This module is being refactored to use ConfigService for centralized configuration.
+The Settings class will gradually be replaced by ConfigService from src.services.config_service.
 """
 
 from enum import Enum
@@ -16,6 +19,12 @@ from pydantic_settings import BaseSettings
 # Load .env file from project root
 _env_path = Path(__file__).parent.parent.parent / ".env"
 load_dotenv(_env_path)
+
+# Import ConfigService for future migration
+try:
+    from src.services.config_service import get_config as get_config_service
+except ImportError:
+    get_config_service = None  # type: ignore
 
 
 class SqlAuthType(str, Enum):

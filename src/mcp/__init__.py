@@ -8,6 +8,16 @@ from src.mcp.mssql_config import (
     get_readonly_tools,
     get_write_tools,
 )
+from src.mcp.mysql_config import (
+    MYSQL_TOOLS,
+    MySQLMCPConfig,
+    MySQLToolInfo,
+)
+from src.mcp.postgres_config import (
+    POSTGRES_TOOLS,
+    PostgresMCPConfig,
+    PostgresToolInfo,
+)
 from src.mcp.server_manager import (
     MCPConnectionError,
     MCPServerError,
@@ -25,6 +35,14 @@ __all__ = [
     "MSSQL_TOOLS",
     "get_readonly_tools",
     "get_write_tools",
+    # PostgreSQL Config
+    "PostgresMCPConfig",
+    "PostgresToolInfo",
+    "POSTGRES_TOOLS",
+    # MySQL Config
+    "MySQLMCPConfig",
+    "MySQLToolInfo",
+    "MYSQL_TOOLS",
     # Server Manager
     "MCPServerManager",
     "MCPServerError",

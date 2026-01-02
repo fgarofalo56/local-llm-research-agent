@@ -38,6 +38,9 @@ ENV UV_HTTP_TIMEOUT=300
 
 RUN uv pip install --system -e .
 
+# Pin bcrypt to compatible version for passlib (bcrypt 5.x breaks passlib)
+RUN uv pip install --system "bcrypt>=4.0.0,<5.0.0"
+
 # Install Python-based MSSQL MCP Server (supports SQL Server authentication)
 # This replaces the Node.js Azure-Samples version which only supports Azure AD
 RUN uv pip install --system microsoft_sql_server_mcp

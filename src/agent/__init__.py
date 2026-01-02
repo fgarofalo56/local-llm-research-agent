@@ -1,18 +1,22 @@
 """Research agent for SQL Server data analytics."""
 
+# Core agent components
+from src.agent.cache import AgentCache
+from src.agent.context import ResearchAgentContext
+from src.agent.core import (
+    OllamaConnectionError,
+    ProviderConnectionError,
+    ResearchAgent,
+    ResearchAgentError,
+    create_research_agent,
+)
 from src.agent.prompts import (
     SYSTEM_PROMPT,
     SYSTEM_PROMPT_MINIMAL,
     SYSTEM_PROMPT_READONLY,
     get_system_prompt,
 )
-from src.agent.research_agent import (
-    OllamaConnectionError,
-    ResearchAgent,
-    ResearchAgentContext,
-    ResearchAgentError,
-    create_research_agent,
-)
+from src.agent.stats import AgentStats
 
 __all__ = [
     # Agent
@@ -20,7 +24,11 @@ __all__ = [
     "ResearchAgentContext",
     "ResearchAgentError",
     "OllamaConnectionError",
+    "ProviderConnectionError",
     "create_research_agent",
+    # Managers
+    "AgentCache",
+    "AgentStats",
     # Prompts
     "SYSTEM_PROMPT",
     "SYSTEM_PROMPT_READONLY",

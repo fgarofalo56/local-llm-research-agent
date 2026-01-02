@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, useCallback, useEffect, DragEvent } from 'react';
+import { useState, useMemo, useRef, useCallback, type DragEvent } from 'react';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { api } from '@/api/client';
 import type { Document } from '@/types';

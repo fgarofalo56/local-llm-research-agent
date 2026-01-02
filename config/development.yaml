@@ -1,0 +1,14 @@
+# Development overrides
+app:
+  debug: true
+  log_level: "DEBUG"
+
+cache:
+  ttl_seconds: 300
+  max_size: 100
+
+rate_limit:
+  enabled: false
+
+mcp:
+  debug: true

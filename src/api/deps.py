@@ -121,13 +121,14 @@ _embedder = None
 _mcp_manager = None
 _alert_scheduler = None
 _query_scheduler = None
+_websocket_manager = None
 
 
 async def init_services() -> None:
     """Initialize all services on application startup."""
     global _engine, _session_factory, _backend_engine, _backend_session_factory
     global _redis_client, _vector_store, _embedder, _mcp_manager
-    global _alert_scheduler, _query_scheduler
+    global _alert_scheduler, _query_scheduler, _websocket_manager
 
     settings = get_settings()
 
@@ -251,13 +252,30 @@ async def init_services() -> None:
         except Exception as e:
             logger.warning("theme_seeding_failed", error=str(e))
 
+    # Initialize WebSocket manager with heartbeat
+    try:
+        from src.api.websocket import websocket_manager as ws_mgr
+
+        _websocket_manager = ws_mgr
+        await _websocket_manager.start_heartbeat()
+        logger.info("websocket_manager_initialized")
+    except Exception as e:
+        logger.warning("websocket_manager_init_failed", error=str(e))
+
 
 async def shutdown_services() -> None:
     """Cleanup services on application shutdown."""
     global _engine, _backend_engine, _redis_client, _mcp_manager
-    global _alert_scheduler, _query_scheduler
+    global _alert_scheduler, _query_scheduler, _websocket_manager
 
-    # Stop schedulers first
+    # Stop WebSocket manager first
+    if _websocket_manager:
+        try:
+            await _websocket_manager.shutdown()
+        except Exception as e:
+            logger.error("websocket_manager_shutdown_error", error=str(e))
+
+    # Stop schedulers
     if _alert_scheduler:
         try:
             await _alert_scheduler.stop()
@@ -399,3 +417,15 @@ def get_alert_scheduler():
 def get_query_scheduler():
     """Get query scheduler for dependency injection."""
     return _query_scheduler
+
+
+def get_websocket_manager():
+    """Get WebSocket manager for dependency injection."""
+    if _websocket_manager is None:
+        raise RuntimeError("WebSocket manager not initialized")
+    return _websocket_manager
+
+
+def get_websocket_manager_optional():
+    """Get WebSocket manager (optional, returns None if not available)."""
+    return _websocket_manager

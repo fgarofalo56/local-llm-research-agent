@@ -8,6 +8,8 @@ import {
   History,
   Plus,
   BarChart3,
+  Link2,
+  Activity,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/Button';
@@ -19,7 +21,9 @@ const navItems = [
   { path: '/documents', icon: FileText, label: 'Documents' },
   { path: '/dashboards', icon: LayoutDashboard, label: 'Dashboards' },
   { path: '/queries', icon: History, label: 'Query History' },
+  { path: '/analytics', icon: Activity, label: 'Analytics' },
   { path: '/mcp-servers', icon: Database, label: 'MCP Servers' },
+  { path: '/database-connections', icon: Link2, label: 'DB Connections' },
   { path: '/superset', icon: BarChart3, label: 'Superset Reports' },
   { path: '/settings', icon: Settings, label: 'Settings' },
 ];

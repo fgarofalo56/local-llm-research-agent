@@ -175,11 +175,15 @@ class TestReprocessEndpoint:
 
     @pytest.mark.asyncio
     async def test_reprocess_invalid_status(self):
-        """Test reprocessing document with invalid status."""
+        """Test reprocessing document with invalid status.
+
+        Only 'failed', 'completed', and 'processing' (stuck) statuses are allowed.
+        'pending' documents cannot be reprocessed since they're awaiting initial processing.
+        """
         from src.api.routes.documents import reprocess_document
 
-        # Mock document with pending status
-        mock_doc = MockDocument(processing_status="processing")
+        # Mock document with pending status - this is NOT allowed for reprocessing
+        mock_doc = MockDocument(processing_status="pending")
 
         # Mock database session
         mock_db = AsyncMock()

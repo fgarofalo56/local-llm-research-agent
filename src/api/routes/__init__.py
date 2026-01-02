@@ -8,8 +8,11 @@ FastAPI route modules.
 from src.api.routes import (
     agent,
     alerts,
+    analytics,
+    auth,
     conversations,
     dashboards,
+    database_connections,
     documents,
     health,
     mcp_servers,
@@ -31,4 +34,7 @@ __all__ = [
     "alerts",
     "scheduled_queries",
     "superset",
+    "database_connections",
+    "analytics",
+    "auth",
 ]

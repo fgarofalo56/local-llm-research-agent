@@ -15,8 +15,11 @@ from src.api.deps import init_services, shutdown_services
 from src.api.routes import (
     agent,
     alerts,
+    analytics,
+    auth,
     conversations,
     dashboards,
+    database_connections,
     documents,
     health,
     mcp_servers,
@@ -83,6 +86,13 @@ app.include_router(
     scheduled_queries.router, prefix="/api/scheduled-queries", tags=["Scheduled Queries"]
 )
 app.include_router(superset.router, prefix="/api/superset", tags=["Superset"])
+app.include_router(
+    database_connections.router,
+    prefix="/api/database-connections",
+    tags=["Database Connections"],
+)
+app.include_router(analytics.router, prefix="/api/analytics", tags=["Analytics"])
+app.include_router(auth.router, prefix="/api/auth", tags=["Authentication"])
 
 
 @app.get("/")
@@ -108,26 +118,49 @@ async def websocket_agent(websocket: WebSocket, conversation_id: int):
 @app.websocket("/ws/alerts")
 async def websocket_alerts(websocket: WebSocket):
     """WebSocket endpoint for real-time alert notifications."""
+    from src.api.deps import get_websocket_manager_optional
     from src.services.notification_service import NotificationService
 
-    await websocket.accept()
-    client_id = f"alerts-{id(websocket)}"
+    ws_manager = get_websocket_manager_optional()
 
-    # Register this client for notifications
+    # Fallback to old implementation if manager not available
+    if ws_manager is None:
+        await websocket.accept()
+        client_id = f"alerts-{id(websocket)}"
+        NotificationService.register_client(client_id, websocket)
+        logger.info("alert_websocket_connected", client_id=client_id)
+
+        try:
+            while True:
+                try:
+                    data = await websocket.receive_text()
+                    if data == "ping":
+                        await websocket.send_text("pong")
+                except Exception:
+                    break
+        finally:
+            NotificationService.unregister_client(client_id, websocket)
+            logger.info("alert_websocket_disconnected", client_id=client_id)
+        return
+
+    # Use WebSocket manager
+    client_id = f"alerts-{id(websocket)}"
+    connection = await ws_manager.connect(websocket, client_id)
+
+    # Register for notification service
     NotificationService.register_client(client_id, websocket)
     logger.info("alert_websocket_connected", client_id=client_id)
 
     try:
-        # Keep connection alive and wait for disconnect
+        # Keep connection alive and handle messages
         while True:
-            try:
-                # Wait for ping/pong or disconnect
-                data = await websocket.receive_text()
-                # Handle ping
-                if data == "ping":
-                    await websocket.send_text("pong")
-            except Exception:
+            data = await connection.receive_text()
+            if data is None:
                 break
+            # Handle ping/pong
+            if data == "ping":
+                await connection.send_text("pong")
     finally:
         NotificationService.unregister_client(client_id, websocket)
+        await ws_manager.disconnect(client_id)
         logger.info("alert_websocket_disconnected", client_id=client_id)

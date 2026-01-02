@@ -183,6 +183,7 @@ async def agent_websocket(
     - {"type": "tool_call", "tool_name": "...", "tool_args": {...}}
     - {"type": "complete", "message": {...}}
     - {"type": "error", "error": "..."}
+    - {"type": "ping"} (heartbeat)
 
     Optional provider configuration (client -> server):
     {
@@ -193,8 +194,20 @@ async def agent_websocket(
         "mcp_servers": ["mssql"]  # optional
     }
     """
-    await websocket.accept()
-    logger.info("websocket_connected", conversation_id=conversation_id)
+    from src.api.deps import get_websocket_manager_optional
+
+    ws_manager = get_websocket_manager_optional()
+
+    # Use WebSocket manager if available
+    if ws_manager:
+        connection_id = f"agent-{conversation_id}-{id(websocket)}"
+        connection = await ws_manager.connect(websocket, connection_id, conversation_id)
+        logger.info("websocket_connected", conversation_id=conversation_id, connection_id=connection_id)
+    else:
+        # Fallback to direct WebSocket if manager not available
+        await websocket.accept()
+        connection = None
+        logger.info("websocket_connected", conversation_id=conversation_id)
 
     # Create agent for this session
     agent = None
@@ -202,7 +215,12 @@ async def agent_websocket(
     try:
         while True:
             # Receive message from client
-            data = await websocket.receive_json()
+            if connection:
+                data = await connection.receive_json()
+                if data is None:
+                    break
+            else:
+                data = await websocket.receive_json()
 
             if data.get("type") == "message":
                 content = data.get("content", "")
@@ -227,12 +245,14 @@ async def agent_websocket(
                     )
                 except Exception as e:
                     logger.error("agent_creation_error", error=str(e))
-                    await websocket.send_json(
-                        {
-                            "type": "error",
-                            "error": f"Failed to create agent: {str(e)}",
-                        }
-                    )
+                    error_msg = {
+                        "type": "error",
+                        "error": f"Failed to create agent: {str(e)}",
+                    }
+                    if connection:
+                        await connection.send_json(error_msg)
+                    else:
+                        await websocket.send_json(error_msg)
                     continue
 
                 # Stream response
@@ -240,32 +260,36 @@ async def agent_websocket(
                 try:
                     async for chunk in agent.chat_stream(content):
                         full_response += chunk
-                        await websocket.send_json(
-                            {
-                                "type": "chunk",
-                                "content": chunk,
-                            }
-                        )
+                        chunk_msg = {
+                            "type": "chunk",
+                            "content": chunk,
+                        }
+                        if connection:
+                            await connection.send_json(chunk_msg)
+                        else:
+                            await websocket.send_json(chunk_msg)
 
                     # Get token usage after streaming
                     stats = agent.get_last_response_stats()
                     token_usage = stats.get("token_usage")
 
                     # Send completion message
-                    await websocket.send_json(
-                        {
-                            "type": "complete",
-                            "message": {
-                                "id": 0,  # Would be set by database in full implementation
-                                "conversation_id": conversation_id,
-                                "role": "assistant",
-                                "content": full_response,
-                                "tool_calls": None,
-                                "tokens_used": token_usage.total_tokens if token_usage else None,
-                                "created_at": None,
-                            },
-                        }
-                    )
+                    complete_msg = {
+                        "type": "complete",
+                        "message": {
+                            "id": 0,  # Would be set by database in full implementation
+                            "conversation_id": conversation_id,
+                            "role": "assistant",
+                            "content": full_response,
+                            "tool_calls": None,
+                            "tokens_used": token_usage.total_tokens if token_usage else None,
+                            "created_at": None,
+                        },
+                    }
+                    if connection:
+                        await connection.send_json(complete_msg)
+                    else:
+                        await websocket.send_json(complete_msg)
 
                     logger.info(
                         "websocket_response_sent",
@@ -276,24 +300,32 @@ async def agent_websocket(
 
                 except ResearchAgentError as e:
                     logger.error("agent_chat_error", error=str(e))
-                    await websocket.send_json(
-                        {
-                            "type": "error",
-                            "error": str(e),
-                        }
-                    )
+                    error_msg = {
+                        "type": "error",
+                        "error": str(e),
+                    }
+                    if connection:
+                        await connection.send_json(error_msg)
+                    else:
+                        await websocket.send_json(error_msg)
 
     except WebSocketDisconnect:
         logger.info("websocket_disconnected", conversation_id=conversation_id)
     except Exception as e:
         logger.error("websocket_error", error=str(e))
         with contextlib.suppress(Exception):
-            await websocket.send_json(
-                {
-                    "type": "error",
-                    "error": str(e),
-                }
-            )
+            error_msg = {
+                "type": "error",
+                "error": str(e),
+            }
+            if connection:
+                await connection.send_json(error_msg)
+            else:
+                await websocket.send_json(error_msg)
+    finally:
+        # Disconnect from WebSocket manager if used
+        if ws_manager and connection:
+            await ws_manager.disconnect(connection.connection_id)
 
 
 class PowerBIExportRequest(BaseModel):

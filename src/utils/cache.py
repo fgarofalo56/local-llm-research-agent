@@ -319,3 +319,151 @@ def reset_response_cache() -> None:
     """Reset the singleton response cache."""
     global _response_cache
     _response_cache = None
+
+
+# ==========================================
+# Redis Cache Backend for RAG Operations
+# ==========================================
+
+
+class RedisCacheBackend:
+    """Redis-backed cache for RAG operations."""
+
+    def __init__(self, redis_client, prefix: str = "rag"):
+        """
+        Initialize Redis cache backend.
+
+        Args:
+            redis_client: Redis async client (redis.asyncio.Redis)
+            prefix: Prefix for all cache keys (default: "rag")
+        """
+        self.redis = redis_client
+        self.prefix = prefix
+
+    def _make_key(self, namespace: str, key: str) -> str:
+        """Create prefixed cache key."""
+        return f"{self.prefix}:{namespace}:{key}"
+
+    def _hash_content(self, content: str) -> str:
+        """Create hash of content for cache key."""
+        return hashlib.sha256(content.encode()).hexdigest()[:16]
+
+    async def get_embedding(self, text: str) -> list[float] | None:
+        """
+        Get cached embedding for text.
+
+        Args:
+            text: Text to look up embedding for
+
+        Returns:
+            Cached embedding vector or None if not found
+        """
+        import json
+
+        key = self._make_key("embedding", self._hash_content(text))
+        data = await self.redis.get(key)
+        if data:
+            logger.debug("embedding_cache_hit", key=key[:30])
+            return json.loads(data)
+        return None
+
+    async def set_embedding(
+        self, text: str, embedding: list[float], ttl: int = 604800  # 7 days
+    ) -> None:
+        """
+        Cache embedding for text.
+
+        Args:
+            text: Text that was embedded
+            embedding: Embedding vector
+            ttl: Time-to-live in seconds (default: 7 days)
+        """
+        import json
+
+        key = self._make_key("embedding", self._hash_content(text))
+        await self.redis.setex(key, ttl, json.dumps(embedding))
+        logger.debug("embedding_cached", key=key[:30])
+
+    async def get_search_results(
+        self, query: str, top_k: int, source_type: str | None
+    ) -> list[dict] | None:
+        """
+        Get cached search results.
+
+        Args:
+            query: Search query
+            top_k: Number of results
+            source_type: Optional source type filter
+
+        Returns:
+            Cached search results or None if not found
+        """
+        import json
+
+        cache_key = f"{query}:{top_k}:{source_type or 'all'}"
+        key = self._make_key("search", self._hash_content(cache_key))
+        data = await self.redis.get(key)
+        if data:
+            logger.debug("search_cache_hit", query=query[:30])
+            return json.loads(data)
+        return None
+
+    async def set_search_results(
+        self,
+        query: str,
+        top_k: int,
+        source_type: str | None,
+        results: list[dict],
+        ttl: int = 3600,  # 1 hour
+    ) -> None:
+        """
+        Cache search results.
+
+        Args:
+            query: Search query
+            top_k: Number of results
+            source_type: Optional source type filter
+            results: Search results to cache
+            ttl: Time-to-live in seconds (default: 1 hour)
+        """
+        import json
+
+        cache_key = f"{query}:{top_k}:{source_type or 'all'}"
+        key = self._make_key("search", self._hash_content(cache_key))
+        await self.redis.setex(key, ttl, json.dumps(results))
+        logger.debug("search_cached", query=query[:30])
+
+    async def invalidate_document(self, document_id: str) -> int:
+        """
+        Invalidate all cache entries for a document.
+
+        Args:
+            document_id: Document ID to invalidate
+
+        Returns:
+            Number of keys deleted
+        """
+        pattern = f"{self.prefix}:*:{document_id}*"
+        keys = await self.redis.keys(pattern)
+        if keys:
+            return await self.redis.delete(*keys)
+        return 0
+
+    async def get_stats(self) -> dict[str, float | int]:
+        """
+        Get cache statistics.
+
+        Returns:
+            Dictionary with cache stats (hits, misses, hit_rate)
+        """
+        info = await self.redis.info("stats")
+        hits = info.get("keyspace_hits", 0)
+        misses = info.get("keyspace_misses", 0)
+        total = hits + misses
+        hit_rate = hits / total if total > 0 else 0.0
+
+        return {
+            "hits": hits,
+            "misses": misses,
+            "hit_rate": hit_rate,
+        }

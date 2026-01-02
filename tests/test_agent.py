@@ -36,9 +36,9 @@ class TestSystemPrompts:
 class TestResearchAgentInit:
     """Tests for ResearchAgent initialization."""
 
-    @patch("src.agent.research_agent.MCPClientManager")
-    @patch("src.agent.research_agent.create_provider")
-    @patch("src.agent.research_agent.Agent")
+    @patch("src.agent.core.MCPClientManager")
+    @patch("src.agent.core.create_provider")
+    @patch("src.agent.core.Agent")
     def test_init_default_settings(self, mock_agent_cls, mock_create_provider, mock_mcp_cls):
         """Test agent initializes with default settings."""
         mock_mcp = MagicMock()
@@ -60,9 +60,9 @@ class TestResearchAgentInit:
         assert agent.ollama_model is not None
         mock_mcp.get_mssql_server.assert_called_once()
 
-    @patch("src.agent.research_agent.MCPClientManager")
+    @patch("src.agent.core.MCPClientManager")
     @patch("src.providers.ollama.OllamaProvider")
-    @patch("src.agent.research_agent.Agent")
+    @patch("src.agent.core.Agent")
     def test_init_custom_settings(self, mock_agent_cls, mock_ollama_provider_cls, mock_mcp_cls):
         """Test agent initializes with custom settings."""
         mock_mcp = MagicMock()
@@ -93,9 +93,9 @@ class TestResearchAgentChat:
     """Tests for ResearchAgent chat functionality."""
 
     @pytest.mark.asyncio
-    @patch("src.agent.research_agent.MCPClientManager")
-    @patch("src.agent.research_agent.create_provider")
-    @patch("src.agent.research_agent.Agent")
+    @patch("src.agent.core.MCPClientManager")
+    @patch("src.agent.core.create_provider")
+    @patch("src.agent.core.Agent")
     async def test_chat_success(self, mock_agent_cls, mock_create_provider, mock_mcp_cls):
         """Test successful chat response."""
         # Setup mocks
@@ -128,9 +128,9 @@ class TestResearchAgentChat:
         mock_agent_instance.run.assert_called_once_with("What tables exist?")
 
     @pytest.mark.asyncio
-    @patch("src.agent.research_agent.MCPClientManager")
-    @patch("src.agent.research_agent.create_provider")
-    @patch("src.agent.research_agent.Agent")
+    @patch("src.agent.core.MCPClientManager")
+    @patch("src.agent.core.create_provider")
+    @patch("src.agent.core.Agent")
     async def test_chat_error_handling(self, mock_agent_cls, mock_create_provider, mock_mcp_cls):
         """Test chat error handling."""
         mock_mcp = MagicMock()
@@ -163,9 +163,9 @@ class TestResearchAgentChat:
 class TestConversationHistory:
     """Tests for conversation history management."""
 
-    @patch("src.agent.research_agent.MCPClientManager")
-    @patch("src.agent.research_agent.create_provider")
-    @patch("src.agent.research_agent.Agent")
+    @patch("src.agent.core.MCPClientManager")
+    @patch("src.agent.core.create_provider")
+    @patch("src.agent.core.Agent")
     def test_clear_history(self, mock_agent_cls, mock_create_provider, mock_mcp_cls):
         """Test clearing conversation history."""
         mock_mcp = MagicMock()
@@ -186,9 +186,9 @@ class TestConversationHistory:
 
         assert agent.turn_count == 0
 
-    @patch("src.agent.research_agent.MCPClientManager")
-    @patch("src.agent.research_agent.create_provider")
-    @patch("src.agent.research_agent.Agent")
+    @patch("src.agent.core.MCPClientManager")
+    @patch("src.agent.core.create_provider")
+    @patch("src.agent.core.Agent")
     def test_get_history_empty(self, mock_agent_cls, mock_create_provider, mock_mcp_cls):
         """Test getting empty history."""
         mock_mcp = MagicMock()

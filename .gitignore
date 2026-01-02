@@ -320,6 +320,20 @@ dist/
 build/
 *.egg-info/
 
+# -------------------- AI/Tool Assistants --------------------
+# Playwright MCP tool output
+.playwright-mcp/
+
+# Serena AI assistant
+.serena/
+
+# Claude Code (keep skills but ignore other generated files)
+.claude/
+!.claude/skills/
+
+# Windows null device file (sometimes created accidentally)
+nul
+
 # -------------------- Project specific --------------------
 # Local development overrides
 *.local.*

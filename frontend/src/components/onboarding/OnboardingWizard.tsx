@@ -5,7 +5,7 @@
  * First-time user onboarding flow with welcome, health check, and sample queries.
  */
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -28,29 +28,22 @@ interface OnboardingWizardProps {
   onSkip: () => void;
 }
 
-const ONBOARDING_COMPLETE_KEY = 'onboardingComplete';
+// Status indicator component - defined outside to prevent recreation on each render
+interface StatusIndicatorProps {
+  status: string;
+}
 
-export function useOnboardingStatus() {
-  const [showOnboarding, setShowOnboarding] = useState(false);
-
-  useEffect(() => {
-    const completed = localStorage.getItem(ONBOARDING_COMPLETE_KEY);
-    if (!completed) {
-      setShowOnboarding(true);
-    }
-  }, []);
-
-  const completeOnboarding = () => {
-    localStorage.setItem(ONBOARDING_COMPLETE_KEY, 'true');
-    setShowOnboarding(false);
+function StatusIndicator({ status }: StatusIndicatorProps) {
+  const colors: Record<string, string> = {
+    healthy: 'bg-green-500',
+    unhealthy: 'bg-red-500',
+    unknown: 'bg-yellow-500',
   };
-
-  const resetOnboarding = () => {
-    localStorage.removeItem(ONBOARDING_COMPLETE_KEY);
-    setShowOnboarding(true);
-  };
-
-  return { showOnboarding, completeOnboarding, resetOnboarding };
+  return (
+    <div
+      className={`h-3 w-3 rounded-full ${colors[status] || colors.unknown}`}
+    />
+  );
 }
 
 export function OnboardingWizard({ onComplete, onSkip }: OnboardingWizardProps) {
@@ -116,19 +109,6 @@ export function OnboardingWizard({ onComplete, onSkip }: OnboardingWizardProps) 
   const getServiceStatus = (serviceName: string) => {
     const service = health?.services.find((s) => s.name === serviceName);
     return service?.status || 'unknown';
-  };
-
-  const StatusIndicator = ({ status }: { status: string }) => {
-    const colors = {
-      healthy: 'bg-green-500',
-      unhealthy: 'bg-red-500',
-      unknown: 'bg-yellow-500',
-    };
-    return (
-      <div
-        className={`h-3 w-3 rounded-full ${colors[status as keyof typeof colors] || colors.unknown}`}
-      />
-    );
   };
 
   return (

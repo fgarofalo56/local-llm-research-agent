@@ -64,5 +64,29 @@ export interface HealthStatus {
   }[];
 }
 
+export interface DatabaseSettings {
+  host: string;
+  port: number;
+  database: string;
+  username: string;
+  password: string;
+  trust_certificate: boolean;
+}
+
+export interface DatabaseSettingsResponse {
+  host: string;
+  port: number;
+  database: string;
+  username: string;
+  password_set: boolean;
+  trust_certificate: boolean;
+}
+
+export interface ConnectionTestResult {
+  success: boolean;
+  message: string;
+  latency_ms: number | null;
+}
+
 // Re-export dashboard types
 export * from './dashboard';

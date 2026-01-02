@@ -1,0 +1,73 @@
+# Default configuration
+app:
+  name: "Local LLM Research Agent"
+  debug: false
+  log_level: "INFO"
+
+database:
+  sample:
+    host: "${SQL_SERVER_HOST:-localhost}"
+    port: "${SQL_SERVER_PORT:-1433}"
+    name: "${SQL_DATABASE_NAME:-ResearchAnalytics}"
+    username: "${SQL_USERNAME:-sa}"
+    password: "${SQL_PASSWORD}"
+    trust_cert: "${SQL_TRUST_SERVER_CERTIFICATE:-true}"
+    encrypt: "${SQL_ENCRYPT:-true}"
+  backend:
+    host: "${BACKEND_DB_HOST:-localhost}"
+    port: "${BACKEND_DB_PORT:-1434}"
+    name: "${BACKEND_DB_NAME:-LLM_BackEnd}"
+    username: "${BACKEND_DB_USERNAME}"
+    password: "${BACKEND_DB_PASSWORD}"
+    trust_cert: "${BACKEND_DB_TRUST_CERT:-true}"
+
+ollama:
+  host: "${OLLAMA_HOST:-http://localhost:11434}"
+  model: "${OLLAMA_MODEL:-qwen3:30b}"
+  embedding_model: "${EMBEDDING_MODEL:-nomic-embed-text}"
+
+foundry:
+  endpoint: "${FOUNDRY_ENDPOINT:-http://127.0.0.1:53760}"
+  model: "${FOUNDRY_MODEL:-phi-4}"
+  auto_start: "${FOUNDRY_AUTO_START:-false}"
+
+mcp:
+  mssql_path: "${MCP_MSSQL_PATH}"
+  readonly: "${MCP_MSSQL_READONLY:-false}"
+  debug: "${MCP_DEBUG:-false}"
+  config_path: "${MCP_CONFIG_PATH:-mcp_config.json}"
+
+cache:
+  enabled: "${CACHE_ENABLED:-true}"
+  ttl_seconds: "${CACHE_TTL_SECONDS:-3600}"
+  max_size: "${CACHE_MAX_SIZE:-1000}"
+
+rate_limit:
+  enabled: "${RATE_LIMIT_ENABLED:-false}"
+  rpm: "${RATE_LIMIT_RPM:-60}"
+  burst: "${RATE_LIMIT_BURST:-10}"
+
+vector_store:
+  type: "${VECTOR_STORE_TYPE:-mssql}"
+  dimensions: "${VECTOR_DIMENSIONS:-768}"
+
+redis:
+  url: "${REDIS_URL:-redis://localhost:6379}"
+
+rag:
+  chunk_size: "${CHUNK_SIZE:-500}"
+  chunk_overlap: "${CHUNK_OVERLAP:-50}"
+  top_k: "${RAG_TOP_K:-5}"
+
+storage:
+  upload_dir: "${UPLOAD_DIR:-./data/uploads}"
+  max_upload_size_mb: "${MAX_UPLOAD_SIZE_MB:-100}"
+
+api:
+  host: "${API_HOST:-0.0.0.0}"
+  port: "${API_PORT:-8000}"
+
+streamlit:
+  port: "${STREAMLIT_PORT:-8501}"
+
+llm_provider: "${LLM_PROVIDER:-ollama}"

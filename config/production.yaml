@@ -1,0 +1,17 @@
+# Production overrides
+app:
+  debug: false
+  log_level: "INFO"
+
+cache:
+  ttl_seconds: 7200
+  max_size: 5000
+
+rate_limit:
+  enabled: true
+  rpm: 100
+  burst: 20
+
+mcp:
+  debug: false
+  readonly: true

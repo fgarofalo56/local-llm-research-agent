@@ -9,7 +9,7 @@ import structlog
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.rag.redis_vector_store import RedisVectorStore
+from src.rag.vector_store_base import VectorStoreBase
 
 logger = structlog.get_logger()
 
@@ -17,12 +17,12 @@ logger = structlog.get_logger()
 class SchemaIndexer:
     """Index database schema into vector store for RAG-enhanced queries."""
 
-    def __init__(self, vector_store: RedisVectorStore):
+    def __init__(self, vector_store: VectorStoreBase):
         """
         Initialize the schema indexer.
 
         Args:
-            vector_store: Redis vector store instance
+            vector_store: Vector store instance (any implementation)
         """
         self.vector_store = vector_store
 

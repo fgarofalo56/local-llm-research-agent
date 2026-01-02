@@ -24,6 +24,7 @@ import { Card, CardContent } from '@/components/ui/Card';
 import { useMessages, useCreateConversation, useConversation } from '@/hooks/useConversations';
 import { useAgentWebSocket } from '@/hooks/useWebSocket';
 import { useChatStore } from '@/stores/chatStore';
+import type { Message } from '@/types';
 import { api } from '@/api/client';
 import { exportChatToMarkdown, exportChatToPdf } from '@/lib/exports/chatExport';
 import * as Switch from '@radix-ui/react-switch';
@@ -338,16 +339,18 @@ export function ChatPage() {
   }, [messagesData, setMessages]);
 
   // WebSocket connection
-  const { sendMessage, isConnected, reconnect } = useAgentWebSocket(currentConversationId);
+  const { sendMessage, isConnected } = useAgentWebSocket(currentConversationId);
 
   const handleSendMessage = async (content: string) => {
     try {
       // Add user message to UI immediately for instant feedback
-      const userMessage = {
+      const userMessage: Message = {
         id: Date.now(), // Temporary ID until server assigns real one
         conversation_id: currentConversationId || 0,
         role: 'user' as const,
         content,
+        tool_calls: null,
+        tokens_used: null,
         created_at: new Date().toISOString(),
       };
       addMessage(userMessage);

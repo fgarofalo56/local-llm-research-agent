@@ -190,3 +190,33 @@ class OllamaEmbedder:
             # Generate a test embedding to determine dimensions
             await self.embed("test")
         return self._dimensions
+
+    async def embed_with_cache(self, text: str, cache=None) -> list[float]:
+        """
+        Generate embedding with optional caching.
+
+        Args:
+            text: Text to embed
+            cache: Optional RedisCacheBackend instance for caching
+
+        Returns:
+            Embedding vector
+
+        Raises:
+            httpx.TimeoutException: If request times out
+            httpx.HTTPStatusError: If Ollama returns an error
+        """
+        # Try cache first if available
+        if cache:
+            cached = await cache.get_embedding(text)
+            if cached:
+                return cached
+
+        # Generate new embedding
+        embedding = await self.embed(text)
+
+        # Cache the result if cache is available
+        if cache:
+            await cache.set_embedding(text, embedding)
+
+        return embedding

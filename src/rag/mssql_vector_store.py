@@ -14,11 +14,12 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from src.rag.embedder import OllamaEmbedder
+from src.rag.vector_store_base import VectorStoreBase
 
 logger = structlog.get_logger()
 
 
-class MSSQLVectorStore:
+class MSSQLVectorStore(VectorStoreBase):
     """Vector store using SQL Server 2025 native VECTOR type."""
 
     def __init__(
@@ -35,9 +36,8 @@ class MSSQLVectorStore:
             embedder: Ollama embedder for generating vectors
             dimensions: Embedding dimensions (default: 768 for nomic-embed-text)
         """
+        super().__init__(embedder=embedder, dimensions=dimensions)
         self._session_factory = session_factory
-        self.embedder = embedder
-        self.dimensions = dimensions
 
     async def create_index(self, overwrite: bool = False) -> None:
         """

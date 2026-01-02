@@ -1,0 +1,4 @@
+# Locust output files
+*.html
+*.csv
+locust_*.log

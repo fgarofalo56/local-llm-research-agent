@@ -89,7 +89,10 @@ export function useAlertNotifications(options: UseAlertNotificationsOptions = {}
     [onAlert, showBrowserNotification, showNotification]
   );
 
-  // Connect to WebSocket
+  // Use ref to store connect function to avoid circular dependency
+  const connectRef = useRef<() => void>(() => {});
+
+  // Connect to WebSocket - defined after connectRef but uses it for reconnection
   const connect = useCallback(() => {
     if (!enabled) return;
 
@@ -123,10 +126,11 @@ export function useAlertNotifications(options: UseAlertNotificationsOptions = {}
         wsRef.current = null;
 
         // Reconnect after delay (unless intentionally closed)
+        // Use connectRef to avoid accessing connect before declaration
         if (event.code !== 1000 && enabled) {
           reconnectTimeoutRef.current = setTimeout(() => {
             console.log('Reconnecting alert WebSocket...');
-            connect();
+            connectRef.current();
           }, 5000);
         }
       };
@@ -138,6 +142,11 @@ export function useAlertNotifications(options: UseAlertNotificationsOptions = {}
       console.error('Failed to create alert WebSocket:', error);
     }
   }, [enabled, handleAlert]);
+
+  // Keep connectRef in sync with connect - must be in useEffect to avoid setting during render
+  useEffect(() => {
+    connectRef.current = connect;
+  }, [connect]);
 
   // Disconnect from WebSocket
   const disconnect = useCallback(() => {

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 import { api } from '@/api/client';
 import { useTheme, THEMES, type ThemeVariant } from '@/contexts/ThemeContext';
 import { Button } from '@/components/ui/Button';
@@ -21,6 +22,7 @@ import {
   AlertCircle,
   Play,
   Palette,
+  ChevronRight,
 } from 'lucide-react';
 import type { HealthStatus } from '@/types';
 
@@ -571,6 +573,7 @@ const defaultSqlSettings: SqlSettings = {
 };
 
 export function SettingsPage() {
+  const navigate = useNavigate();
   // Theme is handled by ThemeContext
 
   // Provider configuration state - initialize from localStorage
@@ -847,6 +850,30 @@ export function SettingsPage() {
               onChange={(e) => setSqlSettings((prev) => ({ ...prev, database: e.target.value }))}
             />
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Backend Database Settings Link */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Database className="h-5 w-5" />
+            Backend Database Settings
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="mb-4 text-sm text-muted-foreground">
+            Configure connection to SQL Server 2025 backend database (LLM_BackEnd) for conversation history, document metadata, and native vector embeddings.
+          </p>
+          <Button
+            onClick={() => navigate('/settings/database')}
+            variant="outline"
+            className="w-full"
+          >
+            <Settings2 className="mr-2 h-4 w-4" />
+            Manage Backend Database
+            <ChevronRight className="ml-auto h-4 w-4" />
+          </Button>
         </CardContent>
       </Card>
 

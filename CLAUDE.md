@@ -706,6 +706,14 @@ npm install
 | `/api/superset/health` | Superset status |
 | `/api/superset/dashboards` | List Superset dashboards |
 | `/api/superset/embed/{id}` | Get embed URL with guest token |
+| `/api/auth/register` | User registration (POST) |
+| `/api/auth/login` | User authentication, returns JWT tokens (POST) |
+| `/api/auth/refresh` | Refresh access token using refresh token (POST) |
+| `/api/auth/logout` | Invalidate refresh token (POST) |
+| `/api/auth/me` | Get current user profile (GET) |
+| `/api/auth/change-password` | Change user password (POST) |
+| `/api/analytics/*` | Analytics and metrics endpoints |
+| `/api/database-connections` | Database connection management |
 
 ---
 

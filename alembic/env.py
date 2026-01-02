@@ -18,11 +18,13 @@ from src.api.models.database import Base
 config = context.config
 
 # Build database URL from environment variables
-sql_host = os.getenv("SQL_SERVER_HOST", "localhost")
-sql_port = os.getenv("SQL_SERVER_PORT", "1433")
-sql_database = os.getenv("SQL_DATABASE_NAME", "ResearchAnalytics")
-sql_username = os.getenv("SQL_USERNAME", "sa")
-sql_password = os.getenv("SQL_PASSWORD", "LocalLLM@2024!")
+# Use BACKEND_DB settings (LLM_BackEnd database) for app state tables
+# These tables store: documents, conversations, queries, dashboards, users, etc.
+sql_host = os.getenv("BACKEND_DB_HOST", os.getenv("SQL_SERVER_HOST", "localhost"))
+sql_port = os.getenv("BACKEND_DB_PORT", "1434")  # Backend uses port 1434
+sql_database = os.getenv("BACKEND_DB_NAME", "LLM_BackEnd")
+sql_username = os.getenv("BACKEND_DB_USERNAME", os.getenv("SQL_USERNAME", "sa"))
+sql_password = os.getenv("BACKEND_DB_PASSWORD", os.getenv("SQL_PASSWORD", "LocalLLM@2024!"))
 
 # URL-encode the password (@ -> %40, etc.)
 sql_password_encoded = sql_password.replace("@", "%40")

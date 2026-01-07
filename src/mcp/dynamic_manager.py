@@ -52,6 +52,39 @@ class DynamicMCPManager:
             enabled=True,
             built_in=True,
         ),
+        "analytics-management": MCPServerConfig(
+            id="analytics-management",
+            name="Analytics Management",
+            description="Dashboard, widget, and query management",
+            type="python",
+            command="uv",
+            args=["run", "python", "-m", "src.mcp.analytics_mcp_server"],
+            env={
+                "BACKEND_DB_HOST": "${BACKEND_DB_HOST:-localhost}",
+                "BACKEND_DB_PORT": "${BACKEND_DB_PORT:-1434}",
+                "BACKEND_DB_NAME": "${BACKEND_DB_NAME:-LLM_BackEnd}",
+            },
+            enabled=True,
+            built_in=True,
+        ),
+        "data-analytics": MCPServerConfig(
+            id="data-analytics",
+            name="Data Analytics",
+            description="Statistical analysis, aggregations, time series, anomaly detection",
+            type="python",
+            command="uv",
+            args=["run", "python", "-m", "src.mcp.data_analytics_mcp_server"],
+            env={
+                "SQL_SERVER_HOST": "${SQL_SERVER_HOST:-localhost}",
+                "SQL_SERVER_PORT": "${SQL_SERVER_PORT:-1433}",
+                "SQL_DATABASE_NAME": "${SQL_DATABASE_NAME:-ResearchAnalytics}",
+                "BACKEND_DB_HOST": "${BACKEND_DB_HOST:-localhost}",
+                "BACKEND_DB_PORT": "${BACKEND_DB_PORT:-1434}",
+                "BACKEND_DB_NAME": "${BACKEND_DB_NAME:-LLM_BackEnd}",
+            },
+            enabled=True,
+            built_in=True,
+        ),
     }
 
     def __init__(self, config_path: str = "mcp_config.json"):
@@ -163,14 +196,16 @@ class DynamicMCPManager:
         """
         Expand environment variables in string.
 
-        Supports ${VAR_NAME} syntax.
+        Supports ${VAR_NAME} and ${VAR_NAME:-default} syntax.
         """
 
         def replace_var(match):
             var_name = match.group(1)
-            return os.environ.get(var_name, match.group(0))
+            default = match.group(2)
+            return os.environ.get(var_name, default or "")
 
-        return re.sub(r"\$\{([^}]+)\}", replace_var, value)
+        # Pattern: ${VAR} or ${VAR:-default}
+        return re.sub(r"\$\{([^}:]+)(?::-([^}]*))?\}", replace_var, value)
 
     def get_mcp_server(self, server_id: str):
         """
@@ -189,7 +224,7 @@ class DynamicMCPManager:
         if not config.enabled:
             return None
 
-        if config.type == "stdio":
+        if config.type == "stdio" or config.type == "python":
             from pydantic_ai.mcp import MCPServerStdio
 
             # Expand environment variables
@@ -197,11 +232,17 @@ class DynamicMCPManager:
             args = [self._expand_env_vars(arg) for arg in config.args]
             env = {k: self._expand_env_vars(v) for k, v in config.env.items()}
 
+            # Merge with current environment for Python servers to inherit PATH, etc.
+            if config.type == "python":
+                full_env = dict(os.environ)
+                full_env.update(env)
+                env = full_env
+
             return MCPServerStdio(
                 command=command,
                 args=args,
                 env=env,
-                timeout=30,
+                timeout=60,  # Longer timeout for Python servers
             )
 
         elif config.type == "http":
@@ -209,6 +250,12 @@ class DynamicMCPManager:
 
             url = self._expand_env_vars(config.url) if config.url else None
             return MCPServerHTTP(url=url)
+
+        elif config.type == "streamable_http":
+            from pydantic_ai.mcp import MCPServerStreamableHTTP
+
+            url = self._expand_env_vars(config.url) if config.url else None
+            return MCPServerStreamableHTTP(url=url)
 
         return None
 

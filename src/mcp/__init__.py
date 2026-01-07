@@ -1,6 +1,10 @@
 """MCP integration modules for connecting to MCP servers."""
 
 from src.mcp.client import MCPClientManager
+from src.mcp.dynamic_manager import (
+    DynamicMCPManager,
+    MCPServerConfig,
+)
 from src.mcp.mssql_config import (
     MSSQL_TOOLS,
     MSSQLMCPConfig,
@@ -29,6 +33,9 @@ from src.mcp.server_manager import (
 __all__ = [
     # Client
     "MCPClientManager",
+    # Dynamic Manager
+    "DynamicMCPManager",
+    "MCPServerConfig",
     # MSSQL Config
     "MSSQLMCPConfig",
     "MSSQLToolInfo",

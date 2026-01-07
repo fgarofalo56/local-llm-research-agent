@@ -21,12 +21,60 @@
     },
     "microsoft.docs.mcp": {
       "name": "microsoft.docs.mcp",
-      "description": "MS Docs MCP Server",
-      "type": "http",
+      "description": "Microsoft Learn Documentation MCP Server (Streamable HTTP)",
+      "type": "streamable_http",
       "command": null,
       "args": [],
       "url": "https://learn.microsoft.com/api/mcp",
       "env": {},
+      "enabled": true
+    },
+    "analytics-management": {
+      "name": "analytics-management",
+      "description": "Analytics Management MCP Server for dashboards, widgets, queries, and metrics",
+      "type": "python",
+      "command": "uv",
+      "args": [
+        "run",
+        "python",
+        "-m",
+        "src.mcp.analytics_mcp_server"
+      ],
+      "env": {
+        "BACKEND_DB_HOST": "${BACKEND_DB_HOST:-localhost}",
+        "BACKEND_DB_PORT": "${BACKEND_DB_PORT:-1434}",
+        "BACKEND_DB_NAME": "${BACKEND_DB_NAME:-LLM_BackEnd}",
+        "BACKEND_DB_USERNAME": "${BACKEND_DB_USERNAME:-${SQL_USERNAME}}",
+        "BACKEND_DB_PASSWORD": "${BACKEND_DB_PASSWORD:-${SQL_PASSWORD}}",
+        "BACKEND_DB_TRUST_CERT": "${BACKEND_DB_TRUST_CERT:-true}"
+      },
+      "enabled": true
+    },
+    "data-analytics": {
+      "name": "data-analytics",
+      "description": "Advanced Data Analytics MCP Server for statistical analysis, aggregations, time series, and anomaly detection",
+      "type": "python",
+      "command": "uv",
+      "args": [
+        "run",
+        "python",
+        "-m",
+        "src.mcp.data_analytics_mcp_server"
+      ],
+      "env": {
+        "SQL_SERVER_HOST": "${SQL_SERVER_HOST:-localhost}",
+        "SQL_SERVER_PORT": "${SQL_SERVER_PORT:-1433}",
+        "SQL_DATABASE_NAME": "${SQL_DATABASE_NAME:-ResearchAnalytics}",
+        "SQL_USERNAME": "${SQL_USERNAME}",
+        "SQL_PASSWORD": "${SQL_PASSWORD}",
+        "SQL_TRUST_SERVER_CERTIFICATE": "${SQL_TRUST_SERVER_CERTIFICATE:-true}",
+        "BACKEND_DB_HOST": "${BACKEND_DB_HOST:-localhost}",
+        "BACKEND_DB_PORT": "${BACKEND_DB_PORT:-1434}",
+        "BACKEND_DB_NAME": "${BACKEND_DB_NAME:-LLM_BackEnd}",
+        "BACKEND_DB_USERNAME": "${BACKEND_DB_USERNAME:-${SQL_USERNAME}}",
+        "BACKEND_DB_PASSWORD": "${BACKEND_DB_PASSWORD:-${SQL_PASSWORD}}",
+        "BACKEND_DB_TRUST_CERT": "${BACKEND_DB_TRUST_CERT:-true}"
+      },
       "enabled": true
     }
   },
@@ -40,6 +88,41 @@
       "create_table": "Create new database tables",
       "drop_table": "Delete tables from the database",
       "create_index": "Create indexes for query optimization"
+    },
+    "analytics_management_tools": {
+      "list_dashboards": "List all dashboards with optional filtering",
+      "get_dashboard": "Get dashboard details with its widgets",
+      "create_dashboard": "Create a new dashboard",
+      "update_dashboard": "Update dashboard properties",
+      "delete_dashboard": "Delete dashboard and all widgets",
+      "list_widgets": "List widgets for a dashboard",
+      "add_widget": "Add a new widget (bar, line, pie, kpi, table, etc.)",
+      "update_widget": "Update widget properties",
+      "delete_widget": "Remove a widget",
+      "list_saved_queries": "List saved queries with filtering",
+      "save_query": "Save a query for later reuse",
+      "get_query_history": "Get query execution history",
+      "get_dashboard_metrics": "Get dashboard usage metrics",
+      "get_usage_analytics": "Get system usage analytics",
+      "export_dashboard": "Export dashboard configuration as JSON",
+      "import_dashboard": "Import dashboard from JSON configuration"
+    },
+    "data_analytics_tools": {
+      "descriptive_statistics": "Calculate mean, median, std dev, quartiles for numeric columns",
+      "correlation_analysis": "Calculate correlation matrix between columns (Pearson/Spearman)",
+      "percentile_analysis": "Calculate percentile values for a column",
+      "group_aggregation": "Perform GROUP BY with multiple aggregate functions",
+      "pivot_analysis": "Create pivot table summarization",
+      "time_series_analysis": "Analyze trends, patterns, and seasonality with moving averages",
+      "trend_detection": "Detect trends and calculate growth rates",
+      "profile_table": "Generate comprehensive data profile (types, nulls, cardinality)",
+      "column_distribution": "Analyze value distribution (histograms, frequencies)",
+      "data_quality_check": "Check for nulls, duplicates, outliers",
+      "detect_outliers": "Detect outliers using IQR or Z-score method",
+      "detect_anomalies_timeseries": "Detect anomalies in time series using rolling statistics",
+      "segment_analysis": "Analyze data by segments with comparison metrics",
+      "cohort_analysis": "Perform cohort analysis based on date columns",
+      "run_analytics_query": "Execute custom analytics SQL queries (SELECT only)"
     },
     "authentication_types": {
       "sql": "SQL Server authentication with username and password",

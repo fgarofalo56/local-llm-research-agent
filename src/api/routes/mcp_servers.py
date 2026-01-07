@@ -84,18 +84,58 @@ async def list_mcp_servers(
 
         # Get tools if available (placeholder - would need to query MCP server)
         tools: list[str] = []
-        if s.id == "mssql" and s.enabled:
-            # Default MSSQL tools
-            tools = [
-                "list_tables",
-                "describe_table",
-                "read_data",
-                "insert_data",
-                "update_data",
-                "create_table",
-                "drop_table",
-                "create_index",
-            ]
+        if s.enabled:
+            if s.id == "mssql":
+                # Default MSSQL tools
+                tools = [
+                    "list_tables",
+                    "describe_table",
+                    "read_data",
+                    "insert_data",
+                    "update_data",
+                    "create_table",
+                    "drop_table",
+                    "create_index",
+                ]
+            elif s.id == "analytics-management":
+                # Analytics Management MCP tools
+                tools = [
+                    "list_dashboards",
+                    "get_dashboard",
+                    "create_dashboard",
+                    "update_dashboard",
+                    "delete_dashboard",
+                    "list_widgets",
+                    "add_widget",
+                    "update_widget",
+                    "delete_widget",
+                    "list_saved_queries",
+                    "save_query",
+                    "get_query_history",
+                    "get_dashboard_metrics",
+                    "get_usage_analytics",
+                    "export_dashboard",
+                    "import_dashboard",
+                ]
+            elif s.id == "data-analytics":
+                # Data Analytics MCP tools
+                tools = [
+                    "descriptive_statistics",
+                    "correlation_analysis",
+                    "percentile_analysis",
+                    "group_aggregation",
+                    "pivot_analysis",
+                    "time_series_analysis",
+                    "trend_detection",
+                    "profile_table",
+                    "column_distribution",
+                    "data_quality_check",
+                    "detect_outliers",
+                    "detect_anomalies_timeseries",
+                    "segment_analysis",
+                    "cohort_analysis",
+                    "run_analytics_query",
+                ]
 
         server_responses.append(
             MCPServerResponse(
@@ -288,3 +328,98 @@ async def disable_mcp_server(
         raise HTTPException(status_code=404, detail=str(e))
 
     return {"status": "disabled", "server_id": server_id}
+
+
+# Tool definitions for each MCP server
+MCP_TOOL_DEFINITIONS = {
+    "mssql": {
+        "list_tables": {"description": "Lists all tables in the connected database"},
+        "describe_table": {"description": "Get schema information for a specific table"},
+        "read_data": {"description": "Query and retrieve data from tables"},
+        "insert_data": {"description": "Insert new rows into tables"},
+        "update_data": {"description": "Modify existing data in tables"},
+        "create_table": {"description": "Create new database tables"},
+        "drop_table": {"description": "Delete tables from the database"},
+        "create_index": {"description": "Create indexes for query optimization"},
+    },
+    "analytics-management": {
+        "list_dashboards": {"description": "List all dashboards with optional filtering by user or status"},
+        "get_dashboard": {"description": "Get detailed information about a specific dashboard including its widgets"},
+        "create_dashboard": {"description": "Create a new dashboard"},
+        "update_dashboard": {"description": "Update an existing dashboard's properties"},
+        "delete_dashboard": {"description": "Delete a dashboard and all its widgets"},
+        "list_widgets": {"description": "List widgets for a dashboard"},
+        "add_widget": {"description": "Add a new widget to a dashboard (bar, line, pie, kpi, table, etc.)"},
+        "update_widget": {"description": "Update an existing widget"},
+        "delete_widget": {"description": "Remove a widget from a dashboard"},
+        "list_saved_queries": {"description": "List saved queries with optional filtering"},
+        "save_query": {"description": "Save a query for later reuse"},
+        "get_query_history": {"description": "Get recent query execution history"},
+        "get_dashboard_metrics": {"description": "Get usage metrics for dashboards"},
+        "get_usage_analytics": {"description": "Get overall system usage analytics"},
+        "export_dashboard": {"description": "Export dashboard configuration as JSON for backup or sharing"},
+        "import_dashboard": {"description": "Import a dashboard from JSON configuration"},
+    },
+    "data-analytics": {
+        "descriptive_statistics": {"description": "Calculate descriptive statistics (mean, median, std dev, quartiles) for numeric columns"},
+        "correlation_analysis": {"description": "Calculate correlation matrix between numeric columns using Pearson or Spearman method"},
+        "percentile_analysis": {"description": "Calculate percentile values for a numeric column"},
+        "group_aggregation": {"description": "Perform GROUP BY aggregations with multiple aggregate functions"},
+        "pivot_analysis": {"description": "Create a pivot table summarization"},
+        "time_series_analysis": {"description": "Analyze time series data for trends, patterns, and seasonality with moving averages"},
+        "trend_detection": {"description": "Detect trends and calculate growth rates in time series data"},
+        "profile_table": {"description": "Generate a comprehensive data profile (column types, nulls, cardinality, sample values)"},
+        "column_distribution": {"description": "Analyze value distribution for a column (histograms for numeric, frequencies for categorical)"},
+        "data_quality_check": {"description": "Check data quality issues: nulls, duplicates, outliers"},
+        "detect_outliers": {"description": "Detect outliers in numeric columns using IQR or Z-score method"},
+        "detect_anomalies_timeseries": {"description": "Detect anomalies in time series data using rolling statistics"},
+        "segment_analysis": {"description": "Analyze data by segments with comparison metrics"},
+        "cohort_analysis": {"description": "Perform cohort analysis based on date columns"},
+        "run_analytics_query": {"description": "Execute a custom analytics SQL query (SELECT only)"},
+    },
+}
+
+
+class MCPToolResponse(BaseModel):
+    """Response model for MCP tool information."""
+
+    name: str
+    description: str
+
+
+class MCPToolsListResponse(BaseModel):
+    """Response model for MCP tools list."""
+
+    server_id: str
+    server_name: str
+    tools: list[MCPToolResponse]
+    total: int
+
+
+@router.get("/{server_id}/tools", response_model=MCPToolsListResponse)
+async def get_mcp_server_tools(
+    server_id: str,
+    mcp_manager=Depends(get_mcp_manager_optional),
+):
+    """Get list of tools available for a specific MCP server."""
+    if not mcp_manager:
+        raise HTTPException(status_code=503, detail="MCP manager not available")
+
+    servers = {s.id: s for s in mcp_manager.list_servers()}
+    if server_id not in servers:
+        raise HTTPException(status_code=404, detail="Server not found")
+
+    server = servers[server_id]
+    tool_defs = MCP_TOOL_DEFINITIONS.get(server_id, {})
+
+    tools = [
+        MCPToolResponse(name=name, description=info.get("description", ""))
+        for name, info in tool_defs.items()
+    ]
+
+    return MCPToolsListResponse(
+        server_id=server_id,
+        server_name=server.name,
+        tools=tools,
+        total=len(tools),
+    )

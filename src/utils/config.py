@@ -56,7 +56,11 @@ class Settings(BaseSettings):
     foundry_endpoint: str = Field(
         default="http://127.0.0.1:53760", description="Foundry Local API endpoint"
     )
-    foundry_model: str = Field(default="phi-4", description="Foundry Local model alias")
+    # IMPORTANT: phi-4-mini supports function calling, regular phi-4 does NOT
+    foundry_model: str = Field(
+        default="phi-4-mini",
+        description="Foundry Local model alias (phi-4-mini recommended for tool calling)",
+    )
     foundry_auto_start: bool = Field(
         default=False, description="Auto-start Foundry Local using SDK"
     )
@@ -175,9 +179,24 @@ class Settings(BaseSettings):
     chunk_overlap: int = Field(default=50, description="Overlap between document chunks")
     rag_top_k: int = Field(default=5, description="Number of chunks to retrieve for RAG")
 
+    # Hybrid Search (combines semantic + keyword search)
+    rag_hybrid_enabled: bool = Field(
+        default=False, description="Enable hybrid search by default (combines vector + full-text)"
+    )
+    rag_hybrid_alpha: float = Field(
+        default=0.5,
+        description="Weight for semantic search in hybrid mode (0.0=keyword only, 1.0=semantic only)",
+    )
+
     # API
     api_host: str = Field(default="0.0.0.0", description="API server bind address")
     api_port: int = Field(default=8000, description="API server port")
+
+    # Host Agent (for Docker service management)
+    host_agent_url: str = Field(
+        default="http://host.docker.internal:5280",
+        description="URL of host agent sidecar for starting services from Docker",
+    )
 
     # MCP Config Path
     mcp_config_path: str = Field(

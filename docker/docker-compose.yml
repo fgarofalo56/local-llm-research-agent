@@ -408,6 +408,8 @@ services:
       SUPERSET_URL: "http://superset:8088"
       SUPERSET_ADMIN_USER: "${SUPERSET_ADMIN_USER:-admin}"
       SUPERSET_ADMIN_PASSWORD: "${SUPERSET_ADMIN_PASSWORD:-LocalLLM@2024!}"
+      # Host Agent (for starting Ollama/Foundry from Docker container)
+      HOST_AGENT_URL: "${HOST_AGENT_URL:-http://host.docker.internal:5280}"
     ports:
       - "${API_PORT:-8000}:8000"
     volumes:

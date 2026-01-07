@@ -67,9 +67,11 @@ dependencies = [
     "redis>=5.0.0",
     "redisvl>=0.3.0",
 
-    # Document Processing (RAG Pipeline) - Lightweight offline-capable libraries
+    # Document Processing (RAG Pipeline) - Docling for comprehensive document handling
+    # Docling handles PDF, DOCX, PPTX, XLSX, HTML, images with advanced table extraction
+    "docling>=2.0.0",
+    # Keep pypdf as lightweight fallback for simple PDF processing
     "pypdf>=5.0.0",
-    "python-docx>=1.1.0",
 
     # Scheduling
     "apscheduler>=3.10.0",

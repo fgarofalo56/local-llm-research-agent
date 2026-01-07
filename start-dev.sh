@@ -4,8 +4,9 @@
 # =============================================================================
 #
 # This script starts all services needed for local development:
-#   - SQL Server (Docker)
-#   - Redis Stack (Docker)
+#   - SQL Server 2022 (Sample Database - Docker)
+#   - SQL Server 2025 (Backend with Vector Search - Docker)
+#   - Redis Stack (Caching - Docker)
 #   - FastAPI Backend (local)
 #   - React Frontend (local dev server)
 #
@@ -51,24 +52,48 @@ if ! curl -s http://localhost:11434/api/tags > /dev/null 2>&1; then
     echo ""
 fi
 
-echo "[Step 1/5] Creating Docker volumes if needed..."
+echo "[Step 1/8] Creating Docker volumes if needed..."
 docker volume create local-llm-mssql-data 2>/dev/null || true
+docker volume create local-llm-backend-data 2>/dev/null || true
 docker volume create local-llm-redis-data 2>/dev/null || true
 
-echo "[Step 2/5] Starting Docker services (SQL Server + Redis)..."
-docker-compose -f docker/docker-compose.yml --env-file .env up -d mssql redis-stack
+echo "[Step 2/8] Starting SQL Server 2022 (Sample Database)..."
+docker-compose -f docker/docker-compose.yml --env-file .env up -d mssql
 
-echo "Waiting for SQL Server to be healthy..."
-until docker-compose -f docker/docker-compose.yml ps mssql | grep -q "healthy"; do
-    echo "  Still waiting for SQL Server..."
+echo "Waiting for SQL Server 2022 to be healthy..."
+until docker inspect --format='{{.State.Health.Status}}' local-agent-mssql 2>/dev/null | grep -q "healthy"; do
+    echo "  Still waiting for SQL Server 2022..."
     sleep 5
 done
-echo "  SQL Server is ready!"
+echo "  SQL Server 2022 is ready!"
 
-echo "[Step 3/5] Checking if database is initialized..."
+echo "[Step 3/8] Initializing ResearchAnalytics sample database..."
 docker-compose -f docker/docker-compose.yml --env-file .env --profile init up mssql-tools 2>/dev/null || true
 
-echo "[Step 4/5] Starting FastAPI backend..."
+echo "[Step 4/8] Starting SQL Server 2025 (Backend Database)..."
+docker-compose -f docker/docker-compose.yml --env-file .env up -d mssql-backend
+
+echo "Waiting for SQL Server 2025 to be healthy..."
+until docker inspect --format='{{.State.Health.Status}}' local-agent-mssql-backend 2>/dev/null | grep -q "healthy"; do
+    echo "  Still waiting for SQL Server 2025..."
+    sleep 5
+done
+echo "  SQL Server 2025 is ready!"
+
+echo "[Step 5/8] Initializing LLM_BackEnd database (vectors + hybrid search)..."
+docker-compose -f docker/docker-compose.yml --env-file .env --profile init up mssql-backend-tools 2>/dev/null || true
+
+echo "[Step 6/8] Starting Redis Stack..."
+docker-compose -f docker/docker-compose.yml --env-file .env up -d redis-stack
+
+echo "Waiting for Redis to be healthy..."
+until docker inspect --format='{{.State.Health.Status}}' local-agent-redis 2>/dev/null | grep -q "healthy"; do
+    echo "  Still waiting for Redis..."
+    sleep 3
+done
+echo "  Redis Stack is ready!"
+
+echo "[Step 7/8] Starting FastAPI backend..."
 # Start backend in background
 uv run uvicorn src.api.main:app --reload --host 0.0.0.0 --port 8000 &
 BACKEND_PID=$!
@@ -80,7 +105,7 @@ until curl -s http://localhost:8000/api/health > /dev/null 2>&1; do
 done
 echo "  FastAPI is ready!"
 
-echo "[Step 5/5] Starting React frontend..."
+echo "[Step 8/8] Starting React frontend..."
 cd frontend
 npm run dev &
 FRONTEND_PID=$!
@@ -91,13 +116,22 @@ echo "============================================================"
 echo "  All services started successfully!"
 echo "============================================================"
 echo ""
-echo "  Services:"
-echo "    - SQL Server:      localhost:1433"
-echo "    - Redis:           localhost:6379"
+echo "  Database Services:"
+echo "    - SQL Server 2022: localhost:1433 (ResearchAnalytics)"
+echo "    - SQL Server 2025: localhost:1434 (LLM_BackEnd + Vectors)"
+echo "    - Redis Stack:     localhost:6379"
 echo "    - RedisInsight:    http://localhost:8001"
+echo ""
+echo "  Application Services:"
 echo "    - FastAPI Backend: http://localhost:8000"
 echo "    - FastAPI Docs:    http://localhost:8000/docs"
 echo "    - React Frontend:  http://localhost:5173"
+echo ""
+echo "  RAG Features:"
+echo "    - Vector Store: SQL Server 2025 (native VECTOR type)"
+echo "    - Embeddings:   nomic-embed-text (768 dimensions)"
+echo "    - Hybrid Search: Enabled (semantic + full-text with RRF)"
+echo "    - Documents:    PDF, DOCX, PPTX, XLSX, HTML, Markdown, Images"
 echo ""
 echo "  Process IDs:"
 echo "    - Backend PID:  $BACKEND_PID"
@@ -105,7 +139,7 @@ echo "    - Frontend PID: $FRONTEND_PID"
 echo ""
 echo "  To stop:"
 echo "    - Press Ctrl+C"
-echo "    - Run: docker-compose -f docker/docker-compose.yml down"
+echo "    - Run: docker-compose -f docker/docker-compose.yml --env-file .env down"
 echo ""
 
 # Wait for Ctrl+C

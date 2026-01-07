@@ -1,8 +1,15 @@
 # 🐳 Docker Setup for Local LLM Research Agent
 
-> **SQL Server 2022 + Redis Stack + Research Agent Services**
+> **SQL Server 2022 (Sample) + SQL Server 2025 (Backend/Vectors) + Redis Stack + Research Agent Services**
 
 All services are organized under the `local-agent-ai-stack` Docker Compose project.
+
+## 🏗️ Database Architecture
+
+| Database | SQL Server | Port | Purpose |
+|----------|------------|------|---------|
+| **ResearchAnalytics** | 2022 | 1433 | Sample demo data for LLM queries |
+| **LLM_BackEnd** | 2025 | 1434 | App state, vectors, hybrid search |
 
 ---
 
@@ -24,12 +31,15 @@ All services are organized under the `local-agent-ai-stack` Docker Compose proje
 
 | Service | Container Name | Port | Profile | Description |
 |---------|---------------|------|---------|-------------|
-| **mssql** | `local-agent-mssql` | 1433 | default | SQL Server 2022 database |
+| **mssql** | `local-agent-mssql` | 1433 | default | SQL Server 2022 (sample database) |
+| **mssql-backend** | `local-agent-mssql-backend` | 1434 | default | SQL Server 2025 (backend + vectors) |
 | **redis-stack** | `local-agent-redis` | 6379, 8001* | default | Redis with vector search + RedisInsight |
-| **mssql-tools** | `local-agent-mssql-tools` | - | `init` | Database initialization scripts |
+| **mssql-tools** | `local-agent-mssql-tools` | - | `init` | Sample database initialization |
+| **mssql-backend-tools** | `local-agent-mssql-backend-tools` | - | `init` | Backend + hybrid search initialization |
 | **agent-ui** | `local-agent-streamlit-ui` | 8501 | default | Streamlit web interface |
 | **agent-cli** | `local-agent-cli` | - | `cli` | Interactive CLI chat |
 | **api** | `local-agent-api` | 8000 | `api` | FastAPI backend |
+| **frontend** | `local-agent-frontend` | 5173 | `frontend` | React web frontend |
 | **superset** | `local-agent-superset` | 8088 | `superset` | Apache Superset BI platform |
 
 > *RedisInsight port is configurable via `REDIS_INSIGHT_PORT` environment variable
@@ -77,15 +87,23 @@ chmod +x setup-database.sh
 > ⚠️ **Important**: Always include `--env-file .env` when running docker-compose from the project root to ensure environment variables (like port configurations) are properly loaded.
 
 ```bash
-# Start SQL Server and Redis Stack
-docker-compose -f docker/docker-compose.yml --env-file .env up -d
+# Start all databases and Redis Stack
+docker-compose -f docker/docker-compose.yml --env-file .env up -d mssql mssql-backend redis-stack
 
 # Wait for healthy status (about 30 seconds)
 docker-compose -f docker/docker-compose.yml ps
 
-# Initialize database with sample data
+# Initialize sample database (ResearchAnalytics)
 docker-compose -f docker/docker-compose.yml --env-file .env --profile init up mssql-tools
+
+# Initialize backend database (LLM_BackEnd with vectors + hybrid search)
+docker-compose -f docker/docker-compose.yml --env-file .env --profile init up mssql-backend-tools
 ```
+
+The backend initialization includes:
+- App schema (conversations, messages, dashboards, settings)
+- Vectors schema (native VECTOR type for embeddings)
+- Full-text indexes and hybrid search stored procedures (RRF)
 
 ### Full Stack Setup
 
@@ -101,12 +119,24 @@ docker-compose -f docker/docker-compose.yml --env-file .env --profile api up -d 
 
 ## 🔌 Connection Details
 
+### Sample Database (SQL Server 2022)
+
 | Setting | Value |
 |---------|-------|
 | Server | `localhost,1433` |
 | Database | `ResearchAnalytics` |
 | Username | `sa` |
 | Password | `LocalLLM@2024!` |
+
+### Backend Database (SQL Server 2025)
+
+| Setting | Value |
+|---------|-------|
+| Server | `localhost,1434` |
+| Database | `LLM_BackEnd` |
+| Username | `sa` |
+| Password | `LocalLLM@2024!` |
+| Features | Native VECTOR type, Full-Text Search, Hybrid Search |
 
 > ⚠️ **Warning:** Change the default password for production use!
 
@@ -147,14 +177,19 @@ The `ResearchAnalytics` database contains sample data for a fictional research o
 
 ```
 docker/
-├── docker-compose.yml      # Main compose file
-├── setup-database.bat      # Windows setup script
-├── setup-database.sh       # Linux/Mac setup script
-├── README.md               # This file
-└── init/
-    ├── 01-create-database.sql   # Creates ResearchAnalytics DB
-    ├── 02-create-schema.sql     # Creates all tables and views
-    └── 03-seed-data.sql         # Populates sample data
+├── docker-compose.yml        # Main compose file
+├── setup-database.bat        # Windows setup script (both DBs + Redis)
+├── setup-database.sh         # Linux/Mac setup script (both DBs + Redis)
+├── README.md                 # This file
+├── init/                     # Sample database scripts (SQL Server 2022)
+│   ├── 01-create-database.sql   # Creates ResearchAnalytics DB
+│   ├── 02-create-schema.sql     # Creates all tables and views
+│   └── 03-seed-data.sql         # Populates sample data
+└── init-backend/             # Backend database scripts (SQL Server 2025)
+    ├── 01-create-llm-backend.sql     # Creates LLM_BackEnd DB + schemas
+    ├── 02-create-app-schema.sql      # Conversations, messages, dashboards
+    ├── 03-create-vectors-schema.sql  # Native VECTOR tables for embeddings
+    └── 04-create-hybrid-search.sql   # Full-text indexes + RRF procedures
 ```
 
 ---
@@ -167,7 +202,7 @@ All commands assume you're running from the **project root** (not the docker fol
 
 | Command | Description |
 |---------|-------------|
-| `docker-compose -f docker/docker-compose.yml --env-file .env up -d` | Start SQL Server + Redis |
+| `docker-compose -f docker/docker-compose.yml --env-file .env up -d` | Start SQL Servers + Redis |
 | `docker-compose -f docker/docker-compose.yml --env-file .env --profile api up -d` | Start with FastAPI |
 | `docker-compose -f docker/docker-compose.yml logs -f mssql` | View SQL Server logs |
 | `docker-compose -f docker/docker-compose.yml logs -f redis-stack` | View Redis logs |
@@ -178,17 +213,29 @@ All commands assume you're running from the **project root** (not the docker fol
 ### Database Operations
 
 ```bash
-# Reinitialize database (re-run all init scripts)
+# Reinitialize sample database (ResearchAnalytics)
 docker-compose -f docker/docker-compose.yml --env-file .env --profile init up mssql-tools
 
-# Connect via Docker exec (note: container name is local-agent-mssql)
+# Reinitialize backend database (LLM_BackEnd with vectors + hybrid search)
+docker-compose -f docker/docker-compose.yml --env-file .env --profile init up mssql-backend-tools
+
+# Connect to sample database via Docker exec
 docker exec -it local-agent-mssql /opt/mssql-tools18/bin/sqlcmd \
   -S localhost -U sa -P "LocalLLM@2024!" -No -d ResearchAnalytics
 
-# Quick test query
+# Connect to backend database
+docker exec -it local-agent-mssql-backend /opt/mssql-tools18/bin/sqlcmd \
+  -S localhost -U sa -P "LocalLLM@2024!" -No -d LLM_BackEnd
+
+# Quick test query (sample)
 docker exec -it local-agent-mssql /opt/mssql-tools18/bin/sqlcmd \
   -S localhost -U sa -P "LocalLLM@2024!" -No \
   -Q "SELECT COUNT(*) FROM ResearchAnalytics.dbo.Researchers"
+
+# Quick test query (backend vectors)
+docker exec -it local-agent-mssql-backend /opt/mssql-tools18/bin/sqlcmd \
+  -S localhost -U sa -P "LocalLLM@2024!" -No \
+  -Q "SELECT COUNT(*) FROM LLM_BackEnd.vectors.document_chunks"
 
 # Test Redis connection
 docker exec -it local-agent-redis redis-cli PING
@@ -219,8 +266,10 @@ Configure these in your `.env` file at the project root:
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `MSSQL_SA_PASSWORD` | `LocalLLM@2024!` | SQL Server SA password |
-| `MSSQL_VOLUME_NAME` | `local-llm-mssql-data` | SQL Server data volume name |
+| `MSSQL_SA_PASSWORD` | `LocalLLM@2024!` | SQL Server SA password (both instances) |
+| `MSSQL_VOLUME_NAME` | `local-llm-mssql-data` | SQL Server 2022 data volume |
+| `BACKEND_VOLUME_NAME` | `local-llm-backend-data` | SQL Server 2025 data volume |
+| `BACKEND_DB_PORT` | `1434` | SQL Server 2025 port |
 | `REDIS_VOLUME_NAME` | `local-llm-redis-data` | Redis data volume name |
 | `REDIS_PORT` | `6379` | Redis server port |
 | `REDIS_INSIGHT_PORT` | `8001` | RedisInsight GUI port |
@@ -258,12 +307,13 @@ STREAMLIT_PORT=8502
 
 ### Data Persistence
 
-Volumes are configured as `external: true` for data persistence. Create them before first run:
+Volumes are automatically created by Docker. To create them manually:
 
 ```bash
 # Create volumes (only needed once)
-docker volume create local-llm-mssql-data
-docker volume create local-llm-redis-data
+docker volume create local-llm-mssql-data      # SQL Server 2022 (sample)
+docker volume create local-llm-backend-data    # SQL Server 2025 (backend)
+docker volume create local-llm-redis-data      # Redis
 
 # Or with custom names
 docker volume create my-custom-mssql-data
@@ -455,4 +505,34 @@ For detailed usage, see [docs/superset-guide.md](../docs/superset-guide.md).
 
 ---
 
-*Last Updated: December 2025*
+---
+
+## 🔍 Hybrid Search
+
+The backend database includes hybrid search capability combining vector similarity and full-text search.
+
+### How It Works
+
+Hybrid search uses Reciprocal Rank Fusion (RRF) to combine results:
+- **Semantic search**: Vector similarity using SQL Server 2025 native VECTOR type
+- **Keyword search**: Full-text search using CONTAINSTABLE
+- **RRF fusion**: Combines rankings for better accuracy
+
+### Configuration
+
+Set in `.env`:
+```bash
+RAG_HYBRID_ENABLED=true   # Enable by default
+RAG_HYBRID_ALPHA=0.5      # 0.0=keyword, 1.0=semantic
+```
+
+### Stored Procedures
+
+| Procedure | Description |
+|-----------|-------------|
+| `vectors.HybridSearchDocuments` | Combined search on document_chunks |
+| `vectors.HybridSearchSchema` | Combined search on schema_chunks |
+
+---
+
+*Last Updated: January 2026*

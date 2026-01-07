@@ -17,7 +17,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.models.database import Document
-from src.rag.document_processor import DocumentProcessor
+from src.rag.docling_processor import get_document_processor
 from src.utils.config import get_settings
 
 logger = structlog.get_logger()
@@ -154,8 +154,8 @@ class DocumentService:
                 f"File too large. Maximum size is {self._settings.max_upload_size_mb}MB"
             )
 
-        # Validate file type
-        processor = DocumentProcessor(
+        # Validate file type using Docling processor (supports more formats)
+        processor = get_document_processor(
             chunk_size=self._chunk_size,
             chunk_overlap=self._chunk_overlap,
         )
@@ -226,7 +226,8 @@ class DocumentService:
             logger.error("session_factory_not_available", document_id=document_id)
             return
 
-        processor = DocumentProcessor(
+        # Use Docling processor for comprehensive document handling
+        processor = get_document_processor(
             chunk_size=self._chunk_size,
             chunk_overlap=self._chunk_overlap,
         )

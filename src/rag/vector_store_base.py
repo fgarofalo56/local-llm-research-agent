@@ -40,6 +40,16 @@ class VectorStoreProtocol(Protocol):
         """Search for similar documents."""
         ...
 
+    async def hybrid_search(
+        self,
+        query: str,
+        top_k: int = 5,
+        source_type: str | None = None,
+        alpha: float = 0.5,
+    ) -> list[dict[str, Any]]:
+        """Hybrid search combining semantic and keyword search."""
+        ...
+
     async def delete_document(self, document_id: str) -> int:
         """Delete all chunks for a document."""
         ...
@@ -134,6 +144,49 @@ class VectorStoreBase(ABC):
             Exception: If search fails
         """
         pass
+
+    async def hybrid_search(
+        self,
+        query: str,
+        top_k: int = 5,
+        source_type: str | None = None,
+        alpha: float = 0.5,
+    ) -> list[dict[str, Any]]:
+        """
+        Hybrid search combining semantic (vector) and keyword (full-text) search.
+
+        Uses Reciprocal Rank Fusion (RRF) to combine rankings from both search types.
+        This provides better results for queries that benefit from both conceptual
+        similarity (semantic) and exact term matching (keyword).
+
+        Args:
+            query: Search query text
+            top_k: Number of results to return
+            source_type: Optional filter by source type
+            alpha: Weight for semantic search (0.0 = keyword only, 1.0 = semantic only)
+                   Default 0.5 gives equal weight to both.
+
+        Returns:
+            List of dictionaries containing:
+                - content: The text content
+                - source: Source name
+                - source_type: Type of source
+                - document_id: Document identifier
+                - chunk_index: Index of chunk within document
+                - metadata: Additional metadata
+                - score: Combined RRF score (higher is better)
+                - search_type: 'hybrid', 'semantic', or 'keyword'
+
+        Note:
+            Default implementation falls back to regular semantic search.
+            Subclasses should override to provide true hybrid search.
+        """
+        logger.debug(
+            "hybrid_search_fallback",
+            message="Using semantic search fallback - hybrid not implemented",
+            store_type=self.__class__.__name__,
+        )
+        return await self.search(query, top_k, source_type)
 
     @abstractmethod
     async def delete_document(self, document_id: str) -> int:

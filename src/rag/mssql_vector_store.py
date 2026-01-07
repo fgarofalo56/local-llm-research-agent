@@ -203,6 +203,125 @@ class MSSQLVectorStore(VectorStoreBase):
 
         return formatted
 
+    async def hybrid_search(
+        self,
+        query: str,
+        top_k: int = 5,
+        source_type: str | None = None,
+        document_id: int | None = None,
+        alpha: float = 0.5,
+    ) -> list[dict[str, Any]]:
+        """
+        Hybrid search combining semantic (vector) and keyword (full-text) search.
+
+        Uses Reciprocal Rank Fusion (RRF) to combine rankings from both search types.
+
+        Args:
+            query: Search query text
+            top_k: Number of results to return
+            source_type: Filter by source type
+            document_id: Filter by specific document
+            alpha: Weight for semantic search (0.0 = keyword only, 1.0 = semantic only)
+
+        Returns:
+            List of matching documents with combined RRF scores
+        """
+        # Generate query embedding
+        query_embedding = await self.embedder.embed(query)
+        embedding_json = self._embedding_to_json(query_embedding)
+
+        # Prepare search text for full-text search
+        search_text = self._prepare_search_text(query)
+
+        async with self._session_factory() as session:
+            try:
+                # Use the hybrid search stored procedure
+                result = await session.execute(
+                    text("""
+                        EXEC vectors.HybridSearchDocuments
+                            @query_vector = CAST(:embedding AS VECTOR(768)),
+                            @query_text = :search_text,
+                            @top_n = :top_k,
+                            @source_type = :source_type,
+                            @document_id = :document_id,
+                            @alpha = :alpha
+                    """),
+                    {
+                        "embedding": embedding_json,
+                        "search_text": search_text,
+                        "top_k": top_k,
+                        "source_type": source_type,
+                        "document_id": document_id,
+                        "alpha": alpha,
+                    },
+                )
+
+                rows = result.fetchall()
+            except Exception as e:
+                # If hybrid search fails (e.g., full-text not set up), fall back to semantic
+                logger.warning(
+                    "hybrid_search_fallback",
+                    error=str(e),
+                    message="Falling back to semantic search",
+                )
+                return await self.search(query, top_k, source_type, document_id)
+
+        # Format results
+        formatted = []
+        for row in rows:
+            metadata = {}
+            if row.metadata:
+                try:
+                    metadata = json.loads(row.metadata)
+                except (json.JSONDecodeError, TypeError):
+                    pass
+
+            formatted.append(
+                {
+                    "id": row.id,
+                    "content": row.content,
+                    "source": row.source,
+                    "source_type": row.source_type,
+                    "document_id": str(row.document_id),
+                    "chunk_index": row.chunk_index,
+                    "metadata": metadata,
+                    "score": row.rrf_score,  # RRF score (higher is better)
+                    "distance": row.distance,  # Cosine distance from vector search
+                    "search_type": row.search_type,
+                }
+            )
+
+        return formatted
+
+    def _prepare_search_text(self, query: str) -> str:
+        """
+        Prepare search text for SQL Server full-text search.
+
+        Removes special characters and formats for CONTAINSTABLE.
+
+        Args:
+            query: Raw search query
+
+        Returns:
+            Prepared search text
+        """
+        # Remove characters that break full-text search
+        special_chars = ['"', "'", '(', ')', '&', '|', '!', '~', '*']
+        result = query
+        for char in special_chars:
+            result = result.replace(char, ' ')
+
+        result = ' '.join(result.split())  # Normalize whitespace
+
+        if not result:
+            return '*'
+
+        # Wrap in quotes for phrase search if multiple words
+        if ' ' in result:
+            result = f'"{result}"'
+
+        return result
+
     async def search_schema(
         self,
         query: str,

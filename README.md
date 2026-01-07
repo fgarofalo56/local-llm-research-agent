@@ -29,6 +29,9 @@
 | Feature | Description |
 |---------|-------------|
 | **React Frontend** | Modern UI with React 19 + Vite + TypeScript |
+| **Chat Toolbar** | Quick toggles for Thinking, Files, MCP Servers, Web Search |
+| **Model Switcher** | Switch providers (Ollama/Foundry) and models on-the-fly |
+| **Agent Status Indicator** | Live animated status with real-time tool call display |
 | **Streamlit Web UI** | User-friendly web interface |
 | **CLI Interface** | Command-line chat for development |
 | **Dark/Light Theme** | System-aware theming with CSS variables |
@@ -49,11 +52,26 @@
 
 | Feature | Description |
 |---------|-------------|
-| **Document Processing** | PDF/DOCX parsing with local processing |
+| **Docling Document Processing** | Advanced parsing for 14+ document types (PDF, DOCX, PPTX, XLSX, HTML, Markdown, Images) |
 | **Ollama Embeddings** | Local document embeddings (nomic-embed-text, 768 dims) |
+| **Hybrid Search** | Combines semantic (vector) + keyword (full-text) search with RRF |
 | **MSSQL Vector Store** | SQL Server 2025 native VECTOR type (primary) |
 | **Redis Vector Store** | Fallback vector search with Redis Stack |
 | **Schema Indexing** | Database schema for context-aware queries |
+
+### 📄 Supported Document Formats
+
+| Format | Extensions | Processing |
+|--------|------------|------------|
+| **PDF** | `.pdf` | Text extraction, images, tables via Docling |
+| **Word** | `.docx`, `.doc` | Full text + formatting |
+| **PowerPoint** | `.pptx` | Slides + speaker notes |
+| **Excel** | `.xlsx`, `.xls` | Sheet data + formulas |
+| **HTML/Web** | `.html`, `.htm` | Clean text extraction |
+| **Markdown** | `.md` | Full Markdown support |
+| **Text** | `.txt` | Plain text |
+| **Images** | `.png`, `.jpg`, `.jpeg` | OCR via Docling |
+| **AsciiDoc** | `.adoc`, `.asciidoc` | Documentation format |
 
 ### 📊 Dashboards & Visualization
 
@@ -222,10 +240,17 @@ start-dev.bat
 ```
 
 This starts:
-- SQL Server (Docker) on port 1433
+- SQL Server 2022 (Docker) on port 1433 - Sample database (ResearchAnalytics)
+- SQL Server 2025 (Docker) on port 1434 - Backend with vectors + hybrid search (LLM_BackEnd)
 - Redis Stack (Docker) on ports 6379, 8001
 - FastAPI Backend on port 8000
 - React Frontend on port 5173
+
+The scripts automatically initialize both databases with:
+- Sample research data (ResearchAnalytics)
+- App schema (conversations, messages, dashboards)
+- Vector schema (native VECTOR type, full-text indexes)
+- Hybrid search stored procedures (RRF fusion)
 
 #### Option 2: Quick Database Setup (Windows)
 
@@ -411,6 +436,65 @@ CHUNK_OVERLAP=50
 RAG_TOP_K=5
 
 # =============================================================================
+# Hybrid Search Configuration
+# =============================================================================
+# Enable hybrid search by default (combines vector + full-text search)
+RAG_HYBRID_ENABLED=false
+# Weight for semantic search in hybrid mode (0.0 = keyword only, 1.0 = semantic only)
+RAG_HYBRID_ALPHA=0.5
+
+### 🔍 Hybrid Search
+
+Hybrid search combines semantic (vector) and keyword (full-text) search using Reciprocal Rank Fusion (RRF) for improved retrieval accuracy.
+
+#### How It Works
+
+```
+RRF Score = α × (1/(k + vector_rank)) + (1-α) × (1/(k + keyword_rank))
+```
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `alpha` | 0.5 | Weight for semantic search (0.0 = keyword only, 1.0 = semantic only) |
+| `k` | 60 | RRF constant (higher = smoother ranking) |
+
+#### When to Use
+
+| Search Type | Best For |
+|-------------|----------|
+| **Semantic Only** (`alpha=1.0`) | Conceptual queries, synonyms, paraphrasing |
+| **Hybrid** (`alpha=0.5`) | General queries, best overall accuracy |
+| **Keyword Only** (`alpha=0.0`) | Exact matches, specific terms, code snippets |
+
+#### API Usage
+
+```bash
+# Semantic search (default)
+curl -X POST http://localhost:8000/api/documents/search \
+  -H "Content-Type: application/json" \
+  -d '{"query": "machine learning research", "top_k": 5}'
+
+# Hybrid search (semantic + keyword)
+curl -X POST http://localhost:8000/api/documents/search \
+  -H "Content-Type: application/json" \
+  -d '{"query": "machine learning research", "top_k": 5, "hybrid": true, "alpha": 0.5}'
+```
+
+#### WebSocket Chat with Hybrid Search
+
+Enable hybrid search in WebSocket messages:
+
+```json
+{
+  "type": "message",
+  "content": "Find documents about vector embeddings",
+  "rag_enabled": true,
+  "rag_hybrid_search": true,
+  "rag_alpha": 0.5
+}
+```
+
+# =============================================================================
 # MCP Configuration
 # =============================================================================
 MCP_MSSQL_PATH=/path/to/SQL-AI-samples/MssqlMcp/Node/dist/index.js
@@ -515,7 +599,7 @@ uv run uvicorn src.api.main:app --host 0.0.0.0 --port 8000 --workers 4
 | `/api/health` | GET | Health check and service status |
 | `/api/health/metrics` | GET | System metrics (CPU, memory, etc.) |
 | `/api/documents` | GET/POST | List/upload documents |
-| `/api/documents/search` | POST | RAG vector search |
+| `/api/documents/search` | POST | RAG search (semantic or hybrid) |
 | `/api/documents/schema/index` | POST | Index database schema |
 | `/api/conversations` | GET/POST | List/create conversations |
 | `/api/conversations/{id}` | GET/PATCH/DELETE | Manage conversation |
@@ -556,6 +640,19 @@ The React frontend provides a modern web interface for interacting with the rese
 ### Features
 
 - **Real-time Chat** - WebSocket-based streaming responses from the agent
+- **Chat Toolbar** - Quick access to chat options positioned above the input area:
+  - **Thinking Toggle** - Enable/disable thinking mode for detailed reasoning
+  - **Attach Files** - Upload documents for RAG context
+  - **MCP Servers Panel** - View and select active MCP servers
+  - **Web Search Toggle** - Enable/disable web search capabilities
+- **Model/Provider Switcher** - Switch between LLM providers and models:
+  - Provider selection (Ollama, Foundry Local)
+  - Model dropdown (filters to models supporting chat + tool calling)
+  - Switching restarts the conversation for clean context
+- **Agent Status Indicator** - Live feedback while agent is working:
+  - Animated cycling messages ("Thinking...", "Analyzing...", "Processing...")
+  - Real-time tool status ("Calling list_tables...", "Querying database...")
+  - Tool-specific icons for database, search, and document operations
 - **Dark/Light Theme** - System-aware theming with manual override
 - **Conversation History** - Browse and continue past conversations
 - **MCP Server Selection** - Choose which tools the agent can use
@@ -859,6 +956,8 @@ Which researchers are assigned to multiple projects?
 | ORM | SQLAlchemy 2.0 + Alembic | Database models |
 | Vector Store (Primary) | SQL Server 2025 VECTOR | Native similarity search |
 | Vector Store (Fallback) | Redis Stack | Alternative vector search |
+| Hybrid Search | Full-Text + Vector | RRF-based result fusion |
+| Document Processing | Docling | 14+ document formats |
 | Embeddings | Ollama (nomic-embed-text) | 768-dimensional vectors |
 | BI Platform | Apache Superset | Enterprise analytics |
 | Validation | Pydantic v2 | Type-safe models |
@@ -873,11 +972,13 @@ local-llm-research-agent/
 │   │   ├── models/     # SQLAlchemy ORM models
 │   │   └── routes/     # API endpoints
 │   ├── rag/            # 🧠 RAG pipeline
-│   │   ├── embedder.py           # Ollama embeddings
-│   │   ├── mssql_vector_store.py # SQL Server 2025 vectors (primary)
-│   │   ├── redis_vector_store.py # Redis vectors (fallback)
-│   │   ├── document_processor.py # PDF/DOCX parsing
-│   │   └── schema_indexer.py     # DB schema indexing
+│   │   ├── embedder.py             # Ollama embeddings
+│   │   ├── mssql_vector_store.py   # SQL Server 2025 vectors + hybrid search (primary)
+│   │   ├── redis_vector_store.py   # Redis vectors + hybrid search (fallback)
+│   │   ├── docling_processor.py    # Docling document processing (14+ formats)
+│   │   ├── document_processor.py   # Legacy PDF/DOCX parsing
+│   │   ├── vector_store_base.py    # Base class for vector stores
+│   │   └── schema_indexer.py       # DB schema indexing
 │   ├── providers/      # 🦙 LLM provider abstraction
 │   ├── mcp/            # 🔌 MCP client and config
 │   ├── cli/            # ⌨️ Command-line interface
@@ -892,6 +993,10 @@ local-llm-research-agent/
 │   ├── Dockerfile.api
 │   ├── init/           # Sample database init scripts
 │   └── init-backend/   # Backend database init scripts (SQL Server 2025)
+│       ├── 01-create-llm-backend.sql    # Database + schemas
+│       ├── 02-create-app-schema.sql     # Conversations, messages, dashboards
+│       ├── 03-create-vectors-schema.sql # Native VECTOR tables
+│       └── 04-create-hybrid-search.sql  # Full-text indexes + RRF procedures
 ├── tests/              # 🧪 Test suite
 ├── docs/               # 📚 Documentation
 └── examples/           # 💡 Usage examples
@@ -989,4 +1094,4 @@ MIT License - see [LICENSE](LICENSE) file for details.
 
 ---
 
-*Last Updated: December 2025*
+*Last Updated: January 2026*

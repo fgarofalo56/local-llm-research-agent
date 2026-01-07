@@ -210,6 +210,201 @@ class RedisVectorStore(VectorStoreBase):
 
         return formatted
 
+    async def hybrid_search(
+        self,
+        query: str,
+        top_k: int = 5,
+        source_type: str | None = None,
+        alpha: float = 0.5,
+    ) -> list[dict[str, Any]]:
+        """
+        Hybrid search combining semantic (vector) and keyword (full-text) search.
+
+        Uses Reciprocal Rank Fusion (RRF) to combine rankings from both search types.
+
+        Args:
+            query: Search query text
+            top_k: Number of results to return
+            source_type: Filter by source type
+            alpha: Weight for semantic search (0.0 = keyword only, 1.0 = semantic only)
+
+        Returns:
+            List of matching documents with combined RRF scores
+        """
+        # RRF constant
+        rrf_k = 60
+
+        # If alpha is 1.0, use pure semantic search
+        if alpha >= 1.0:
+            results = await self.search(query, top_k, source_type)
+            for r in results:
+                r["search_type"] = "semantic"
+            return results
+
+        # Generate query embedding
+        query_embedding = await self.embedder.embed(query)
+        query_bytes = np.array(query_embedding, dtype=np.float32).tobytes()
+
+        # Get more results than needed for RRF fusion
+        fetch_count = top_k * 3
+
+        # Build filter for source type
+        filter_expr = None
+        if source_type:
+            filter_expr = f"@source_type:{{{source_type}}}"
+
+        # --- Vector Search ---
+        vector_query = VectorQuery(
+            vector=query_bytes,
+            vector_field_name="embedding",
+            return_fields=[
+                "content",
+                "source",
+                "source_type",
+                "document_id",
+                "chunk_index",
+                "metadata",
+            ],
+            num_results=fetch_count,
+            filter_expression=filter_expr,
+        )
+
+        vector_results = await self._index.query(vector_query)
+
+        # Assign vector ranks (lower distance = better = rank 1)
+        vector_ranks = {}
+        for rank, result in enumerate(vector_results, 1):
+            doc_id = result.get("id", f"{result.get('document_id')}:{result.get('chunk_index')}")
+            vector_ranks[doc_id] = {
+                "rank": rank,
+                "data": result,
+                "distance": result.get("vector_distance", 0),
+            }
+
+        # --- Full-Text Search ---
+        keyword_ranks = {}
+        if alpha < 1.0:
+            try:
+                # Escape special characters for RediSearch
+                escaped_query = self._escape_search_query(query)
+
+                # Build full-text search query
+                from redis.commands.search.query import Query
+
+                ft_query_str = f"@content:{escaped_query}"
+                if source_type:
+                    ft_query_str = f"@source_type:{{{source_type}}} {ft_query_str}"
+
+                ft_query = (
+                    Query(ft_query_str)
+                    .return_fields("content", "source", "source_type", "document_id", "chunk_index", "metadata")
+                    .paging(0, fetch_count)
+                )
+
+                ft_results = await self.redis.ft(self.INDEX_NAME).search(ft_query)
+
+                for rank, doc in enumerate(ft_results.docs, 1):
+                    doc_id = doc.id.replace(f"{self.PREFIX}:", "")
+                    keyword_ranks[doc_id] = {
+                        "rank": rank,
+                        "data": {
+                            "content": getattr(doc, "content", ""),
+                            "source": getattr(doc, "source", ""),
+                            "source_type": getattr(doc, "source_type", ""),
+                            "document_id": getattr(doc, "document_id", ""),
+                            "chunk_index": getattr(doc, "chunk_index", "0"),
+                            "metadata": getattr(doc, "metadata", "{}"),
+                        },
+                    }
+            except Exception as e:
+                logger.warning(
+                    "redis_fulltext_search_failed",
+                    error=str(e),
+                    message="Falling back to vector-only search",
+                )
+                # If full-text fails, use pure semantic
+                results = await self.search(query, top_k, source_type)
+                for r in results:
+                    r["search_type"] = "semantic"
+                return results
+
+        # --- RRF Fusion ---
+        all_doc_ids = set(vector_ranks.keys()) | set(keyword_ranks.keys())
+
+        combined_scores = []
+        for doc_id in all_doc_ids:
+            vector_score = 0.0
+            keyword_score = 0.0
+            data = None
+
+            if doc_id in vector_ranks:
+                vector_score = 1.0 / (rrf_k + vector_ranks[doc_id]["rank"])
+                data = vector_ranks[doc_id]["data"]
+
+            if doc_id in keyword_ranks:
+                keyword_score = 1.0 / (rrf_k + keyword_ranks[doc_id]["rank"])
+                if data is None:
+                    data = keyword_ranks[doc_id]["data"]
+
+            rrf_score = alpha * vector_score + (1 - alpha) * keyword_score
+
+            combined_scores.append({
+                "doc_id": doc_id,
+                "rrf_score": rrf_score,
+                "data": data,
+                "distance": vector_ranks.get(doc_id, {}).get("distance", 0),
+            })
+
+        # Sort by RRF score (higher is better)
+        combined_scores.sort(key=lambda x: x["rrf_score"], reverse=True)
+
+        # Format top results
+        formatted = []
+        for item in combined_scores[:top_k]:
+            data = item["data"]
+            metadata = {}
+            try:
+                metadata = json.loads(data.get("metadata", "{}"))
+            except (json.JSONDecodeError, TypeError):
+                pass
+
+            formatted.append({
+                "content": data.get("content"),
+                "source": data.get("source"),
+                "source_type": data.get("source_type"),
+                "document_id": data.get("document_id"),
+                "chunk_index": int(data.get("chunk_index", 0)),
+                "metadata": metadata,
+                "score": item["rrf_score"],
+                "distance": item["distance"],
+                "search_type": "hybrid",
+            })
+
+        return formatted
+
+    def _escape_search_query(self, query: str) -> str:
+        """
+        Escape special characters for RediSearch full-text query.
+
+        Args:
+            query: Raw search query
+
+        Returns:
+            Escaped query safe for RediSearch
+        """
+        # Characters that need escaping in RediSearch
+        special_chars = ['@', '!', '{', '}', '(', ')', '|', '-', '=', '>', '[', ']', '"', "'", '~', '*', ':', '\\', '/']
+        result = query
+        for char in special_chars:
+            result = result.replace(char, f'\\{char}')
+
+        # Handle empty query
+        result = result.strip()
+        if not result:
+            result = '*'
+
+        return result
+
     async def delete_document(self, document_id: str) -> int:
         """
         Delete all chunks for a document.

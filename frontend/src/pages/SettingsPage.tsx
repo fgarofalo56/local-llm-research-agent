@@ -23,6 +23,8 @@ import {
   Play,
   Palette,
   ChevronRight,
+  Wrench,
+  AlertTriangle,
 } from 'lucide-react';
 import type { HealthStatus } from '@/types';
 
@@ -85,6 +87,8 @@ interface ModelInfo {
   family: string | null;
   parameter_size: string | null;
   quantization_level: string | null;
+  supports_tools: boolean;
+  tool_warning: string | null;
 }
 
 interface ProviderModelsResponse {
@@ -311,7 +315,7 @@ function ProviderSelector({
   );
 }
 
-// Model selector dropdown
+// Model selector dropdown with tool support indicators
 function ModelSelector({
   models,
   selectedModel,
@@ -319,6 +323,7 @@ function ModelSelector({
   isLoading,
   error,
   onRefresh,
+  showOnlyToolCapable = false,
 }: {
   models: ModelInfo[];
   selectedModel: string;
@@ -326,17 +331,42 @@ function ModelSelector({
   isLoading: boolean;
   error: string | null;
   onRefresh: () => void;
+  showOnlyToolCapable?: boolean;
 }) {
   const [isOpen, setIsOpen] = useState(false);
+  const [filterToolCapable, setFilterToolCapable] = useState(showOnlyToolCapable);
+
+  // Filter models based on tool capability if filter is enabled
+  const displayModels = filterToolCapable
+    ? models.filter(m => m.supports_tools)
+    : models;
+
   const selected = models.find((m) => m.name === selectedModel);
+  const toolCapableCount = models.filter(m => m.supports_tools).length;
 
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
         <label className="text-sm font-medium">Model</label>
-        <Button variant="ghost" size="sm" onClick={onRefresh} disabled={isLoading}>
-          <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-        </Button>
+        <div className="flex items-center gap-2">
+          {models.length > 0 && (
+            <button
+              onClick={() => setFilterToolCapable(!filterToolCapable)}
+              className={`flex items-center gap-1 rounded px-2 py-1 text-xs transition-colors ${
+                filterToolCapable
+                  ? 'bg-green-500/20 text-green-600 dark:text-green-400'
+                  : 'bg-muted text-muted-foreground hover:bg-muted/80'
+              }`}
+              title={filterToolCapable ? 'Showing only tool-capable models' : 'Show only tool-capable models'}
+            >
+              <Wrench className="h-3 w-3" />
+              {toolCapableCount}/{models.length}
+            </button>
+          )}
+          <Button variant="ghost" size="sm" onClick={onRefresh} disabled={isLoading}>
+            <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+          </Button>
+        </div>
       </div>
       <div className="relative">
         <button
@@ -344,7 +374,7 @@ function ModelSelector({
           disabled={isLoading || !!error}
           className="flex w-full items-center justify-between rounded-lg border bg-background px-4 py-3 text-left hover:bg-muted disabled:opacity-50"
         >
-          <div>
+          <div className="flex-1">
             {isLoading ? (
               <span className="flex items-center gap-2">
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -356,11 +386,26 @@ function ModelSelector({
                 {error.slice(0, 50)}
               </span>
             ) : selected ? (
-              <div>
-                <p className="font-medium">{selected.name}</p>
-                {selected.size && (
-                  <p className="text-sm text-muted-foreground">{selected.size}</p>
-                )}
+              <div className="flex items-center gap-2">
+                <div className="flex-1">
+                  <div className="flex items-center gap-2">
+                    <p className="font-medium">{selected.name}</p>
+                    {selected.supports_tools ? (
+                      <span className="flex items-center gap-1 rounded bg-green-500/20 px-1.5 py-0.5 text-xs text-green-600 dark:text-green-400">
+                        <Wrench className="h-3 w-3" />
+                        Tools
+                      </span>
+                    ) : (
+                      <span className="flex items-center gap-1 rounded bg-yellow-500/20 px-1.5 py-0.5 text-xs text-yellow-600 dark:text-yellow-400" title={selected.tool_warning || 'Limited tool support'}>
+                        <AlertTriangle className="h-3 w-3" />
+                        No Tools
+                      </span>
+                    )}
+                  </div>
+                  {selected.size && (
+                    <p className="text-sm text-muted-foreground">{selected.size}</p>
+                  )}
+                </div>
               </div>
             ) : (
               <span className="text-muted-foreground">Select a model</span>
@@ -369,9 +414,9 @@ function ModelSelector({
           <ChevronDown className={`h-5 w-5 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
         </button>
 
-        {isOpen && models.length > 0 && (
+        {isOpen && displayModels.length > 0 && (
           <div className="absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-lg border bg-popover shadow-lg">
-            {models.map((model) => (
+            {displayModels.map((model) => (
               <button
                 key={model.name}
                 onClick={() => {
@@ -381,9 +426,21 @@ function ModelSelector({
                 className={`flex w-full items-center justify-between px-4 py-2 text-left hover:bg-muted ${
                   model.name === selectedModel ? 'bg-muted' : ''
                 }`}
+                title={model.tool_warning || undefined}
               >
-                <div>
-                  <p className="font-medium">{model.name}</p>
+                <div className="flex-1">
+                  <div className="flex items-center gap-2">
+                    <p className="font-medium">{model.name}</p>
+                    {model.supports_tools ? (
+                      <span title="Supports MCP tools">
+                        <Wrench className="h-3 w-3 text-green-500" />
+                      </span>
+                    ) : (
+                      <span title={model.tool_warning || 'Limited tool support'}>
+                        <AlertTriangle className="h-3 w-3 text-yellow-500" />
+                      </span>
+                    )}
+                  </div>
                   <p className="text-sm text-muted-foreground">
                     {[model.size, model.family, model.parameter_size]
                       .filter(Boolean)
@@ -395,7 +452,27 @@ function ModelSelector({
             ))}
           </div>
         )}
+
+        {isOpen && displayModels.length === 0 && filterToolCapable && (
+          <div className="absolute z-50 mt-1 w-full rounded-lg border bg-popover p-4 text-center text-sm text-muted-foreground shadow-lg">
+            No tool-capable models available.
+            <button
+              onClick={() => setFilterToolCapable(false)}
+              className="mt-2 block w-full text-primary hover:underline"
+            >
+              Show all models
+            </button>
+          </div>
+        )}
       </div>
+
+      {/* Show warning if selected model doesn't support tools */}
+      {selected && !selected.supports_tools && selected.tool_warning && (
+        <div className="flex items-start gap-2 rounded-lg bg-yellow-500/10 p-3 text-sm text-yellow-700 dark:text-yellow-400">
+          <AlertTriangle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+          <p>{selected.tool_warning}</p>
+        </div>
+      )}
     </div>
   );
 }
@@ -466,19 +543,96 @@ function ConnectionTestButton({
   );
 }
 
-// Foundry start button component
-interface FoundryStartResponse {
+// Service start response interfaces
+interface ServiceStartResponse {
   success: boolean;
   message: string;
   endpoint: string | null;
-  model: string | null;
   error: string | null;
+  is_docker: boolean;
 }
 
-function StartFoundryButton({ model }: { model: string | null }) {
+interface FoundryStartResponse extends ServiceStartResponse {
+  model: string | null;
+}
+
+// Start Ollama button component
+function StartOllamaButton({ onSuccess }: { onSuccess?: () => void }) {
+  const startMutation = useMutation({
+    mutationFn: () =>
+      api.post<ServiceStartResponse>('/settings/providers/ollama/start', {}),
+    onSuccess: (data) => {
+      if (data.success && onSuccess) {
+        onSuccess();
+      }
+    },
+  });
+
+  const handleStart = () => {
+    startMutation.mutate();
+  };
+
+  return (
+    <div className="space-y-2">
+      <Button
+        onClick={handleStart}
+        disabled={startMutation.isPending}
+        variant="outline"
+        className="w-full"
+      >
+        {startMutation.isPending ? (
+          <>
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            Starting Ollama...
+          </>
+        ) : (
+          <>
+            <Play className="mr-2 h-4 w-4" />
+            Start Ollama
+          </>
+        )}
+      </Button>
+
+      {startMutation.data && (
+        <div
+          className={`rounded-lg p-3 ${
+            startMutation.data.success
+              ? 'bg-green-500/10 text-green-700 dark:text-green-400'
+              : startMutation.data.is_docker
+                ? 'bg-blue-500/10 text-blue-700 dark:text-blue-400'
+                : 'bg-yellow-500/10 text-yellow-700 dark:text-yellow-400'
+          }`}
+        >
+          <div className="flex items-center gap-2">
+            {startMutation.data.success ? (
+              <Check className="h-4 w-4" />
+            ) : (
+              <AlertCircle className="h-4 w-4" />
+            )}
+            <span className="font-medium">{startMutation.data.message}</span>
+          </div>
+          {startMutation.data.endpoint && (
+            <p className="mt-1 text-sm">Endpoint: {startMutation.data.endpoint}</p>
+          )}
+          {startMutation.data.error && (
+            <p className="mt-1 text-sm whitespace-pre-wrap">{startMutation.data.error}</p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Foundry start button component
+function StartFoundryButton({ model, onSuccess }: { model: string | null; onSuccess?: () => void }) {
   const startMutation = useMutation({
     mutationFn: (data: { model: string | null }) =>
       api.post<FoundryStartResponse>('/settings/providers/foundry/start', data),
+    onSuccess: (data) => {
+      if (data.success && onSuccess) {
+        onSuccess();
+      }
+    },
   });
 
   const handleStart = () => {
@@ -511,7 +665,9 @@ function StartFoundryButton({ model }: { model: string | null }) {
           className={`rounded-lg p-3 ${
             startMutation.data.success
               ? 'bg-green-500/10 text-green-700 dark:text-green-400'
-              : 'bg-yellow-500/10 text-yellow-700 dark:text-yellow-400'
+              : startMutation.data.is_docker
+                ? 'bg-blue-500/10 text-blue-700 dark:text-blue-400'
+                : 'bg-yellow-500/10 text-yellow-700 dark:text-yellow-400'
           }`}
         >
           <div className="flex items-center gap-2">
@@ -751,9 +907,14 @@ export function SettingsPage() {
             model={providerConfig.model || null}
           />
 
+          {/* Show Start Ollama button if Ollama is selected but not available */}
+          {providerConfig.provider === 'ollama' && !providers.find(p => p.id === 'ollama')?.available && (
+            <StartOllamaButton onSuccess={() => refetchProviders()} />
+          )}
+
           {/* Show Start Foundry button if Foundry is selected but not available */}
           {providerConfig.provider === 'foundry_local' && !providers.find(p => p.id === 'foundry_local')?.available && (
-            <StartFoundryButton model={providerConfig.model || null} />
+            <StartFoundryButton model={providerConfig.model || null} onSuccess={() => refetchProviders()} />
           )}
         </CardContent>
       </Card>
@@ -818,9 +979,14 @@ export function SettingsPage() {
                 model={secondaryConfig.model || null}
               />
 
+              {/* Show Start Ollama button if Ollama is selected but not available */}
+              {secondaryConfig.provider === 'ollama' && !providers.find(p => p.id === 'ollama')?.available && (
+                <StartOllamaButton onSuccess={() => refetchProviders()} />
+              )}
+
               {/* Show Start Foundry button if Foundry is selected but not available */}
               {secondaryConfig.provider === 'foundry_local' && !providers.find(p => p.id === 'foundry_local')?.available && (
-                <StartFoundryButton model={secondaryConfig.model || null} />
+                <StartFoundryButton model={secondaryConfig.model || null} onSuccess={() => refetchProviders()} />
               )}
             </>
           )}

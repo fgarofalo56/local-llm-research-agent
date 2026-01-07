@@ -6,6 +6,16 @@ import { AuthProvider } from '@/contexts/AuthContext';
 import { Layout } from '@/components/layout/Layout';
 import { GlobalUploadProgress } from '@/components/upload';
 import { LoadingPage } from '@/components/ui/LoadingPage';
+import { useDocuments } from '@/hooks/useDocuments';
+
+// Component to enable global document polling for upload status sync
+function DocumentPollingProvider() {
+  // This hook polls for documents when there are processing uploads
+  // and syncs the upload status with document processing status
+  useDocuments();
+  return null;
+}
+
 
 // Lazy load page components for code splitting
 const ChatPage = lazy(() => import('@/pages/ChatPage').then(m => ({ default: m.ChatPage })));
@@ -64,7 +74,8 @@ function App() {
                 />
               </Routes>
             </Suspense>
-            {/* Global upload progress - visible across all pages */}
+            {/* Global upload progress and document polling */}
+            <DocumentPollingProvider />
             <GlobalUploadProgress />
           </BrowserRouter>
         </AuthProvider>

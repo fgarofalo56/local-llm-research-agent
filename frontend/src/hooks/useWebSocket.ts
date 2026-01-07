@@ -3,12 +3,14 @@ import { useChatStore } from '@/stores/chatStore';
 import type { Message } from '@/types';
 
 interface WebSocketMessage {
-  type: 'chunk' | 'complete' | 'error' | 'tool_call';
+  type: 'chunk' | 'complete' | 'error' | 'tool_call' | 'warning';
   content?: string;
   message?: Message;
   tool_name?: string;
   tool_args?: Record<string, unknown>;
   error?: string;
+  warning?: string;
+  warning_type?: string;
 }
 
 // Queue for messages waiting to be sent
@@ -22,6 +24,7 @@ export function useAgentWebSocket(conversationId: number | null) {
   const wsRef = useRef<WebSocket | null>(null);
   const pendingMessagesRef = useRef<PendingMessage[]>([]);
   const [isConnected, setIsConnected] = useState(false);
+  const [lastWarning, setLastWarning] = useState<{ message: string; type: string } | null>(null);
   const {
     appendStreamingContent,
     clearStreamingContent,
@@ -30,6 +33,11 @@ export function useAgentWebSocket(conversationId: number | null) {
     selectedMCPServers,
     selectedProvider,
     selectedModel,
+    setToolCall,
+    setAgentActive,
+    clearToolCall,
+    toolbarSettings,
+    ragSettings,
   } = useChatStore();
 
   // Process pending messages when connection opens
@@ -45,11 +53,15 @@ export function useAgentWebSocket(conversationId: number | null) {
           mcp_servers: selectedMCPServers,
           provider: selectedProvider,
           model: selectedModel,
+          thinking_enabled: toolbarSettings.thinkingEnabled,
+          rag_enabled: ragSettings.enabled,
+          rag_top_k: ragSettings.topK,
+          rag_hybrid_search: ragSettings.hybridSearch,
         }));
         pending.resolve();
       }
     }
-  }, [clearStreamingContent, setIsStreaming, selectedMCPServers, selectedProvider, selectedModel]);
+  }, [clearStreamingContent, setIsStreaming, selectedMCPServers, selectedProvider, selectedModel, toolbarSettings, ragSettings]);
 
   const connect = useCallback(() => {
     if (!conversationId) return;
@@ -76,6 +88,8 @@ export function useAgentWebSocket(conversationId: number | null) {
 
       switch (data.type) {
         case 'chunk':
+          // Clear tool call when we start getting response chunks
+          clearToolCall();
           appendStreamingContent(data.content || '');
           break;
         case 'complete':
@@ -84,15 +98,28 @@ export function useAgentWebSocket(conversationId: number | null) {
           }
           clearStreamingContent();
           setIsStreaming(false);
+          setAgentActive(false);
           break;
         case 'tool_call':
-          // Could show tool call indicator in UI
+          // Update agent status with tool call info
+          if (data.tool_name) {
+            setToolCall(data.tool_name, data.tool_args || {});
+          }
           console.log('Tool call:', data.tool_name, data.tool_args);
+          break;
+        case 'warning':
+          // Tool calling or other warnings from backend
+          console.warn('Agent warning:', data.warning);
+          setLastWarning({
+            message: data.warning || 'Unknown warning',
+            type: data.warning_type || 'unknown',
+          });
           break;
         case 'error':
           console.error('Agent error:', data.error);
           clearStreamingContent();
           setIsStreaming(false);
+          setAgentActive(false);
           break;
       }
     };
@@ -107,7 +134,7 @@ export function useAgentWebSocket(conversationId: number | null) {
       console.log('WebSocket closed');
       setIsConnected(false);
     };
-  }, [conversationId, appendStreamingContent, clearStreamingContent, setIsStreaming, addMessage, processPendingMessages]);
+  }, [conversationId, appendStreamingContent, clearStreamingContent, setIsStreaming, addMessage, processPendingMessages, setToolCall, clearToolCall, setAgentActive]);
 
   const sendMessage = useCallback((content: string): Promise<void> => {
     return new Promise((resolve, reject) => {
@@ -115,12 +142,17 @@ export function useAgentWebSocket(conversationId: number | null) {
       if (wsRef.current?.readyState === WebSocket.OPEN) {
         clearStreamingContent();
         setIsStreaming(true);
+        setAgentActive(true);  // Start agent status indicator
         wsRef.current.send(JSON.stringify({
           type: 'message',
           content,
           mcp_servers: selectedMCPServers,
           provider: selectedProvider,
           model: selectedModel,
+          thinking_enabled: toolbarSettings.thinkingEnabled,
+          rag_enabled: ragSettings.enabled,
+          rag_top_k: ragSettings.topK,
+          rag_hybrid_search: ragSettings.hybridSearch,
         }));
         resolve();
       } else {
@@ -145,7 +177,7 @@ export function useAgentWebSocket(conversationId: number | null) {
         }, 10000);
       }
     });
-  }, [clearStreamingContent, setIsStreaming, selectedMCPServers, selectedProvider, selectedModel]);
+  }, [clearStreamingContent, setIsStreaming, setAgentActive, selectedMCPServers, selectedProvider, selectedModel, toolbarSettings, ragSettings]);
 
   const disconnect = useCallback(() => {
     if (wsRef.current) {
@@ -158,10 +190,14 @@ export function useAgentWebSocket(conversationId: number | null) {
     pendingMessagesRef.current = [];
   }, []);
 
+  const clearWarning = useCallback(() => {
+    setLastWarning(null);
+  }, []);
+
   useEffect(() => {
     connect();
     return () => disconnect();
   }, [connect, disconnect]);
 
-  return { sendMessage, disconnect, reconnect: connect, isConnected };
+  return { sendMessage, disconnect, reconnect: connect, isConnected, lastWarning, clearWarning };
 }

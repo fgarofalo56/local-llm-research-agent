@@ -24,6 +24,22 @@ interface RAGSettings {
   topK: number;
 }
 
+// Chat toolbar settings
+interface ToolbarSettings {
+  thinkingEnabled: boolean;
+  webSearchEnabled: boolean;
+  showMCPPanel: boolean;
+}
+
+// Agent status tracking
+interface AgentStatus {
+  isActive: boolean;
+  currentPhase: string;  // 'thinking', 'tool_calling', 'generating', 'idle'
+  toolName: string | null;
+  toolArgs: Record<string, unknown> | null;
+  animatedMessage: string;
+}
+
 // Provider config from localStorage (used by loadSavedSettings)
 
 interface ChatState {
@@ -47,6 +63,12 @@ interface ChatState {
 
   // RAG settings
   ragSettings: RAGSettings;
+
+  // Toolbar settings
+  toolbarSettings: ToolbarSettings;
+
+  // Agent status for live indicators
+  agentStatus: AgentStatus;
 
   // Message ratings (message_id -> rating)
   messageRatings: Record<number, 'up' | 'down' | null>;
@@ -78,6 +100,18 @@ interface ChatState {
   toggleRAG: () => void;
   toggleHybridSearch: () => void;
 
+  // Actions - Toolbar
+  setToolbarSettings: (settings: Partial<ToolbarSettings>) => void;
+  toggleThinking: () => void;
+  toggleWebSearch: () => void;
+  toggleMCPPanel: () => void;
+
+  // Actions - Agent Status
+  setAgentStatus: (status: Partial<AgentStatus>) => void;
+  setToolCall: (toolName: string, toolArgs: Record<string, unknown>) => void;
+  setAgentActive: (isActive: boolean) => void;
+  clearToolCall: () => void;
+
   // Actions - Ratings
   rateMessage: (messageId: number, rating: 'up' | 'down' | null) => void;
 
@@ -105,6 +139,20 @@ const DEFAULT_RAG_SETTINGS: RAGSettings = {
   topK: 5,
 };
 
+const DEFAULT_TOOLBAR_SETTINGS: ToolbarSettings = {
+  thinkingEnabled: false,
+  webSearchEnabled: false,
+  showMCPPanel: false,
+};
+
+const DEFAULT_AGENT_STATUS: AgentStatus = {
+  isActive: false,
+  currentPhase: 'idle',
+  toolName: null,
+  toolArgs: null,
+  animatedMessage: '',
+};
+
 const DEFAULT_SYSTEM_PROMPT = `You are a helpful research assistant with access to SQL Server databases.
 You can query data, analyze results, and provide insights.
 Always explain your reasoning and the SQL queries you generate.`;
@@ -124,6 +172,8 @@ export const useChatStore = create<ChatState>()(
       systemPrompt: DEFAULT_SYSTEM_PROMPT,
       tokenCount: DEFAULT_TOKEN_COUNT,
       ragSettings: DEFAULT_RAG_SETTINGS,
+      toolbarSettings: DEFAULT_TOOLBAR_SETTINGS,
+      agentStatus: DEFAULT_AGENT_STATUS,
       messageRatings: {},
 
       // Conversation actions
@@ -178,6 +228,58 @@ export const useChatStore = create<ChatState>()(
           ragSettings: { ...state.ragSettings, hybridSearch: !state.ragSettings.hybridSearch },
         })),
 
+      // Toolbar actions
+      setToolbarSettings: (settings) =>
+        set((state) => ({
+          toolbarSettings: { ...state.toolbarSettings, ...settings },
+        })),
+      toggleThinking: () =>
+        set((state) => ({
+          toolbarSettings: { ...state.toolbarSettings, thinkingEnabled: !state.toolbarSettings.thinkingEnabled },
+        })),
+      toggleWebSearch: () =>
+        set((state) => ({
+          toolbarSettings: { ...state.toolbarSettings, webSearchEnabled: !state.toolbarSettings.webSearchEnabled },
+        })),
+      toggleMCPPanel: () =>
+        set((state) => ({
+          toolbarSettings: { ...state.toolbarSettings, showMCPPanel: !state.toolbarSettings.showMCPPanel },
+        })),
+
+      // Agent Status actions
+      setAgentStatus: (status) =>
+        set((state) => ({
+          agentStatus: { ...state.agentStatus, ...status },
+        })),
+      setToolCall: (toolName, toolArgs) =>
+        set((state) => ({
+          agentStatus: {
+            ...state.agentStatus,
+            currentPhase: 'tool_calling',
+            toolName,
+            toolArgs,
+          },
+        })),
+      setAgentActive: (isActive) =>
+        set((state) => ({
+          agentStatus: {
+            ...state.agentStatus,
+            isActive,
+            currentPhase: isActive ? 'thinking' : 'idle',
+            toolName: isActive ? state.agentStatus.toolName : null,
+            toolArgs: isActive ? state.agentStatus.toolArgs : null,
+          },
+        })),
+      clearToolCall: () =>
+        set((state) => ({
+          agentStatus: {
+            ...state.agentStatus,
+            currentPhase: 'generating',
+            toolName: null,
+            toolArgs: null,
+          },
+        })),
+
       // Rating actions
       rateMessage: (messageId, rating) =>
         set((state) => ({
@@ -214,7 +316,33 @@ export const useChatStore = create<ChatState>()(
         modelParameters: state.modelParameters,
         systemPrompt: state.systemPrompt,
         ragSettings: state.ragSettings,
+        toolbarSettings: state.toolbarSettings,
       }),
+      // Custom merge function to handle partial/corrupted localStorage data
+      merge: (persistedState, currentState) => {
+        const persisted = persistedState as Partial<ChatState> | undefined;
+        return {
+          ...currentState,
+          // Primitives - use persisted or current
+          selectedMCPServers: persisted?.selectedMCPServers ?? currentState.selectedMCPServers,
+          selectedProvider: persisted?.selectedProvider ?? currentState.selectedProvider,
+          selectedModel: persisted?.selectedModel ?? currentState.selectedModel,
+          systemPrompt: persisted?.systemPrompt ?? currentState.systemPrompt,
+          // Nested objects - deep merge with defaults to handle partial objects
+          modelParameters: {
+            ...DEFAULT_MODEL_PARAMS,
+            ...(persisted?.modelParameters ?? {}),
+          },
+          ragSettings: {
+            ...DEFAULT_RAG_SETTINGS,
+            ...(persisted?.ragSettings ?? {}),
+          },
+          toolbarSettings: {
+            ...DEFAULT_TOOLBAR_SETTINGS,
+            ...(persisted?.toolbarSettings ?? {}),
+          },
+        };
+      },
     }
   )
 );

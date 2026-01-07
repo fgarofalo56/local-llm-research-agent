@@ -7,6 +7,7 @@ import { User, Bot, ThumbsUp, ThumbsDown, Copy, Check, FileText, ExternalLink } 
 import { useChatStore } from '@/stores/chatStore';
 import { cn } from '@/lib/utils';
 import type { Message } from '@/types';
+import { AgentStatusIndicator } from './AgentStatusIndicator';
 
 // Source citation component
 function SourceCitation({ source }: { source: { name: string; url?: string; type: string } }) {
@@ -275,8 +276,11 @@ export function MessageList() {
         <MessageItem key={message.id} message={message} />
       ))}
 
+      {/* Agent Status Indicator */}
+      <AgentStatusIndicator />
+
       {/* Streaming response */}
-      {isStreaming && (
+      {isStreaming && streamingContent && (
         <div className="flex gap-3">
           <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary">
             <Bot className="h-4 w-4 text-primary-foreground" />
@@ -284,7 +288,7 @@ export function MessageList() {
           <div className="max-w-[80%] rounded-lg bg-muted px-4 py-2">
             <div className="prose prose-sm dark:prose-invert max-w-none">
               <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                {streamingContent || '...'}
+                {streamingContent}
               </ReactMarkdown>
             </div>
           </div>

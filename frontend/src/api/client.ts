@@ -176,4 +176,17 @@ export const api = {
   getDatabaseSettings: <T>() => api.get<T>('/settings/database'),
   updateDatabaseSettings: <T>(settings: unknown) => api.put<T>('/settings/database', settings),
   testDatabaseConnection: <T>(settings: unknown) => api.post<T>('/settings/database/test', settings),
+
+  // Document management
+  getDocuments: <T>() => api.get<T>('/documents'),
+  getDocument: <T>(id: number) => api.get<T>(`/documents/${id}`),
+  deleteDocument: <T>(id: number) => api.delete<T>(`/documents/${id}`),
+  reprocessDocument: <T>(id: number) => api.post<T>(`/documents/${id}/reprocess`),
+
+  // RAG search
+  searchRAG: <T>(query: string, topK?: number, hybridSearch?: boolean) =>
+    api.post<T>('/agent/search', { query, top_k: topK, hybrid_search: hybridSearch }),
+
+  // Vector store stats
+  getVectorStats: <T>() => api.get<T>('/agent/stats'),
 };

@@ -4,6 +4,7 @@
  */
 
 import { create } from 'zustand';
+import { useEffect } from 'react';
 import { api } from '@/api/client';
 import type { Document } from '@/types';
 
@@ -179,13 +180,15 @@ export const useUploadStore = create<UploadState>((set, get) => ({
     ).length;
   },
 }));
-
 // Hook to poll for document processing status updates
 export function useUploadProcessingSync(documents: Document[] | undefined) {
-  const { uploads, updateUploadStatus } = useUploadStore();
+  const uploads = useUploadStore(state => state.uploads);
+  const updateUploadStatus = useUploadStore(state => state.updateUploadStatus);
 
-  // Update upload status based on document processing status
-  if (documents) {
+  // Use useEffect to avoid infinite re-renders
+  useEffect(() => {
+    if (!documents) return;
+
     uploads.forEach(upload => {
       if (upload.status !== 'processing' || !upload.documentId) return;
 
@@ -201,5 +204,5 @@ export function useUploadProcessingSync(documents: Document[] | undefined) {
         });
       }
     });
-  }
+  }, [documents, uploads, updateUploadStatus]);
 }

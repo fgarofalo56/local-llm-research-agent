@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { MessageList } from '@/components/chat/MessageList';
 import { ChatInput } from '@/components/chat/ChatInput';
+import { ChatToolbar } from '@/components/chat/ChatToolbar';
 import { MCPServerSelector } from '@/components/chat/MCPServerSelector';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -458,8 +459,9 @@ export function ChatPage() {
         <MessageList />
       </div>
 
-      {/* Input */}
+      {/* Input with Toolbar */}
       <div className="border-t p-4">
+        <ChatToolbar />
         <ChatInput onSend={handleSendMessage} />
       </div>
     </div>

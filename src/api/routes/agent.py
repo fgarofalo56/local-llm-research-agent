@@ -43,6 +43,8 @@ class RAGSearchRequest(BaseModel):
     query: str
     top_k: int = 5
     source_type: str | None = None  # 'document', 'schema', or None for all
+    hybrid: bool = False  # Enable hybrid search (semantic + keyword)
+    alpha: float = 0.5  # Weight for semantic search (0.0 = keyword only, 1.0 = semantic only)
 
 
 class RAGSearchResponse(BaseModel):
@@ -50,6 +52,7 @@ class RAGSearchResponse(BaseModel):
 
     results: list[dict]
     query: str
+    search_type: str = "semantic"  # 'semantic', 'hybrid', or 'keyword'
 
 
 @router.post("/chat", response_model=ChatResponse)
@@ -88,6 +91,17 @@ async def rag_search(
     Search the RAG vector store.
 
     Returns relevant documents/schema based on the query.
+
+    Supports two search modes:
+    - **Semantic search** (default): Uses vector similarity for conceptual matching
+    - **Hybrid search**: Combines semantic + keyword (full-text) search using RRF
+
+    Args (in request body):
+        query: Search query text
+        top_k: Number of results to return (default: 5)
+        source_type: Filter by source type ('document', 'schema', or None for all)
+        hybrid: Enable hybrid search (default: False)
+        alpha: Weight for semantic vs keyword (0.0 = keyword only, 1.0 = semantic only)
     """
     if not vector_store:
         raise HTTPException(
@@ -96,19 +110,39 @@ async def rag_search(
         )
 
     try:
-        results = await vector_store.search(
-            query=request.query,
-            top_k=request.top_k,
-            source_type=request.source_type,
-        )
+        if request.hybrid:
+            # Use hybrid search combining semantic + keyword
+            results = await vector_store.hybrid_search(
+                query=request.query,
+                top_k=request.top_k,
+                source_type=request.source_type,
+                alpha=request.alpha,
+            )
+            search_type = "hybrid"
+            logger.info(
+                "hybrid_search_performed",
+                query_length=len(request.query),
+                top_k=request.top_k,
+                alpha=request.alpha,
+                results_count=len(results),
+            )
+        else:
+            # Use standard semantic search
+            results = await vector_store.search(
+                query=request.query,
+                top_k=request.top_k,
+                source_type=request.source_type,
+            )
+            search_type = "semantic"
 
         return RAGSearchResponse(
             results=results,
             query=request.query,
+            search_type=search_type,
         )
 
     except Exception as e:
-        logger.error("rag_search_error", error=str(e))
+        logger.error("rag_search_error", error=str(e), hybrid=request.hybrid)
         raise HTTPException(
             status_code=500,
             detail=f"Search failed: {str(e)}",
@@ -228,6 +262,12 @@ async def agent_websocket(
                 provider_type = data.get("provider")  # 'ollama' or 'foundry_local'
                 model_name = data.get("model")
 
+                # New settings for thinking and RAG
+                thinking_enabled = data.get("thinking_enabled", False)
+                rag_enabled = data.get("rag_enabled", False)
+                rag_top_k = data.get("rag_top_k", 5)
+                rag_hybrid_search = data.get("rag_hybrid_search", False)
+
                 logger.info(
                     "websocket_message_received",
                     conversation_id=conversation_id,
@@ -235,14 +275,87 @@ async def agent_websocket(
                     mcp_servers=mcp_server_ids,
                     provider=provider_type,
                     model=model_name,
+                    thinking_enabled=thinking_enabled,
+                    rag_enabled=rag_enabled,
                 )
+
+                # Initialize augmented content and RAG sources
+                augmented_content = content
+                rag_sources = []
+
+                # RAG context augmentation if enabled
+                if rag_enabled:
+                    try:
+                        vector_store = get_vector_store_optional()
+                        if vector_store:
+                            # Use hybrid search if enabled, otherwise semantic search
+                            if rag_hybrid_search:
+                                rag_alpha = data.get("rag_alpha", 0.5)
+                                rag_results = await vector_store.hybrid_search(
+                                    query=content,
+                                    top_k=rag_top_k,
+                                    alpha=rag_alpha,
+                                )
+                                search_mode = "hybrid"
+                            else:
+                                rag_results = await vector_store.search(
+                                    query=content,
+                                    top_k=rag_top_k,
+                                )
+                                search_mode = "semantic"
+
+                            if rag_results:
+                                context_parts = []
+                                for result in rag_results:
+                                    context_parts.append(result.get("content", ""))
+                                    rag_sources.append({
+                                        "document_id": result.get("document_id"),
+                                        "title": result.get("title", "Unknown"),
+                                        "score": result.get("score", 0.0),
+                                        "search_type": result.get("search_type", search_mode),
+                                    })
+                                rag_context = "\n---\n".join(context_parts)
+                                augmented_content = f"Based on the following context from relevant documents:\n\n{rag_context}\n\nUser question: {content}"
+                                logger.info(
+                                    "rag_context_added",
+                                    sources_count=len(rag_sources),
+                                    search_mode=search_mode,
+                                )
+                    except Exception as e:
+                        logger.warning("rag_search_failed", error=str(e))
+
+                # Thinking mode - switch to reasoning model if enabled
+                effective_model = model_name
+                if thinking_enabled and not model_name:
+                    effective_model = "qwq:latest"
+                    logger.info("thinking_mode_enabled", model=effective_model)
 
                 # Create agent instance with optional provider/model configuration
                 try:
                     agent = create_research_agent(
                         provider_type=provider_type,
-                        model_name=model_name,
+                        model_name=effective_model,
+                        thinking_mode=thinking_enabled,
                     )
+
+                    # Send warning if model doesn't support tool calling
+                    if agent.tool_warning:
+                        warning_msg = {
+                            "type": "warning",
+                            "warning": agent.tool_warning,
+                            "warning_type": "tool_calling_not_supported",
+                        }
+                        if connection:
+                            await connection.send_json(warning_msg)
+                        else:
+                            await websocket.send_json(warning_msg)
+                        logger.warning(
+                            "agent_tool_warning_sent",
+                            warning=agent.tool_warning,
+                            provider=provider_type,
+                            model=effective_model,
+                        )
+
                 except Exception as e:
                     logger.error("agent_creation_error", error=str(e))
                     error_msg = {
@@ -258,7 +371,7 @@ async def agent_websocket(
                 # Stream response
                 full_response = ""
                 try:
-                    async for chunk in agent.chat_stream(content):
+                    async for chunk in agent.chat_stream(augmented_content):
                         full_response += chunk
                         chunk_msg = {
                             "type": "chunk",
@@ -282,6 +395,7 @@ async def agent_websocket(
                             "role": "assistant",
                             "content": full_response,
                             "tool_calls": None,
+                            "metadata": {"sources": rag_sources} if rag_sources else None,
                             "tokens_used": token_usage.total_tokens if token_usage else None,
                             "created_at": None,
                         },

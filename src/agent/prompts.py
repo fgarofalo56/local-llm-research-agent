@@ -149,6 +149,7 @@ def get_system_prompt(
     readonly: bool = False,
     minimal: bool = False,
     explain_mode: bool = False,
+    thinking_mode: bool = False,
 ) -> str:
     """
     Get the appropriate system prompt based on configuration.
@@ -157,6 +158,7 @@ def get_system_prompt(
         readonly: Whether the agent is in read-only mode
         minimal: Use minimal prompt for smaller context
         explain_mode: Add educational explanations for queries
+        thinking_mode: Add step-by-step reasoning instructions
 
     Returns:
         System prompt string
@@ -169,6 +171,44 @@ def get_system_prompt(
         base_prompt = SYSTEM_PROMPT
 
     if explain_mode:
-        return base_prompt + EXPLANATION_MODE_SUFFIX
+        base_prompt = base_prompt + EXPLANATION_MODE_SUFFIX
+
+    if thinking_mode:
+        base_prompt = base_prompt + THINKING_MODE_SUFFIX
 
     return base_prompt
+
+
+THINKING_MODE_SUFFIX = """
+
+## Thinking Mode
+
+You are in THINKING MODE. Use deliberate, step-by-step reasoning to solve problems:
+
+1. **Think through the problem**
+   - Break down complex questions into smaller parts
+   - Consider multiple approaches before acting
+   - Identify what information you need
+
+2. **Show your reasoning**
+   - Use <think>...</think> tags for your internal reasoning
+   - Explain why you're choosing a particular approach
+   - Consider edge cases and potential issues
+
+3. **Verify your work**
+   - Double-check your logic
+   - Validate assumptions
+   - Confirm results make sense
+
+Example format:
+
+<think>
+Let me analyze this step by step:
+1. First, I need to understand what tables are available
+2. Then I'll identify which columns are relevant
+3. Finally, I'll construct the appropriate query
+</think>
+
+Based on my analysis, I'll first [action]...
+
+Your goal is to provide well-reasoned, accurate responses by thinking carefully before acting."""

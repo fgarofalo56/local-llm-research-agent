@@ -27,7 +27,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.deps import get_db, get_vector_store_optional
 from src.api.models.database import Document
-from src.rag.document_processor import DocumentProcessor
+from src.rag.docling_processor import get_document_processor
 from src.utils.config import get_settings
 
 router = APIRouter()
@@ -190,8 +190,8 @@ async def upload_document(
             detail=f"File too large. Maximum size is {settings.max_upload_size_mb}MB",
         )
 
-    # Validate file type
-    processor = DocumentProcessor(
+    # Validate file type using Docling processor (supports more formats)
+    processor = get_document_processor(
         chunk_size=settings.chunk_size,
         chunk_overlap=settings.chunk_overlap,
     )
@@ -253,7 +253,8 @@ async def process_document_task(
     # Alias for readability
     _session_factory = _backend_session_factory
 
-    processor = DocumentProcessor(
+    # Use Docling processor for comprehensive document handling
+    processor = get_document_processor(
         chunk_size=chunk_size,
         chunk_overlap=chunk_overlap,
     )

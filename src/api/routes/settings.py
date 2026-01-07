@@ -19,6 +19,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.deps import get_db
 from src.api.models.database import ThemeConfig
+from src.providers.foundry import (
+    FOUNDRY_NON_TOOL_MODELS,
+    FOUNDRY_TOOL_CAPABLE_MODELS,
+)
+from src.providers.ollama import OLLAMA_TOOL_CAPABLE_MODELS
 from src.utils.config import get_settings
 
 router = APIRouter()
@@ -234,6 +239,8 @@ class ModelInfo(BaseModel):
     family: str | None = None
     parameter_size: str | None = None
     quantization_level: str | None = None
+    supports_tools: bool = True  # Whether model supports function/tool calling
+    tool_warning: str | None = None  # Warning message if model doesn't support tools
 
 
 class ProviderModelsResponse(BaseModel):
@@ -310,6 +317,87 @@ async def list_providers():
     return providers
 
 
+def _check_ollama_tool_support(model_name: str) -> tuple[bool, str | None]:
+    """
+    Check if an Ollama model supports tool calling.
+
+    Returns:
+        Tuple of (supports_tools, warning_message)
+    """
+    model_lower = model_name.lower()
+    supports = any(model in model_lower for model in OLLAMA_TOOL_CAPABLE_MODELS)
+
+    if supports:
+        return True, None
+
+    # Provide helpful warning for common models
+    if "qwq" in model_lower:
+        return False, (
+            f"Model '{model_name}' is a reasoning model optimized for thinking, not tool calling. "
+            "Use qwen2.5 or qwen3 for MCP tools."
+        )
+    if "deepseek" in model_lower:
+        return False, (
+            f"Model '{model_name}' may not reliably support tool calling. "
+            "Use qwen2.5, llama3.1, or mistral for better tool support."
+        )
+    if "phi" in model_lower:
+        return False, (
+            f"Model '{model_name}' may not support tool calling in Ollama. "
+            "Use qwen2.5, llama3.1, or mistral for MCP tools."
+        )
+
+    return False, (
+        f"Model '{model_name}' may not support tool calling. "
+        "For MCP tools, use qwen2.5, llama3.1/3.2/3.3, or mistral."
+    )
+
+
+def _check_foundry_tool_support(model_name: str) -> tuple[bool, str | None]:
+    """
+    Check if a Foundry Local model supports tool calling.
+
+    Returns:
+        Tuple of (supports_tools, warning_message)
+    """
+    model_lower = model_name.lower()
+
+    # First check if it's explicitly a non-tool model
+    for non_tool_model in FOUNDRY_NON_TOOL_MODELS:
+        if non_tool_model.lower() in model_lower:
+            # But make sure it's not actually a tool-capable variant
+            is_tool_capable = any(
+                tool_model.lower() in model_lower
+                for tool_model in FOUNDRY_TOOL_CAPABLE_MODELS
+            )
+            if not is_tool_capable:
+                # Provide specific warnings
+                if "phi-4" in model_lower and "mini" not in model_lower:
+                    return False, (
+                        f"Model '{model_name}' does NOT support tool calling. "
+                        "Use 'phi-4-mini' instead which supports function calling."
+                    )
+                if "phi-4-multimodal" in model_lower:
+                    return False, (
+                        f"Model '{model_name}' is for vision tasks, not function calling. "
+                        "Use 'phi-4-mini' for MCP tools."
+                    )
+                return False, (
+                    f"Model '{model_name}' does not support tool calling. "
+                    "Use phi-4-mini, qwen2.5, or llama3.1 for MCP tools."
+                )
+
+    # Check if it matches a known tool-capable model
+    supports = any(model.lower() in model_lower for model in FOUNDRY_TOOL_CAPABLE_MODELS)
+    if supports:
+        return True, None
+
+    return False, (
+        f"Model '{model_name}' may not support tool calling. "
+        "For MCP tools, use phi-4-mini, qwen2.5, or llama3.1/3.2."
+    )
+
+
 @router.get("/providers/{provider_id}/models", response_model=ProviderModelsResponse)
 async def list_provider_models(provider_id: str):
     """List available models for a specific provider."""
@@ -327,14 +415,18 @@ async def list_provider_models(provider_id: str):
                 data = response.json()
 
                 for model in data.get("models", []):
+                    model_name = model.get("name", "")
+                    supports_tools, tool_warning = _check_ollama_tool_support(model_name)
                     models.append(
                         ModelInfo(
-                            name=model.get("name", ""),
+                            name=model_name,
                             size=_format_size(model.get("size", 0)),
                             modified_at=model.get("modified_at"),
                             family=model.get("details", {}).get("family"),
                             parameter_size=model.get("details", {}).get("parameter_size"),
                             quantization_level=model.get("details", {}).get("quantization_level"),
+                            supports_tools=supports_tools,
+                            tool_warning=tool_warning,
                         )
                     )
         except Exception as e:
@@ -355,10 +447,14 @@ async def list_provider_models(provider_id: str):
                 data = response.json()
 
                 for model in data.get("data", []):
+                    model_name = model.get("id", "")
+                    supports_tools, tool_warning = _check_foundry_tool_support(model_name)
                     models.append(
                         ModelInfo(
-                            name=model.get("id", ""),
+                            name=model_name,
                             family=model.get("owned_by"),
+                            supports_tools=supports_tools,
+                            tool_warning=tool_warning,
                         )
                     )
         except Exception as e:
@@ -394,6 +490,17 @@ class FoundryStartResponse(BaseModel):
     endpoint: str | None = None
     model: str | None = None
     error: str | None = None
+    is_docker: bool = False  # True when showing instructions instead of starting
+
+
+class OllamaStartResponse(BaseModel):
+    """Response model for Ollama start operation."""
+
+    success: bool
+    message: str
+    endpoint: str | None = None
+    error: str | None = None
+    is_docker: bool = False  # True when showing instructions instead of starting
 
 
 class FoundryModelListResponse(BaseModel):
@@ -417,6 +524,251 @@ def _is_running_in_docker() -> bool:
         # Failed to read cgroup file - likely not in Docker or permission issue
         logger.debug("cgroup_check_failed", error=str(e))
     return False
+
+
+async def _call_host_agent(endpoint: str, method: str = "POST", json_data: dict | None = None) -> dict | None:
+    """
+    Call the host agent sidecar to start services on the host machine.
+
+    Args:
+        endpoint: The endpoint path (e.g., "/start/ollama")
+        method: HTTP method (GET or POST)
+        json_data: Optional JSON body for POST requests
+
+    Returns:
+        Response JSON dict or None if agent not available
+    """
+    settings = get_settings()
+    host_agent_url = settings.host_agent_url
+
+    try:
+        async with httpx.AsyncClient() as client:
+            if method == "GET":
+                response = await client.get(
+                    f"{host_agent_url}{endpoint}",
+                    timeout=15.0,
+                )
+            else:
+                response = await client.post(
+                    f"{host_agent_url}{endpoint}",
+                    json=json_data or {},
+                    timeout=15.0,
+                )
+
+            if response.status_code == 200:
+                return response.json()
+            else:
+                logger.warning(
+                    "host_agent_error",
+                    endpoint=endpoint,
+                    status=response.status_code,
+                    body=response.text[:200],
+                )
+                return None
+    except httpx.ConnectError:
+        logger.debug("host_agent_not_available", url=host_agent_url)
+        return None
+    except Exception as e:
+        logger.warning("host_agent_call_failed", error=str(e))
+        return None
+
+
+@router.post("/providers/ollama/start", response_model=OllamaStartResponse)
+async def start_ollama():
+    """
+    Start Ollama service.
+
+    When running in Docker:
+    - First tries to call the host agent sidecar
+    - If host agent not available, returns instructions
+
+    When running locally:
+    - On Windows: Tries to start Ollama app or provides instructions
+    - On Linux/Mac: Starts Ollama directly via CLI
+    """
+    import asyncio
+    import platform
+    import shutil
+    import subprocess
+    from pathlib import Path
+
+    settings = get_settings()
+    is_windows = platform.system() == "Windows"
+
+    # First, check if Ollama is already running
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.get(
+                f"{settings.ollama_host}/api/version",
+                timeout=5.0,
+            )
+            if response.status_code == 200:
+                version = response.json().get("version", "unknown")
+                return OllamaStartResponse(
+                    success=True,
+                    message=f"Ollama is already running (version {version})",
+                    endpoint=settings.ollama_host,
+                )
+    except Exception as e:
+        logger.debug("ollama_not_running", error=str(e))
+
+    # If running in Docker, try host agent first
+    if _is_running_in_docker():
+        # Try to call host agent
+        result = await _call_host_agent("/start/ollama")
+        if result:
+            if result.get("success"):
+                return OllamaStartResponse(
+                    success=True,
+                    message=result.get("message", "Ollama started via host agent"),
+                    endpoint=result.get("endpoint"),
+                )
+            else:
+                return OllamaStartResponse(
+                    success=False,
+                    message=result.get("message", "Failed to start Ollama"),
+                    error=result.get("error"),
+                    is_docker=True,
+                )
+
+        # Host agent not available - provide instructions
+        return OllamaStartResponse(
+            success=False,
+            message="Host agent not available",
+            error=(
+                "The API is running in Docker. To start Ollama:\n\n"
+                "Option 1: Start the host agent sidecar:\n"
+                "  python scripts/host_agent.py\n\n"
+                "Option 2: Start Ollama manually on your host:\n"
+                "  ollama serve"
+            ),
+            is_docker=True,
+        )
+
+    # Running locally - find Ollama executable
+    ollama_path = shutil.which("ollama")
+
+    # On Windows, check common install locations if not in PATH
+    if not ollama_path and is_windows:
+        common_paths = [
+            Path(os.environ.get("LOCALAPPDATA", "")) / "Programs" / "Ollama" / "ollama.exe",
+            Path(os.environ.get("PROGRAMFILES", "")) / "Ollama" / "ollama.exe",
+            Path(os.environ.get("USERPROFILE", "")) / "AppData" / "Local" / "Programs" / "Ollama" / "ollama.exe",
+        ]
+        for path in common_paths:
+            if path.exists():
+                ollama_path = str(path)
+                logger.info("ollama_found_at", path=ollama_path)
+                break
+
+    if not ollama_path:
+        install_url = "https://ollama.ai"
+        if is_windows:
+            return OllamaStartResponse(
+                success=False,
+                message="Ollama not found",
+                error=(
+                    f"Ollama is not installed or not in PATH.\n\n"
+                    f"Install from: {install_url}\n\n"
+                    f"After installing, start Ollama from the Start Menu."
+                ),
+            )
+        return OllamaStartResponse(
+            success=False,
+            message="Ollama CLI not found",
+            error=f"Ollama is not installed. Install from: {install_url}",
+        )
+
+    try:
+        # Windows-specific flags for detached process
+        # These constants only exist on Windows, so use getattr with defaults
+        creation_flags = 0
+        if is_windows:
+            creation_flags = getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000) | getattr(subprocess, "DETACHED_PROCESS", 0x00000008)
+
+        if is_windows:
+            # On Windows, try to start the Ollama app
+            # The app handles running the server automatically
+            ollama_app_path = Path(ollama_path).parent / "Ollama.exe"
+            if ollama_app_path.exists():
+                # Start the Ollama GUI app (not ollama.exe CLI)
+                process = await asyncio.create_subprocess_exec(
+                    str(ollama_app_path),
+                    stdout=asyncio.subprocess.DEVNULL,
+                    stderr=asyncio.subprocess.DEVNULL,
+                    creationflags=creation_flags,
+                )
+                logger.info("ollama_app_started", pid=process.pid)
+            else:
+                # Fall back to starting ollama serve
+                process = await asyncio.create_subprocess_exec(
+                    ollama_path,
+                    "serve",
+                    stdout=asyncio.subprocess.DEVNULL,
+                    stderr=asyncio.subprocess.DEVNULL,
+                    creationflags=creation_flags,
+                )
+        else:
+            # On Linux/Mac, start ollama serve as background process
+            process = await asyncio.create_subprocess_exec(
+                ollama_path,
+                "serve",
+                stdout=asyncio.subprocess.DEVNULL,
+                stderr=asyncio.subprocess.DEVNULL,
+            )
+
+        # Wait briefly for startup
+        await asyncio.sleep(3)
+
+        # Check if Ollama is now responding
+        try:
+            async with httpx.AsyncClient() as client:
+                response = await client.get(
+                    f"{settings.ollama_host}/api/version",
+                    timeout=5.0,
+                )
+                if response.status_code == 200:
+                    version = response.json().get("version", "unknown")
+                    return OllamaStartResponse(
+                        success=True,
+                        message=f"Ollama started successfully (version {version})",
+                        endpoint=settings.ollama_host,
+                    )
+        except Exception:
+            pass
+
+        # Service not responding yet
+        if is_windows:
+            return OllamaStartResponse(
+                success=False,
+                message="Ollama may be starting...",
+                error=(
+                    "Service not responding yet.\n\n"
+                    "Try starting Ollama from the Start Menu, or wait a moment and try again."
+                ),
+            )
+        return OllamaStartResponse(
+            success=False,
+            message="Ollama may be starting...",
+            error="Service not responding yet. Please wait and try again.",
+        )
+
+    except Exception as e:
+        logger.error("ollama_start_error", error=str(e))
+        if is_windows:
+            return OllamaStartResponse(
+                success=False,
+                message="Failed to start Ollama",
+                error=(
+                    f"Error: {str(e)[:150]}\n\n"
+                    f"Try starting Ollama manually from the Start Menu."
+                ),
+            )
+        return OllamaStartResponse(
+            success=False,
+            message="Failed to start Ollama",
+            error=str(e)[:200],
+        )
 
 
 @router.post("/providers/foundry/start", response_model=FoundryStartResponse)
@@ -463,18 +815,40 @@ async def start_foundry_local(request: FoundryStartRequest):
             # Ignore connection errors - Foundry may not be running yet, will attempt to start it next
             logger.debug("foundry_health_check_failed", error=str(e))
 
-    # If running in Docker, we can't start Foundry - provide instructions
+    # If running in Docker, try host agent first
     if _is_running_in_docker():
+        # Try to call host agent
+        result = await _call_host_agent("/start/foundry", json_data={"model": model})
+        if result:
+            if result.get("success"):
+                return FoundryStartResponse(
+                    success=True,
+                    message=result.get("message", "Foundry started via host agent"),
+                    endpoint=result.get("endpoint"),
+                    model=model,
+                )
+            else:
+                return FoundryStartResponse(
+                    success=False,
+                    message=result.get("message", "Failed to start Foundry"),
+                    error=result.get("error"),
+                    model=model,
+                    is_docker=True,
+                )
+
+        # Host agent not available - provide instructions
         return FoundryStartResponse(
             success=False,
-            message="Foundry must be started on host machine",
+            message="Host agent not available",
             error=(
-                "The API is running in Docker. Please start Foundry Local on your host machine:\n"
-                f"1. Open a terminal on your host\n"
-                f"2. Run: foundry model run {model}\n"
-                f"3. Wait for the model to load\n"
-                f"4. Click 'Test Connection' to verify"
+                "The API is running in Docker. To start Foundry:\n\n"
+                "Option 1: Start the host agent sidecar:\n"
+                "  python scripts/host_agent.py\n\n"
+                f"Option 2: Start Foundry manually on your host:\n"
+                f"  foundry model run {model}"
             ),
+            model=model,
+            is_docker=True,
         )
 
     # Check if foundry CLI is available (non-Docker environment)

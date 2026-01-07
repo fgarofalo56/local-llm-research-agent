@@ -21,12 +21,25 @@ logger = get_logger(__name__)
 FOUNDRY_DEFAULT_ENDPOINT = "http://127.0.0.1:53760"
 
 # Models known to support tool calling in Foundry Local
+# IMPORTANT: Only specific model variants support function calling!
+# - phi-4-mini supports function calling (phi-4 does NOT)
+# - phi-3.5-mini supports function calling
+# See: https://github.com/microsoft/PhiCookBook/tree/main/md/02.Application/07.FunctionCalling
 FOUNDRY_TOOL_CAPABLE_MODELS = [
-    "phi-4",
-    "phi-3",
-    "mistral",
-    "llama",
-    "qwen",
+    "phi-4-mini",      # Supports function calling
+    "phi-3.5-mini",    # Supports function calling
+    "phi-3-mini",      # Supports function calling
+    "qwen2.5",         # Supports function calling
+    "llama3.1",        # Supports function calling
+    "llama3.2",        # Supports function calling
+    "mistral-nemo",    # Supports function calling
+]
+
+# Models that do NOT support tool calling (common mistake)
+FOUNDRY_NON_TOOL_MODELS = [
+    "phi-4",           # Regular phi-4 does NOT support tools - use phi-4-mini
+    "phi-4-multimodal", # Does NOT support tool calling
+    "gpt-oss-20b",     # General purpose, no tool support
 ]
 
 
@@ -103,6 +116,10 @@ class FoundryLocalProvider(LLMProvider):
             OpenAIModel configured for Foundry Local
         """
         # Use the actual model name from server if we've discovered it
+        # If not discovered yet, try to resolve it synchronously
+        if not self._actual_model_name:
+            self._resolve_model_name_sync()
+
         model_to_use = self._actual_model_name or self._model_name
 
         # Use OpenAIProvider with custom base_url for Foundry Local compatibility
@@ -121,6 +138,62 @@ class FoundryLocalProvider(LLMProvider):
             model_name=model_to_use,
             provider=provider,
         )
+
+    def _resolve_model_name_sync(self) -> None:
+        """
+        Synchronously resolve the actual model name from Foundry Local.
+
+        This is called when get_model() is invoked before check_connection().
+        """
+        try:
+            with httpx.Client(timeout=10) as client:
+                response = client.get(f"{self._endpoint}/v1/models")
+                response.raise_for_status()
+                data = response.json()
+
+                models = data.get("data", [])
+                model_ids = [m.get("id", "") for m in models]
+
+                if not model_ids:
+                    logger.warning("foundry_no_models_available")
+                    return
+
+                # Match model name (same logic as check_connection)
+                model_lower = self._model_name.lower()
+
+                # Exact match
+                for m_id in model_ids:
+                    if m_id.lower() == model_lower:
+                        self._actual_model_name = m_id
+                        logger.info("foundry_model_resolved", requested=self._model_name, actual=m_id)
+                        return
+
+                # Starts with
+                for m_id in model_ids:
+                    m_lower = m_id.lower()
+                    if m_lower.startswith(model_lower) or m_lower.startswith(model_lower.replace("-", "")):
+                        self._actual_model_name = m_id
+                        logger.info("foundry_model_resolved", requested=self._model_name, actual=m_id)
+                        return
+
+                # Contains
+                for m_id in model_ids:
+                    if model_lower in m_id.lower():
+                        self._actual_model_name = m_id
+                        logger.info("foundry_model_resolved", requested=self._model_name, actual=m_id)
+                        return
+
+                # Use first available as fallback
+                self._actual_model_name = model_ids[0]
+                logger.warning(
+                    "foundry_model_fallback",
+                    requested=self._model_name,
+                    using=model_ids[0],
+                    available=model_ids,
+                )
+
+        except Exception as e:
+            logger.warning("foundry_model_resolve_error", error=str(e))
 
     async def check_connection(self) -> ProviderStatus:
         """
@@ -307,11 +380,64 @@ class FoundryLocalProvider(LLMProvider):
         """
         Check if the configured model supports tool calling.
 
+        IMPORTANT: Only specific model variants support function calling in Foundry Local!
+        - phi-4-mini: YES (supports function calling)
+        - phi-4: NO (does NOT support function calling)
+        - phi-4-multimodal: NO (does NOT support function calling)
+
         Returns:
             True if tool calling is supported
         """
         model_lower = self._model_name.lower()
-        return any(model in model_lower for model in FOUNDRY_TOOL_CAPABLE_MODELS)
+
+        # First check if it's explicitly a non-tool model
+        for non_tool_model in FOUNDRY_NON_TOOL_MODELS:
+            if non_tool_model.lower() in model_lower:
+                # But make sure it's not actually a tool-capable variant
+                # e.g., "phi-4-mini" contains "phi-4" but IS tool capable
+                is_tool_capable = any(
+                    tool_model.lower() in model_lower
+                    for tool_model in FOUNDRY_TOOL_CAPABLE_MODELS
+                )
+                if not is_tool_capable:
+                    return False
+
+        # Check if it matches a known tool-capable model
+        return any(model.lower() in model_lower for model in FOUNDRY_TOOL_CAPABLE_MODELS)
+
+    def get_tool_calling_warning(self) -> str | None:
+        """
+        Get a warning message if the model doesn't support tool calling.
+
+        Returns:
+            Warning message string, or None if model supports tools
+        """
+        if self.supports_tool_calling():
+            return None
+
+        model_lower = self._model_name.lower()
+
+        # Check for common mistakes
+        if "phi-4" in model_lower and "mini" not in model_lower:
+            return (
+                f"Model '{self._model_name}' does NOT support tool calling. "
+                "The regular Phi-4 model cannot use MCP tools. "
+                "Use 'phi-4-mini' instead which supports function calling. "
+                "Run: foundry model run phi-4-mini"
+            )
+
+        if "phi-4-multimodal" in model_lower:
+            return (
+                f"Model '{self._model_name}' does NOT support tool calling. "
+                "Phi-4-multimodal is for vision tasks, not function calling. "
+                "Use 'phi-4-mini' instead for MCP tools."
+            )
+
+        return (
+            f"Model '{self._model_name}' may not support tool calling. "
+            "For MCP tool support, use phi-4-mini, qwen2.5, or llama3.1/3.2. "
+            "The model may describe tools instead of calling them."
+        )
 
     @staticmethod
     def start_with_sdk(model_alias: str) -> "FoundryLocalProvider":

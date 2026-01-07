@@ -58,6 +58,7 @@ class ResearchAgent:
         minimal_prompt: bool = False,
         cache_enabled: bool | None = None,
         explain_mode: bool = False,
+        thinking_mode: bool = False,
         # Legacy Ollama-specific parameters (for backwards compatibility)
         ollama_host: str | None = None,
         ollama_model: str | None = None,
@@ -79,6 +80,7 @@ class ResearchAgent:
         self.readonly = readonly if readonly is not None else settings.mcp_mssql_readonly
         self.minimal_prompt = minimal_prompt
         self.explain_mode = explain_mode
+        self.thinking_mode = thinking_mode
 
         # Initialize response cache
         self._cache_enabled = cache_enabled if cache_enabled is not None else settings.cache_enabled
@@ -114,6 +116,24 @@ class ResearchAgent:
         # Get model from provider
         self.model = self.provider.get_model()
 
+        # Check for tool calling support and warn if not supported
+        self._tool_warning: str | None = None
+        if not self.provider.supports_tool_calling():
+            # Get detailed warning message if available
+            if hasattr(self.provider, "get_tool_calling_warning"):
+                self._tool_warning = self.provider.get_tool_calling_warning()
+            else:
+                self._tool_warning = (
+                    f"Model '{self.provider.model_name}' may not support tool calling. "
+                    "MCP tools may not work correctly."
+                )
+            logger.warning(
+                "model_tool_calling_not_supported",
+                provider=self.provider.provider_type.value,
+                model=self.provider.model_name,
+                warning=self._tool_warning,
+            )
+
         # Create agent
         self.agent = Agent(
             model=self.model,
@@ -121,6 +141,7 @@ class ResearchAgent:
                 readonly=self.readonly,
                 minimal=self.minimal_prompt,
                 explain_mode=self.explain_mode,
+                thinking_mode=self.thinking_mode,
             ),
             toolsets=[self.mssql_server],
         )
@@ -158,8 +179,20 @@ class ResearchAgent:
             readonly=self.readonly,
             cache_enabled=self._cache_enabled,
             explain_mode=self.explain_mode,
+            thinking_mode=self.thinking_mode,
             rate_limit_enabled=settings.rate_limit_enabled,
+            tool_calling_supported=self.provider.supports_tool_calling(),
         )
+
+    @property
+    def tool_warning(self) -> str | None:
+        """Get tool calling warning message if model doesn't support tools."""
+        return self._tool_warning
+
+    @property
+    def supports_tool_calling(self) -> bool:
+        """Check if the current model supports tool calling."""
+        return self.provider.supports_tool_calling()
 
     # Legacy property for backwards compatibility
     @property
@@ -477,6 +510,8 @@ def create_research_agent(
     minimal_prompt: bool = False,
     cache_enabled: bool | None = None,
     explain_mode: bool = False,
+    thinking_mode: bool = False,
+    mcp_servers: list | None = None,
 ) -> ResearchAgent:
     """
     Create a configured research agent.
@@ -488,6 +523,8 @@ def create_research_agent(
         minimal_prompt: Use minimal system prompt
         cache_enabled: Enable response caching
         explain_mode: Enable educational query explanations
+        thinking_mode: Enable step-by-step reasoning mode
+        mcp_servers: List of MCP server instances to use as toolsets
 
     Returns:
         Configured ResearchAgent instance
@@ -499,4 +536,6 @@ def create_research_agent(
         minimal_prompt=minimal_prompt,
         cache_enabled=cache_enabled,
         explain_mode=explain_mode,
+        thinking_mode=thinking_mode,
+        mcp_servers=mcp_servers,
     )

@@ -204,8 +204,21 @@ export function ChatToolbar() {
           variant="ghost"
           size="sm"
           className="gap-1.5 text-xs"
-          title="Attach files (coming soon)"
-          disabled
+          title="Attach files"
+          onClick={() => {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.multiple = true;
+            input.accept = '.pdf,.docx,.pptx,.xlsx,.html,.md,.txt';
+            input.onchange = (e) => {
+              const files = Array.from((e.target as HTMLInputElement).files || []);
+              if (files.length > 0) {
+                // Navigate to documents page
+                window.location.href = '/documents';
+              }
+            };
+            input.click();
+          }}
         >
           <Paperclip className="h-3.5 w-3.5" />
           <span className="hidden sm:inline">Attach</span>
@@ -257,7 +270,7 @@ export function ChatToolbar() {
           </Button>
 
           {showProviderDropdown && (
-            <div className="absolute top-full left-0 z-50 mt-1 min-w-[120px] rounded-md border bg-popover p-1 shadow-md">
+            <div className="absolute top-full left-0 z-50 mt-1 min-w-[120px] rounded-md border bg-card p-1 shadow-md">
               {getProviderAvailable('ollama') && (
                 <button
                   className={`w-full rounded px-2 py-1.5 text-left text-xs hover:bg-accent ${
@@ -300,7 +313,7 @@ export function ChatToolbar() {
           </Button>
 
           {showModelDropdown && (
-            <div className="absolute top-full left-0 z-50 mt-1 max-h-[200px] min-w-[180px] overflow-y-auto rounded-md border bg-popover p-1 shadow-md">
+            <div className="absolute top-full left-0 z-50 mt-1 max-h-[200px] min-w-[180px] overflow-y-auto rounded-md border bg-card p-1 shadow-md">
               {getAvailableModels().map(model => (
                 <button
                   key={model}

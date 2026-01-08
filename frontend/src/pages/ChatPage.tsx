@@ -106,7 +106,7 @@ function ChatModelSelector() {
       </button>
 
       {isOpen && models.length > 0 && (
-        <div className="absolute right-0 z-50 mt-1 max-h-60 w-64 overflow-auto rounded-lg border bg-popover shadow-lg">
+        <div className="absolute right-0 z-50 mt-1 max-h-60 w-64 overflow-auto rounded-lg border bg-card shadow-lg">
           {models.map((model) => (
             <button
               key={model.name}
@@ -114,8 +114,8 @@ function ChatModelSelector() {
                 setSelectedModel(model.name);
                 setIsOpen(false);
               }}
-              className={`flex w-full flex-col px-3 py-2 text-left text-sm hover:bg-muted ${
-                model.name === selectedModel ? 'bg-muted' : ''
+              className={`flex w-full flex-col px-3 py-2 text-left text-sm hover:bg-accent ${
+                model.name === selectedModel ? 'bg-accent' : ''
               }`}
             >
               <span className="font-medium">{model.name}</span>

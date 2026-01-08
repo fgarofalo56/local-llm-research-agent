@@ -279,7 +279,7 @@ function ProviderSelector({
       </button>
 
       {isOpen && (
-        <div className="absolute z-50 mt-1 w-full rounded-lg border bg-popover shadow-lg">
+        <div className="absolute z-50 mt-1 w-full rounded-lg border bg-card shadow-lg">
           {providers.map((provider) => (
             <button
               key={provider.id}
@@ -287,8 +287,8 @@ function ProviderSelector({
                 onSelect(provider.id);
                 setIsOpen(false);
               }}
-              className={`flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-muted ${
-                provider.id === selectedProvider ? 'bg-muted' : ''
+              className={`flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-accent ${
+                provider.id === selectedProvider ? 'bg-accent' : ''
               }`}
             >
               <ProviderIcon providerId={provider.id} className="h-6 w-6" />
@@ -415,7 +415,7 @@ function ModelSelector({
         </button>
 
         {isOpen && displayModels.length > 0 && (
-          <div className="absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-lg border bg-popover shadow-lg">
+          <div className="absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-lg border bg-card shadow-lg">
             {displayModels.map((model) => (
               <button
                 key={model.name}
@@ -423,8 +423,8 @@ function ModelSelector({
                   onSelect(model.name);
                   setIsOpen(false);
                 }}
-                className={`flex w-full items-center justify-between px-4 py-2 text-left hover:bg-muted ${
-                  model.name === selectedModel ? 'bg-muted' : ''
+                className={`flex w-full items-center justify-between px-4 py-2 text-left hover:bg-accent ${
+                  model.name === selectedModel ? 'bg-accent' : ''
                 }`}
                 title={model.tool_warning || undefined}
               >

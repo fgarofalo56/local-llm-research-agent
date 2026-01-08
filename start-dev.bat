@@ -7,14 +7,23 @@ REM This script starts all services needed for local development:
 REM   - SQL Server 2022 (Sample Database - Docker)
 REM   - SQL Server 2025 (Backend with Vector Search - Docker)
 REM   - Redis Stack (Caching - Docker)
+REM   - Alembic Migrations (Database schema)
 REM   - FastAPI Backend (local)
 REM   - React Frontend (local dev server)
+REM   - Streamlit UI (Docker - optional)
+REM   - Apache Superset (Docker - optional)
 REM
 REM Prerequisites:
 REM   - Docker Desktop running
 REM   - Ollama running with qwen3:30b model
 REM   - Node.js installed
 REM   - Python/uv installed
+REM
+REM Usage:
+REM   start-dev.bat              - Start core services (default)
+REM   start-dev.bat --streamlit  - Also start Streamlit UI
+REM   start-dev.bat --superset   - Also start Apache Superset
+REM   start-dev.bat --full       - Start everything
 REM
 REM =============================================================================
 
@@ -25,6 +34,22 @@ echo ============================================================
 echo   Local LLM Research Agent - Development Stack
 echo ============================================================
 echo.
+
+REM Parse command line arguments
+set START_STREAMLIT=0
+set START_SUPERSET=0
+
+:parse_args
+if "%~1"=="" goto :done_args
+if /i "%~1"=="--streamlit" set START_STREAMLIT=1
+if /i "%~1"=="--superset" set START_SUPERSET=1
+if /i "%~1"=="--full" (
+    set START_STREAMLIT=1
+    set START_SUPERSET=1
+)
+shift
+goto :parse_args
+:done_args
 
 REM Check if .env file exists
 if not exist ".env" (
@@ -48,14 +73,31 @@ if errorlevel 1 (
     echo The agent will not work without Ollama.
     echo Start Ollama and ensure qwen3:30b model is available.
     echo.
+) else (
+    echo [OK] Ollama is running
+    REM Check if qwen3:30b model is available
+    curl -s http://localhost:11434/api/tags | findstr /i "qwen3:30b" >nul 2>&1
+    if errorlevel 1 (
+        echo [WARNING] qwen3:30b model not found in Ollama.
+        echo Run: ollama pull qwen3:30b
+        echo.
+    ) else (
+        echo [OK] qwen3:30b model is available
+    )
 )
 
-echo [Step 1/8] Creating Docker volumes if needed...
+REM Calculate total steps
+set TOTAL_STEPS=10
+if %START_STREAMLIT%==1 set /a TOTAL_STEPS+=1
+if %START_SUPERSET%==1 set /a TOTAL_STEPS+=1
+
+echo [Step 1/%TOTAL_STEPS%] Creating Docker volumes if needed...
 docker volume create local-llm-mssql-data 2>nul
 docker volume create local-llm-backend-data 2>nul
 docker volume create local-llm-redis-data 2>nul
+docker volume create local-llm-superset-data 2>nul
 
-echo [Step 2/8] Starting SQL Server 2022 (Sample Database)...
+echo [Step 2/%TOTAL_STEPS%] Starting SQL Server 2022 (Sample Database)...
 docker-compose -f docker/docker-compose.yml --env-file .env up -d mssql
 
 echo Waiting for SQL Server 2022 to be healthy...
@@ -68,10 +110,10 @@ if errorlevel 1 (
 )
 echo   SQL Server 2022 is ready!
 
-echo [Step 3/8] Initializing ResearchAnalytics sample database...
+echo [Step 3/%TOTAL_STEPS%] Initializing ResearchAnalytics sample database...
 docker-compose -f docker/docker-compose.yml --env-file .env --profile init up mssql-tools 2>nul
 
-echo [Step 4/8] Starting SQL Server 2025 (Backend Database)...
+echo [Step 4/%TOTAL_STEPS%] Starting SQL Server 2025 (Backend Database)...
 docker-compose -f docker/docker-compose.yml --env-file .env up -d mssql-backend
 
 echo Waiting for SQL Server 2025 to be healthy...
@@ -84,10 +126,10 @@ if errorlevel 1 (
 )
 echo   SQL Server 2025 is ready!
 
-echo [Step 5/8] Initializing LLM_BackEnd database (vectors + hybrid search)...
+echo [Step 5/%TOTAL_STEPS%] Initializing LLM_BackEnd database (vectors + hybrid search)...
 docker-compose -f docker/docker-compose.yml --env-file .env --profile init up mssql-backend-tools 2>nul
 
-echo [Step 6/8] Starting Redis Stack...
+echo [Step 6/%TOTAL_STEPS%] Starting Redis Stack...
 docker-compose -f docker/docker-compose.yml --env-file .env up -d redis-stack
 
 echo Waiting for Redis to be healthy...
@@ -100,7 +142,15 @@ if errorlevel 1 (
 )
 echo   Redis Stack is ready!
 
-echo [Step 7/8] Starting FastAPI backend...
+echo [Step 7/%TOTAL_STEPS%] Running Alembic database migrations...
+uv run alembic upgrade head 2>nul
+if errorlevel 1 (
+    echo   [WARNING] Alembic migrations may have failed or no migrations pending
+) else (
+    echo   Database migrations complete!
+)
+
+echo [Step 8/%TOTAL_STEPS%] Starting FastAPI backend...
 start "FastAPI Backend" cmd /c "cd /d %~dp0 & uv run uvicorn src.api.main:app --reload --host 0.0.0.0 --port 8000"
 
 echo Waiting for API to be ready...
@@ -113,8 +163,29 @@ if errorlevel 1 (
 )
 echo   FastAPI is ready!
 
-echo [Step 8/8] Starting React frontend...
+echo [Step 9/%TOTAL_STEPS%] Starting React frontend...
 start "React Frontend" cmd /c "cd /d %~dp0frontend & npm run dev"
+
+set CURRENT_STEP=10
+
+REM Optional: Start Streamlit UI
+if %START_STREAMLIT%==1 (
+    echo [Step !CURRENT_STEP!/%TOTAL_STEPS%] Starting Streamlit UI...
+    docker-compose -f docker/docker-compose.yml --env-file .env up -d agent-ui
+    echo   Streamlit UI starting at http://localhost:8501
+    set /a CURRENT_STEP+=1
+)
+
+REM Optional: Start Superset
+if %START_SUPERSET%==1 (
+    echo [Step !CURRENT_STEP!/%TOTAL_STEPS%] Starting Apache Superset...
+    docker-compose -f docker/docker-compose.yml --env-file .env --profile superset up -d superset
+    echo   Superset starting at http://localhost:8088 (may take 1-2 minutes)
+    set /a CURRENT_STEP+=1
+)
+
+echo [Step %TOTAL_STEPS%/%TOTAL_STEPS%] Verifying all services...
+timeout /t 3 /nobreak >nul
 
 echo.
 echo ============================================================
@@ -131,6 +202,12 @@ echo   Application Services:
 echo     - FastAPI Backend: http://localhost:8000
 echo     - FastAPI Docs:    http://localhost:8000/docs
 echo     - React Frontend:  http://localhost:5173
+if %START_STREAMLIT%==1 (
+    echo     - Streamlit UI:    http://localhost:8501
+)
+if %START_SUPERSET%==1 (
+    echo     - Apache Superset: http://localhost:8088
+)
 echo.
 echo   RAG Features:
 echo     - Vector Store: SQL Server 2025 (native VECTOR type)
@@ -141,6 +218,11 @@ echo.
 echo   To stop all services:
 echo     - Close the terminal windows for FastAPI and React
 echo     - Run: docker-compose -f docker/docker-compose.yml --env-file .env down
+echo.
+echo   Command-line options:
+echo     start-dev.bat --streamlit  - Also start Streamlit UI
+echo     start-dev.bat --superset   - Also start Apache Superset
+echo     start-dev.bat --full       - Start everything
 echo.
 echo   Press any key to open the React app in your browser...
 pause >nul

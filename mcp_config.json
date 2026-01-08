@@ -3,6 +3,8 @@
   "$comment": "MCP Server Configuration for Local LLM Research Analytics Tool",
   "mcpServers": {
     "mssql": {
+      "name": "MSSQL Server",
+      "server_type": "stdio",
       "command": "node",
       "args": [
         "${MCP_MSSQL_PATH}"
@@ -17,22 +19,25 @@
         "SQL_USERNAME": "${SQL_USERNAME}",
         "SQL_PASSWORD": "${SQL_PASSWORD}"
       },
-      "description": "Microsoft SQL Server MCP Server for database operations"
+      "description": "Microsoft SQL Server MCP Server for database operations",
+      "enabled": true,
+      "timeout": 30
     },
     "microsoft.docs.mcp": {
-      "name": "microsoft.docs.mcp",
+      "name": "Microsoft Docs MCP",
+      "server_type": "streamable_http",
       "description": "Microsoft Learn Documentation MCP Server (Streamable HTTP)",
-      "type": "streamable_http",
       "command": null,
       "args": [],
       "url": "https://learn.microsoft.com/api/mcp",
       "env": {},
-      "enabled": true
+      "enabled": true,
+      "timeout": 30
     },
     "analytics-management": {
-      "name": "analytics-management",
+      "name": "Analytics Management",
+      "server_type": "stdio",
       "description": "Analytics Management MCP Server for dashboards, widgets, queries, and metrics",
-      "type": "python",
       "command": "uv",
       "args": [
         "run",
@@ -48,12 +53,13 @@
         "BACKEND_DB_PASSWORD": "${BACKEND_DB_PASSWORD:-${SQL_PASSWORD}}",
         "BACKEND_DB_TRUST_CERT": "${BACKEND_DB_TRUST_CERT:-true}"
       },
-      "enabled": true
+      "enabled": true,
+      "timeout": 60
     },
     "data-analytics": {
-      "name": "data-analytics",
+      "name": "Data Analytics",
+      "server_type": "stdio",
       "description": "Advanced Data Analytics MCP Server for statistical analysis, aggregations, time series, and anomaly detection",
-      "type": "python",
       "command": "uv",
       "args": [
         "run",
@@ -75,7 +81,8 @@
         "BACKEND_DB_PASSWORD": "${BACKEND_DB_PASSWORD:-${SQL_PASSWORD}}",
         "BACKEND_DB_TRUST_CERT": "${BACKEND_DB_TRUST_CERT:-true}"
       },
-      "enabled": true
+      "enabled": true,
+      "timeout": 60
     }
   },
   "_documentation": {

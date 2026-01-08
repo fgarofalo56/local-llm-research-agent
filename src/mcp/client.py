@@ -403,39 +403,3 @@ class MCPClientManager:
             logger.error("mcp_reconnect_failed", name=name, error=str(e))
             return False
 
-    # Legacy methods for backwards compatibility
-
-    def get_mssql_server(self) -> MCPServerStdio:
-        """
-        Get configured MSSQL MCP Server instance (legacy method).
-
-        Uses settings from application config and validates before creating.
-
-        Returns:
-            Configured MCPServerStdio instance
-
-        Raises:
-            ValueError: If configuration is invalid
-        """
-        config = MSSQLMCPConfig.from_settings()
-
-        # Validate configuration
-        errors = config.validate()
-        if errors:
-            error_msg = "MSSQL MCP configuration errors:\n" + "\n".join(f"  - {e}" for e in errors)
-            logger.error("mssql_config_invalid", errors=errors)
-            raise ValueError(error_msg)
-
-        config.log_config()
-
-        server = MCPServerStdio(
-            command=config.command,
-            args=config.get_args(),
-            env=config.get_env(),
-            timeout=config.timeout,
-        )
-
-        self._servers["mssql"] = server
-        logger.info("mssql_server_created", readonly=config.readonly)
-
-        return server

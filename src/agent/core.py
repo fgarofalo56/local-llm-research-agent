@@ -13,7 +13,7 @@ from pydantic_ai import Agent
 from src.agent.cache import AgentCache
 from src.agent.prompts import get_system_prompt, format_mcp_servers_info
 from src.agent.stats import AgentStats
-from src.mcp.client import MCPClientManager
+from src.mcp.dynamic_manager import DynamicMCPManager
 from src.models.chat import AgentResponse, ChatMessage, Conversation, ConversationTurn, TokenUsage
 from src.providers import LLMProvider, ProviderType, create_provider
 from src.utils.cache import ResponseCache, get_response_cache
@@ -96,11 +96,11 @@ class ResearchAgent:
         )
 
         # Initialize MCP components
-        self.mcp_manager = MCPClientManager()
+        self.mcp_manager = DynamicMCPManager()
         
         # Load active toolsets - gracefully handle failures
         self._active_toolsets = []
-        self._load_toolsets()
+        await self._load_toolsets()
 
         # Configure LLM provider
         if provider is not None:
@@ -142,24 +142,11 @@ class ResearchAgent:
                 warning=self._tool_warning,
             )
 
-        # Create agent with all active toolsets (may be empty if all fail)
-        # Generate dynamic MCP server information for system prompt
-        mcp_info = format_mcp_servers_info(self._enabled_mcp_servers)
-        
-        self.agent = Agent(
-            model=self.model,
-            system_prompt=get_system_prompt(
-                readonly=self.readonly,
-                minimal=self.minimal_prompt,
-                explain_mode=self.explain_mode,
-                thinking_mode=self.thinking_mode,
-                mcp_servers_info=mcp_info,
-            ),
-            toolsets=self._active_toolsets,  # Can be empty list - agent still works
-        )
-
         # Conversation tracking
         self.conversation = Conversation()
+        
+        # Agent will be created in initialize()
+        self.agent = None
 
         # Initialize rate limiter
         self.rate_limiter = get_rate_limiter(
@@ -184,8 +171,9 @@ class ResearchAgent:
             reset_timeout=60.0,
         )
 
+        # Note: MCP toolsets will be loaded when initialize() is called
         logger.info(
-            "research_agent_initialized",
+            "research_agent_created",
             provider=self.provider.provider_type.value,
             model=self.provider.model_name,
             readonly=self.readonly,
@@ -194,42 +182,60 @@ class ResearchAgent:
             thinking_mode=self.thinking_mode,
             rate_limit_enabled=settings.rate_limit_enabled,
             tool_calling_supported=self.provider.supports_tool_calling(),
-            active_toolsets=len(self._active_toolsets),
-            enabled_servers=self._enabled_mcp_servers,
         )
 
-    def _load_toolsets(self) -> None:
+    async def initialize(self) -> None:
+        """
+        Initialize MCP toolsets and create the agent.
+        
+        This must be called after construction and before using the agent.
+        """
+        # Load MCP toolsets
+        await self._load_toolsets()
+        
+        # Create agent with loaded toolsets
+        enabled_server_names = [s.name for s in self.mcp_manager.list_servers() if s.enabled]
+        mcp_info = format_mcp_servers_info(enabled_server_names)
+        
+        self.agent = Agent(
+            model=self.model,
+            system_prompt=get_system_prompt(
+                readonly=self.readonly,
+                minimal=self.minimal_prompt,
+                explain_mode=self.explain_mode,
+                thinking_mode=self.thinking_mode,
+                mcp_servers_info=mcp_info,
+            ),
+            toolsets=self._active_toolsets,
+        )
+        
+        logger.info(
+            "research_agent_initialized",
+            active_toolsets=len(self._active_toolsets),
+            enabled_servers=[s.name for s in self.mcp_manager.list_servers() if s.enabled],
+        )
+
+    async def _load_toolsets(self) -> None:
         """
         Load MCP server toolsets based on enabled servers list.
         
         Gracefully handles failures - agent continues without failed tools.
         """
-        for server_name in self._enabled_mcp_servers:
-            try:
-                if server_name == "mssql":
-                    server = self.mcp_manager.get_mssql_server()
-                    self._active_toolsets.append(server)
-                    logger.info("mcp_toolset_loaded", server=server_name)
-                else:
-                    # Try loading from config file
-                    try:
-                        server = self.mcp_manager.get_server_from_config(server_name)
-                        self._active_toolsets.append(server)
-                        logger.info("mcp_toolset_loaded", server=server_name)
-                    except (KeyError, ValueError) as e:
-                        logger.warning(
-                            "mcp_server_not_configured",
-                            server=server_name,
-                            error=str(e),
-                        )
-            except Exception as e:
-                # Log but continue - agent can work without this tool
-                logger.warning(
-                    "mcp_toolset_load_failed",
-                    server=server_name,
-                    error=str(e),
-                    error_type=type(e).__name__,
-                )
+        # Load configuration first
+        await self.mcp_manager.load_config()
+        
+        if self._enabled_mcp_servers == ["mssql"]:
+            # Default case - load all enabled servers from config
+            servers = self.mcp_manager.get_enabled_servers()
+            self._active_toolsets.extend(servers)
+            logger.info("mcp_toolsets_loaded_all", count=len(servers))
+        else:
+            # Specific servers requested
+            servers = self.mcp_manager.get_servers_by_ids(self._enabled_mcp_servers)
+            self._active_toolsets.extend(servers)
+            logger.info("mcp_toolsets_loaded_specific", 
+                       servers=self._enabled_mcp_servers, 
+                       count=len(servers))
         
         if not self._active_toolsets:
             logger.warning(
@@ -556,7 +562,7 @@ class ResearchAgent:
 
 
 # Factory function for easy agent creation
-def create_research_agent(
+async def create_research_agent(
     provider_type: ProviderType | str | None = None,
     model_name: str | None = None,
     readonly: bool | None = None,
@@ -580,9 +586,9 @@ def create_research_agent(
         mcp_servers: List of MCP server instances to use as toolsets
 
     Returns:
-        Configured ResearchAgent instance
+        Configured and initialized ResearchAgent instance
     """
-    return ResearchAgent(
+    agent = ResearchAgent(
         provider_type=provider_type,
         model_name=model_name,
         readonly=readonly,
@@ -592,3 +598,5 @@ def create_research_agent(
         thinking_mode=thinking_mode,
         mcp_servers=mcp_servers,
     )
+    await agent.initialize()
+    return agent

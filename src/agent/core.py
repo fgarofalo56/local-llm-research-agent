@@ -98,9 +98,8 @@ class ResearchAgent:
         # Initialize MCP components
         self.mcp_manager = DynamicMCPManager()
         
-        # Load active toolsets - gracefully handle failures
+        # Active toolsets will be loaded in initialize()
         self._active_toolsets = []
-        await self._load_toolsets()
 
         # Configure LLM provider
         if provider is not None:

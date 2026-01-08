@@ -269,10 +269,11 @@ class DynamicMCPManager:
             List of MCP server instances
         """
         servers = []
-        for server_id in self.servers:
-            server = self.get_mcp_server(server_id)
-            if server:
-                servers.append(server)
+        for server_id, config in self.servers.items():
+            if config.enabled:
+                server = self.get_mcp_server(server_id)
+                if server:
+                    servers.append(server)
         return servers
 
     def get_servers_by_ids(self, server_ids: list[str]) -> list:
@@ -287,9 +288,12 @@ class DynamicMCPManager:
         """
         servers = []
         for server_id in server_ids:
-            server = self.get_mcp_server(server_id)
-            if server:
-                servers.append(server)
+            if server_id in self.servers and self.servers[server_id].enabled:
+                server = self.get_mcp_server(server_id)
+                if server:
+                    servers.append(server)
+            else:
+                logger.warning("mcp_server_not_found_or_disabled", server_id=server_id)
         return servers
 
     def list_servers(self) -> list[MCPServerConfig]:

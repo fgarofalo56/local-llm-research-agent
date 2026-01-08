@@ -289,40 +289,6 @@ class MCPClientManager:
         """
         return {key: self._resolve_env_vars(value) for key, value in env_dict.items()}
 
-    def get_mssql_server(self) -> MCPServerStdio:
-        """
-        Get configured MSSQL MCP Server instance.
-
-        Uses settings from application config and validates before creating.
-
-        Returns:
-            Configured MCPServerStdio instance
-
-        Raises:
-            ValueError: If configuration is invalid
-        """
-        config = MSSQLMCPConfig.from_settings()
-
-        # Validate configuration
-        errors = config.validate()
-        if errors:
-            error_msg = "MSSQL MCP configuration errors:\n" + "\n".join(f"  - {e}" for e in errors)
-            logger.error("mssql_config_invalid", errors=errors)
-            raise ValueError(error_msg)
-
-        config.log_config()
-
-        server = MCPServerStdio(
-            command=config.command,
-            args=config.get_args(),
-            env=config.get_env(),
-            timeout=config.timeout,
-        )
-
-        self._servers["mssql"] = server
-        logger.info("mssql_server_created", readonly=config.readonly)
-
-        return server
 
     def get_server_from_config(self, server_name: str) -> MCPServerStdio:
         """

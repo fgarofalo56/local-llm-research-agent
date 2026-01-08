@@ -355,3 +355,7 @@ exports/
 !mcp_config.example.json
 !**/README.md
 !**/.gitkeep
+
+# Context directory (keep structure but not sensitive content)
+.context/*.tmp
+.context/*.backup

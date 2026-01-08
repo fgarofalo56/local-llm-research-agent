@@ -22,7 +22,12 @@ RUN apt-get update && \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Python SQL Server driver
-RUN pip install --no-cache-dir pymssql
+# Install Python SQL Server drivers (both pyodbc and pymssql) and requests for setup script
+RUN pip install --no-cache-dir pyodbc pymssql requests
+
+# Copy database setup scripts
+COPY superset/setup_databases.py /app/setup_databases.py
+COPY superset/create_examples.py /app/create_examples.py
+RUN chmod +x /app/setup_databases.py /app/create_examples.py
 
 USER superset

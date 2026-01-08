@@ -261,8 +261,9 @@ services:
         condition: service_healthy
     environment:
       # LLM Provider - connects to host Ollama instance
+      # Force host.docker.internal for Docker context (override .env if needed)
       LLM_PROVIDER: "${LLM_PROVIDER:-ollama}"
-      OLLAMA_HOST: "${OLLAMA_HOST:-http://host.docker.internal:11434}"
+      OLLAMA_HOST: "http://host.docker.internal:11434"
       OLLAMA_MODEL: "${OLLAMA_MODEL:-qwen2.5:7b-instruct}"
       # SQL Server connection
       SQL_SERVER_HOST: mssql
@@ -300,8 +301,9 @@ services:
         condition: service_healthy
     environment:
       # LLM Provider - connects to host Ollama instance
+      # Force host.docker.internal for Docker context (override .env if needed)
       LLM_PROVIDER: "${LLM_PROVIDER:-ollama}"
-      OLLAMA_HOST: "${OLLAMA_HOST:-http://host.docker.internal:11434}"
+      OLLAMA_HOST: "http://host.docker.internal:11434"
       OLLAMA_MODEL: "${OLLAMA_MODEL:-qwen2.5:7b-instruct}"
       # SQL Server connection
       SQL_SERVER_HOST: mssql
@@ -366,9 +368,9 @@ services:
       redis-stack:
         condition: service_healthy
     environment:
-      # LLM Provider
+      # LLM Provider - Force host.docker.internal for Docker context (override .env if needed)
       LLM_PROVIDER: "${LLM_PROVIDER:-ollama}"
-      OLLAMA_HOST: "${OLLAMA_HOST:-http://host.docker.internal:11434}"
+      OLLAMA_HOST: "http://host.docker.internal:11434"
       OLLAMA_MODEL: "${OLLAMA_MODEL:-qwen2.5:7b-instruct}"
       EMBEDDING_MODEL: "${EMBEDDING_MODEL:-nomic-embed-text}"
       # SQL Server 2022 - Sample Database (ResearchAnalytics)
@@ -490,8 +492,12 @@ services:
         superset db upgrade &&
         superset fab create-admin --username admin --firstname Admin --lastname User --email admin@local.llm --password $${SUPERSET_ADMIN_PASSWORD} || true &&
         superset init &&
-        superset run -h 0.0.0.0 -p 8088 --with-threads --reload
-      "
+        (superset run -h 0.0.0.0 -p 8088 --with-threads --reload &) &&
+        sleep 15 &&
+        python /app/setup_databases.py &&
+        sleep 5 &&
+        python /app/create_examples.py &&
+        wait"
     restart: unless-stopped
     networks:
       - llm-network

@@ -1,5 +1,5 @@
-import { useEffect, useState, useRef, type ReactNode } from 'react';
-import { ArrowUp, ArrowDown, Minus, TrendingUp, TrendingDown, type LucideIcon } from 'lucide-react';
+import { useEffect, useState, useRef } from 'react';
+import { Minus, TrendingUp, TrendingDown, type LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface KPICardProps {
@@ -24,13 +24,13 @@ function useAnimatedCounter(
   duration: number = 1000,
   enabled: boolean = true
 ) {
-  const [count, setCount] = useState(0);
   const startTime = useRef<number | null>(null);
-  const requestRef = useRef<number>();
+  const requestRef = useRef<number | undefined>(undefined);
+  const [count, setCount] = useState(endValue);
 
   useEffect(() => {
+    // Skip animation if disabled
     if (!enabled) {
-      setCount(endValue);
       return;
     }
 
@@ -60,7 +60,8 @@ function useAnimatedCounter(
     };
   }, [endValue, duration, enabled]);
 
-  return count;
+  // Return endValue directly when not animating to avoid stale state
+  return enabled ? count : endValue;
 }
 
 // Mini sparkline component

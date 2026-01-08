@@ -22,6 +22,7 @@ import { MCPServerSelector } from '@/components/chat/MCPServerSelector';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Card, CardContent } from '@/components/ui/Card';
+import { useToast } from '@/components/ui/Toast';
 import { useMessages, useCreateConversation, useConversation } from '@/hooks/useConversations';
 import { useAgentWebSocket } from '@/hooks/useWebSocket';
 import { useChatStore } from '@/stores/chatStore';
@@ -304,6 +305,7 @@ export function ChatPage() {
   const { currentConversationId, setCurrentConversation, setMessages, addMessage, loadSavedSettings } = useChatStore();
   const createConversation = useCreateConversation();
   const [showSettings, setShowSettings] = useState(false);
+  const toast = useToast();
 
   // Parse conversation ID
   const parsedId = conversationId ? parseInt(conversationId, 10) : null;
@@ -370,7 +372,10 @@ export function ChatPage() {
       }
     } catch (error) {
       console.error('Failed to send message:', error);
-      // Could show an error toast here
+      toast.error(
+        'Failed to send message',
+        error instanceof Error ? error.message : 'Please check your connection and try again.'
+      );
     }
   };
 

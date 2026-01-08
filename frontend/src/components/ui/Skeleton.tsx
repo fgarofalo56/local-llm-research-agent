@@ -10,6 +10,7 @@ interface SkeletonProps {
   variant?: 'default' | 'circular' | 'rounded';
   width?: string | number;
   height?: string | number;
+  style?: React.CSSProperties;
 }
 
 export function Skeleton({
@@ -17,6 +18,7 @@ export function Skeleton({
   variant = 'default',
   width,
   height,
+  style,
 }: SkeletonProps) {
   return (
     <div
@@ -32,6 +34,7 @@ export function Skeleton({
       style={{
         width: typeof width === 'number' ? `${width}px` : width,
         height: typeof height === 'number' ? `${height}px` : height,
+        ...style,
       }}
     />
   );

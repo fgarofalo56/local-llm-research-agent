@@ -50,6 +50,36 @@ function StatusIcon({ status }: { status: string }) {
   }
 }
 
+// Sort column header component (extracted to avoid recreating during render)
+function SortHeader({
+  field,
+  label,
+  sortField,
+  sortDirection,
+  onSort,
+}: {
+  field: SortField;
+  label: string;
+  sortField: SortField;
+  sortDirection: SortDirection;
+  onSort: (field: SortField) => void;
+}) {
+  return (
+    <button
+      onClick={() => onSort(field)}
+      className="flex items-center gap-1 font-medium hover:text-primary"
+    >
+      {label}
+      {sortField === field &&
+        (sortDirection === 'asc' ? (
+          <ChevronUp className="h-4 w-4" />
+        ) : (
+          <ChevronDown className="h-4 w-4" />
+        ))}
+    </button>
+  );
+}
+
 // Tag badge component
 function TagBadge({ tag, onRemove }: { tag: string; onRemove?: () => void }) {
   return (
@@ -383,22 +413,6 @@ export function DocumentsPage() {
     return Array.from(tagSet).sort();
   }, [allTagsData, data?.documents]);
 
-  // Sort column header
-  const SortHeader = ({ field, label }: { field: SortField; label: string }) => (
-    <button
-      onClick={() => handleSort(field)}
-      className="flex items-center gap-1 font-medium hover:text-primary"
-    >
-      {label}
-      {sortField === field &&
-        (sortDirection === 'asc' ? (
-          <ChevronUp className="h-4 w-4" />
-        ) : (
-          <ChevronDown className="h-4 w-4" />
-        ))}
-    </button>
-  );
-
   // Handle upload button click
   const handleUploadClick = () => {
     if (fileInputRef.current) {
@@ -540,18 +554,18 @@ export function DocumentsPage() {
             <thead className="border-b bg-muted/50">
               <tr>
                 <th className="px-4 py-3 text-left">
-                  <SortHeader field="original_filename" label="Name" />
+                  <SortHeader field="original_filename" label="Name" sortField={sortField} sortDirection={sortDirection} onSort={handleSort} />
                 </th>
                 <th className="px-4 py-3 text-left">
-                  <SortHeader field="processing_status" label="Status" />
+                  <SortHeader field="processing_status" label="Status" sortField={sortField} sortDirection={sortDirection} onSort={handleSort} />
                 </th>
                 <th className="px-4 py-3 text-left">Tags</th>
                 <th className="px-4 py-3 text-left">
-                  <SortHeader field="file_size" label="Size" />
+                  <SortHeader field="file_size" label="Size" sortField={sortField} sortDirection={sortDirection} onSort={handleSort} />
                 </th>
                 <th className="px-4 py-3 text-left">Chunks</th>
                 <th className="px-4 py-3 text-left">
-                  <SortHeader field="created_at" label="Uploaded" />
+                  <SortHeader field="created_at" label="Uploaded" sortField={sortField} sortDirection={sortDirection} onSort={handleSort} />
                 </th>
                 <th className="px-4 py-3 text-right">Actions</th>
               </tr>

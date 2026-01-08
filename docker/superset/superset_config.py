@@ -8,7 +8,6 @@
 # - Match our application's theme
 
 import os
-from datetime import timedelta
 
 # Basic config
 ROW_LIMIT = 5000

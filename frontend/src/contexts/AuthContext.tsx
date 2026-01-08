@@ -60,6 +60,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Refresh token internally (defined first to avoid circular dependency)
+  const refreshTokenInternal = useCallback(async (): Promise<boolean> => {
+    const refreshTokenValue = getRefreshToken();
+    if (!refreshTokenValue) return false;
+
+    try {
+      const response = await api.post<TokenResponse>('/auth/refresh', {
+        refresh_token: refreshTokenValue,
+      });
+      setTokens(response.access_token, response.refresh_token);
+      // Fetch user after successful refresh
+      const userData = await api.get<User>('/auth/me', {
+        headers: { Authorization: `Bearer ${response.access_token}` },
+      });
+      setUser(userData);
+      return true;
+    } catch {
+      clearTokens();
+      setUser(null);
+      return false;
+    }
+  }, []);
+
   // Fetch current user profile
   const fetchUser = useCallback(async () => {
     const token = getAccessToken();
@@ -73,7 +96,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         headers: { Authorization: `Bearer ${token}` },
       });
       setUser(userData);
-    } catch (error) {
+    } catch {
       // Token might be expired, try to refresh
       const refreshed = await refreshTokenInternal();
       if (!refreshed) {
@@ -83,26 +106,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } finally {
       setIsLoading(false);
     }
-  }, []);
-
-  // Refresh token internally
-  const refreshTokenInternal = async (): Promise<boolean> => {
-    const refreshTokenValue = getRefreshToken();
-    if (!refreshTokenValue) return false;
-
-    try {
-      const response = await api.post<TokenResponse>('/auth/refresh', {
-        refresh_token: refreshTokenValue,
-      });
-      setTokens(response.access_token, response.refresh_token);
-      await fetchUser();
-      return true;
-    } catch {
-      clearTokens();
-      setUser(null);
-      return false;
-    }
-  };
+  }, [refreshTokenInternal]);
 
   // Initialize auth state on mount
   useEffect(() => {

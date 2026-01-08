@@ -6,6 +6,7 @@ import { useTheme, THEMES, type ThemeVariant } from '@/contexts/ThemeContext';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
+import { useToast } from '@/components/ui/Toast';
 import {
   Save,
   RefreshCw,
@@ -730,6 +731,7 @@ const defaultSqlSettings: SqlSettings = {
 
 export function SettingsPage() {
   const navigate = useNavigate();
+  const toast = useToast();
   // Theme is handled by ThemeContext
 
   // Provider configuration state - initialize from localStorage
@@ -802,7 +804,7 @@ export function SettingsPage() {
       })
     );
     // Show success notification
-    alert('Settings saved successfully!');
+    toast.success('Settings saved', 'Your configuration has been saved successfully.');
   };
 
   return (

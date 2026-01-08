@@ -21,7 +21,13 @@ import type { DatabaseSettings, DatabaseSettingsResponse, ConnectionTestResult }
 export function DatabaseSettingsPage() {
   const queryClient = useQueryClient();
 
-  // Form state
+  // Fetch current settings first
+  const { data: settings, isLoading } = useQuery({
+    queryKey: ['database-settings'],
+    queryFn: () => api.getDatabaseSettings<DatabaseSettingsResponse>(),
+  });
+
+  // Form state - Initialize with defaults, will be updated when settings load
   const [host, setHost] = useState('localhost');
   const [port, setPort] = useState(1434);
   const [database, setDatabase] = useState('LLM_BackEnd');
@@ -34,15 +40,10 @@ export function DatabaseSettingsPage() {
   const [saveMessage, setSaveMessage] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [testMessage, setTestMessage] = useState<{ type: 'success' | 'error'; message: string; latency?: number } | null>(null);
 
-  // Fetch current settings
-  const { data: settings, isLoading } = useQuery({
-    queryKey: ['database-settings'],
-    queryFn: () => api.getDatabaseSettings<DatabaseSettingsResponse>(),
-  });
-
-  // Update form when settings are loaded
+  // Update form when settings are loaded (only once when data arrives)
   useEffect(() => {
-    if (settings) {
+    if (settings && !isLoading) {
+      // Batch state updates to avoid multiple re-renders
       setHost(settings.host);
       setPort(settings.port);
       setDatabase(settings.database);
@@ -50,7 +51,7 @@ export function DatabaseSettingsPage() {
       setTrustCertificate(settings.trust_certificate);
       // Don't set password - it's not returned for security
     }
-  }, [settings]);
+  }, [settings, isLoading]); // Only re-run when settings data changes
 
   // Test connection mutation
   const testMutation = useMutation({

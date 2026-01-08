@@ -173,10 +173,14 @@ export function useAlertNotifications(options: UseAlertNotificationsOptions = {}
     };
   }, [enabled, connect, disconnect]);
 
-  // Request notification permission on mount
+  // Request notification permission on mount (avoid calling setState in effect)
   useEffect(() => {
     if (enabled && showBrowserNotification && notificationPermission === 'default') {
-      requestNotificationPermission();
+      // Use setTimeout to avoid calling setState synchronously in effect
+      const timer = setTimeout(() => {
+        requestNotificationPermission();
+      }, 0);
+      return () => clearTimeout(timer);
     }
   }, [enabled, showBrowserNotification, notificationPermission, requestNotificationPermission]);
 

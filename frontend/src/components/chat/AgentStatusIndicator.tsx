@@ -6,8 +6,8 @@
  * - Real-time tool status (Calling list_tables tool, Querying database)
  */
 
-import { useEffect, useState } from 'react';
-import { Loader2, Database, Search, FileText, Wrench } from 'lucide-react';
+import { useEffect, useState, useMemo } from 'react';
+import { Loader2, Database, Search, FileText, Wrench, type LucideIcon } from 'lucide-react';
 import { useChatStore } from '@/stores/chatStore';
 
 // Animated messages that cycle while thinking
@@ -37,7 +37,7 @@ const TOOL_MESSAGES: Record<string, string> = {
 };
 
 // Get icon for tool type
-function getToolIcon(toolName: string | null) {
+function getToolIcon(toolName: string | null): LucideIcon {
   if (!toolName) return Wrench;
 
   if (toolName.includes('table') || toolName.includes('data') || toolName.includes('index')) {
@@ -53,6 +53,32 @@ function getToolIcon(toolName: string | null) {
   return Wrench;
 }
 
+// Tool status display component (extracted to avoid creating during render)
+function ToolStatusDisplay({
+  toolName,
+  toolMessage,
+  toolArgsDisplay,
+}: {
+  toolName: string | null;
+  toolMessage: string | null;
+  toolArgsDisplay: string | null;
+}) {
+  // Memoize Icon to avoid recreation on every render
+  const Icon = useMemo(() => getToolIcon(toolName), [toolName]);
+  
+  return (
+    <div className="flex items-center gap-1.5 text-xs animate-in slide-in-from-left duration-200">
+      <Icon className="h-3 w-3" />
+      <span>{toolMessage}</span>
+      {toolArgsDisplay && (
+        <span className="text-muted-foreground/60 truncate max-w-[200px]">
+          ({toolArgsDisplay})
+        </span>
+      )}
+    </div>
+  );
+}
+
 export function AgentStatusIndicator() {
   const { agentStatus, isStreaming } = useChatStore();
   const [messageIndex, setMessageIndex] = useState(0);
@@ -60,16 +86,17 @@ export function AgentStatusIndicator() {
   // Safety check for agentStatus (may be undefined from old localStorage)
   const safeAgentStatus = agentStatus ?? {
     isActive: false,
-    currentPhase: 'idle',
+    currentPhase: 'idle' as const,
     toolName: null,
     toolArgs: null,
     animatedMessage: '',
   };
 
+  const isToolCalling = safeAgentStatus.currentPhase === 'tool_calling' && safeAgentStatus.toolName;
+
   // Cycle through thinking messages
   useEffect(() => {
     if (!safeAgentStatus.isActive) {
-      setMessageIndex(0);
       return;
     }
 
@@ -77,16 +104,17 @@ export function AgentStatusIndicator() {
       setMessageIndex((prev) => (prev + 1) % THINKING_MESSAGES.length);
     }, 2000);
 
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+      // Reset index when effect cleans up (agent becomes inactive)
+      setMessageIndex(0);
+    };
   }, [safeAgentStatus.isActive]);
 
   // Don't show anything if agent is idle
   if (!safeAgentStatus.isActive && !isStreaming) {
     return null;
   }
-
-  const ToolIcon = getToolIcon(safeAgentStatus.toolName);
-  const isToolCalling = safeAgentStatus.currentPhase === 'tool_calling' && safeAgentStatus.toolName;
 
   // Get tool-specific message
   const toolMessage = safeAgentStatus.toolName
@@ -133,15 +161,11 @@ export function AgentStatusIndicator() {
 
         {/* Tool status (when calling a tool) */}
         {isToolCalling && (
-          <div className="flex items-center gap-1.5 text-xs animate-in slide-in-from-left duration-200">
-            <ToolIcon className="h-3 w-3" />
-            <span>{toolMessage}</span>
-            {getToolArgsDisplay() && (
-              <span className="text-muted-foreground/60 truncate max-w-[200px]">
-                ({getToolArgsDisplay()})
-              </span>
-            )}
-          </div>
+          <ToolStatusDisplay 
+            toolName={safeAgentStatus.toolName}
+            toolMessage={toolMessage}
+            toolArgsDisplay={getToolArgsDisplay()}
+          />
         )}
 
         {/* Generating phase */}

@@ -11,7 +11,7 @@ from collections.abc import AsyncIterator
 from pydantic_ai import Agent
 
 from src.agent.cache import AgentCache
-from src.agent.prompts import get_system_prompt
+from src.agent.prompts import get_system_prompt, format_mcp_servers_info
 from src.agent.stats import AgentStats
 from src.mcp.client import MCPClientManager
 from src.models.chat import AgentResponse, ChatMessage, Conversation, ConversationTurn, TokenUsage
@@ -43,10 +43,11 @@ OllamaConnectionError = ProviderConnectionError
 
 class ResearchAgent:
     """
-    Research agent for SQL Server data analytics.
+    Universal research and tools assistant.
 
+    Supports data analysis, general questions, code assistance, and research.
     Uses local LLM providers (Ollama or Foundry Local) for inference
-    and MSSQL MCP Server for database access.
+    and MCP servers for database/tool access.
     """
 
     def __init__(
@@ -59,6 +60,7 @@ class ResearchAgent:
         cache_enabled: bool | None = None,
         explain_mode: bool = False,
         thinking_mode: bool = False,
+        mcp_servers: list | None = None,  # List of MCP server names to enable
         # Legacy Ollama-specific parameters (for backwards compatibility)
         ollama_host: str | None = None,
         ollama_model: str | None = None,
@@ -74,6 +76,8 @@ class ResearchAgent:
             minimal_prompt: Use minimal system prompt
             cache_enabled: Enable response caching (default from settings)
             explain_mode: Enable educational query explanations
+            thinking_mode: Enable step-by-step reasoning mode
+            mcp_servers: List of MCP server names to enable (e.g., ['mssql', 'brave'])
             ollama_host: (Legacy) Ollama server URL
             ollama_model: (Legacy) Ollama model name
         """
@@ -81,6 +85,7 @@ class ResearchAgent:
         self.minimal_prompt = minimal_prompt
         self.explain_mode = explain_mode
         self.thinking_mode = thinking_mode
+        self._enabled_mcp_servers = mcp_servers or ["mssql"]  # Default to MSSQL for compatibility
 
         # Initialize response cache
         self._cache_enabled = cache_enabled if cache_enabled is not None else settings.cache_enabled
@@ -92,7 +97,10 @@ class ResearchAgent:
 
         # Initialize MCP components
         self.mcp_manager = MCPClientManager()
-        self.mssql_server = self.mcp_manager.get_mssql_server()
+        
+        # Load active toolsets - gracefully handle failures
+        self._active_toolsets = []
+        self._load_toolsets()
 
         # Configure LLM provider
         if provider is not None:
@@ -134,7 +142,10 @@ class ResearchAgent:
                 warning=self._tool_warning,
             )
 
-        # Create agent
+        # Create agent with all active toolsets (may be empty if all fail)
+        # Generate dynamic MCP server information for system prompt
+        mcp_info = format_mcp_servers_info(self._enabled_mcp_servers)
+        
         self.agent = Agent(
             model=self.model,
             system_prompt=get_system_prompt(
@@ -142,8 +153,9 @@ class ResearchAgent:
                 minimal=self.minimal_prompt,
                 explain_mode=self.explain_mode,
                 thinking_mode=self.thinking_mode,
+                mcp_servers_info=mcp_info,
             ),
-            toolsets=[self.mssql_server],
+            toolsets=self._active_toolsets,  # Can be empty list - agent still works
         )
 
         # Conversation tracking
@@ -182,7 +194,48 @@ class ResearchAgent:
             thinking_mode=self.thinking_mode,
             rate_limit_enabled=settings.rate_limit_enabled,
             tool_calling_supported=self.provider.supports_tool_calling(),
+            active_toolsets=len(self._active_toolsets),
+            enabled_servers=self._enabled_mcp_servers,
         )
+
+    def _load_toolsets(self) -> None:
+        """
+        Load MCP server toolsets based on enabled servers list.
+        
+        Gracefully handles failures - agent continues without failed tools.
+        """
+        for server_name in self._enabled_mcp_servers:
+            try:
+                if server_name == "mssql":
+                    server = self.mcp_manager.get_mssql_server()
+                    self._active_toolsets.append(server)
+                    logger.info("mcp_toolset_loaded", server=server_name)
+                else:
+                    # Try loading from config file
+                    try:
+                        server = self.mcp_manager.get_server_from_config(server_name)
+                        self._active_toolsets.append(server)
+                        logger.info("mcp_toolset_loaded", server=server_name)
+                    except (KeyError, ValueError) as e:
+                        logger.warning(
+                            "mcp_server_not_configured",
+                            server=server_name,
+                            error=str(e),
+                        )
+            except Exception as e:
+                # Log but continue - agent can work without this tool
+                logger.warning(
+                    "mcp_toolset_load_failed",
+                    server=server_name,
+                    error=str(e),
+                    error_type=type(e).__name__,
+                )
+        
+        if not self._active_toolsets:
+            logger.warning(
+                "no_toolsets_loaded",
+                message="Agent will operate without MCP tools - can still answer general questions",
+            )
 
     @property
     def tool_warning(self) -> str | None:

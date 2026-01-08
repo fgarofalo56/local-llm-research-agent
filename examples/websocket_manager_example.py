@@ -9,13 +9,13 @@ import asyncio
 import sys
 
 from fastapi import FastAPI, WebSocket
-from fastapi.testclient import TestClient
 
 from src.api.websocket import WebSocketManager
 
 # Ensure UTF-8 output on Windows
 if sys.platform == "win32":
     sys.stdout.reconfigure(encoding="utf-8")
+
 
 # Example 1: Basic WebSocket Manager Usage
 async def basic_usage():
@@ -68,7 +68,7 @@ async def connection_management():
 
     # Disconnect
     await manager.disconnect("user-123")
-    print(f"✓ Disconnected: user-123")
+    print("✓ Disconnected: user-123")
     print(f"  Remaining connections: {manager.get_connection_count()}\n")
 
 
@@ -108,7 +108,7 @@ async def broadcasting_example():
     # Clean up
     for i in range(3):
         await manager.disconnect(f"user-{i}")
-    print(f"✓ Cleaned up all connections\n")
+    print("✓ Cleaned up all connections\n")
 
 
 # Example 4: Conversation-based Messaging
@@ -134,7 +134,7 @@ async def conversation_messaging():
                 conversation_id=conv_id,
             )
 
-    print(f"✓ Connected 4 clients across 2 conversations")
+    print("✓ Connected 4 clients across 2 conversations")
     print(f"  Active conversations: {manager.get_conversation_count()}")
 
     # Send to specific conversation
@@ -150,7 +150,7 @@ async def conversation_messaging():
 
     # Clean up
     await manager.shutdown()
-    print(f"✓ Shutdown complete\n")
+    print("✓ Shutdown complete\n")
 
 
 # Example 5: FastAPI Integration (skeleton)
@@ -171,9 +171,7 @@ def fastapi_integration_example():
         connection_id = f"chat-{conversation_id}-{id(websocket)}"
 
         # Connect via manager
-        connection = await websocket_manager.connect(
-            websocket, connection_id, conversation_id
-        )
+        connection = await websocket_manager.connect(websocket, connection_id, conversation_id)
 
         try:
             while True:
@@ -232,7 +230,7 @@ async def health_metrics():
 
     # Clean up
     await manager.shutdown()
-    print(f"✓ Shutdown complete\n")
+    print("✓ Shutdown complete\n")
 
 
 async def main():

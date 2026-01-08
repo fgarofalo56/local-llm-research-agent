@@ -14,9 +14,9 @@ import asyncio
 from dataclasses import dataclass
 
 from pydantic_ai import Agent
+from pydantic_ai.mcp import MCPServerStdio
 from pydantic_ai.models.openai import OpenAIModel
 from pydantic_ai.providers.openai import OpenAIProvider
-from pydantic_ai.mcp import MCPServerStdio
 
 
 @dataclass

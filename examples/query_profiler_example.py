@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 
 from src.api.models.database import Base, Conversation, Message
-from src.utils.query_profiler import enable_profiling, get_stats, get_slow_queries
+from src.utils.query_profiler import enable_profiling, get_slow_queries, get_stats
 
 
 async def main():
@@ -32,9 +32,7 @@ async def main():
         await conn.run_sync(Base.metadata.create_all)
 
     # Create session factory
-    async_session_maker = sessionmaker(
-        engine, class_=AsyncSession, expire_on_commit=False
-    )
+    async_session_maker = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
     print("=== Running Database Queries ===\n")
 
@@ -81,9 +79,9 @@ async def main():
     print(f"Slow queries detected: {stats['slow_queries']}")
 
     # Show queries by table
-    if stats['queries_by_table']:
+    if stats["queries_by_table"]:
         print("\n=== Queries by Table ===\n")
-        for table, count in stats['top_tables']:
+        for table, count in stats["top_tables"]:
             print(f"  {table}: {count} queries")
 
     # Show slow queries if any

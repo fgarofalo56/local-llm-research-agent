@@ -14,7 +14,7 @@ Features demonstrated:
 import asyncio
 from datetime import datetime
 
-from src.agent.core import ResearchAgent, create_research_agent
+from src.agent.core import create_research_agent
 from src.utils.logger import get_logger
 from src.utils.retry import CircuitBreaker, RetryConfig, retry
 
@@ -36,11 +36,11 @@ async def example_basic_retry():
     agent = create_research_agent(provider_type="ollama", model_name="qwen3:30b")
 
     print("\nAgent initialized with retry configuration:")
-    print(f"  - Max retries: 3")
-    print(f"  - Initial delay: 1.0s")
-    print(f"  - Max delay: 30.0s")
-    print(f"  - Multiplier: 2.0")
-    print(f"  - Jitter: 0.1 (10%)")
+    print("  - Max retries: 3")
+    print("  - Initial delay: 1.0s")
+    print("  - Max delay: 30.0s")
+    print("  - Multiplier: 2.0")
+    print("  - Jitter: 0.1 (10%)")
 
     try:
         # Make a request - if there are transient failures, it will retry automatically
@@ -82,10 +82,10 @@ async def example_custom_retry():
 
         # Simulate transient failure for first 2 attempts
         if call_count < 3:
-            print(f"  > Simulating transient failure (ConnectionRefusedError)")
+            print("  > Simulating transient failure (ConnectionRefusedError)")
             raise ConnectionRefusedError("Service temporarily unavailable")
 
-        print(f"  > Success!")
+        print("  > Success!")
         return "Data fetched successfully"
 
     print("\nCustom retry configuration:")
@@ -119,8 +119,8 @@ async def example_circuit_breaker():
     )
 
     print("\nCircuit breaker configuration:")
-    print(f"  - Failure threshold: 3")
-    print(f"  - Reset timeout: 5.0s")
+    print("  - Failure threshold: 3")
+    print("  - Reset timeout: 5.0s")
     print(f"  - Initial state: {breaker.state.value}")
 
     call_count = 0
@@ -139,7 +139,7 @@ async def example_circuit_breaker():
         try:
             await failing_operation()
         except Exception as e:
-            print(f"  Call {i+1} failed: {type(e).__name__}")
+            print(f"  Call {i + 1} failed: {type(e).__name__}")
 
     print(f"\nCircuit breaker state: {breaker.state.value}")
     print(f"Total attempts made: {call_count}")
@@ -199,8 +199,10 @@ async def example_retry_callback():
     print(f"\nResult: {result}")
     print(f"\nRetry events collected: {len(retry_events)}")
     for event in retry_events:
-        print(f"  - Attempt {event['attempt']}: {event['error_type']} "
-              f"(delay: {event['delay_seconds']:.2f}s)")
+        print(
+            f"  - Attempt {event['attempt']}: {event['error_type']} "
+            f"(delay: {event['delay_seconds']:.2f}s)"
+        )
 
 
 async def example_agent_with_stats():
@@ -217,9 +219,9 @@ async def example_agent_with_stats():
     agent = create_research_agent(provider_type="ollama", model_name="qwen3:30b")
 
     print("\nAgent retry configuration (built-in):")
-    print(f"  - Retry max attempts: 3")
-    print(f"  - Circuit breaker threshold: 5")
-    print(f"  - Circuit breaker reset timeout: 60s")
+    print("  - Retry max attempts: 3")
+    print("  - Circuit breaker threshold: 5")
+    print("  - Circuit breaker reset timeout: 60s")
 
     print("\nAgent is resilient to transient failures like:")
     print("  - Connection timeouts")

@@ -44,9 +44,9 @@ async def example_embedding_cache():
         print(f"   Generated embedding with {len(embedding1)} dimensions")
 
         # Second call - will retrieve from cache
-        print(f"\n2. Requesting same text again (should hit cache)...")
+        print("\n2. Requesting same text again (should hit cache)...")
         embedding2 = await embedder.embed_with_cache(text, cache=cache)
-        print(f"   Retrieved embedding from cache")
+        print("   Retrieved embedding from cache")
 
         # Verify they're the same
         assert embedding1 == embedding2
@@ -54,7 +54,7 @@ async def example_embedding_cache():
 
         # Get cache stats
         stats = await cache.get_stats()
-        print(f"\n3. Cache Statistics:")
+        print("\n3. Cache Statistics:")
         print(f"   - Hits: {stats['hits']}")
         print(f"   - Misses: {stats['misses']}")
         print(f"   - Hit Rate: {stats['hit_rate']:.1%}")
@@ -116,7 +116,7 @@ async def example_search_cache():
             print(f"   ✓ Cached {len(search_results)} search results")
 
         # Second search - cache hit
-        print(f"\n2. Searching for same query again...")
+        print("\n2. Searching for same query again...")
         cached_results = await cache.get_search_results(query, top_k, source_type)
 
         if cached_results:
@@ -205,9 +205,7 @@ async def example_cache_configuration():
         print("\n1. Caching with custom TTL values:")
 
         # Long-lived embedding cache (7 days = 604800 seconds)
-        await cache.set_embedding(
-            "permanent content", [0.1, 0.2, 0.3], ttl=604800
-        )
+        await cache.set_embedding("permanent content", [0.1, 0.2, 0.3], ttl=604800)
         print("   ✓ Cached embedding with 7-day TTL")
 
         # Short-lived search results (5 minutes = 300 seconds)

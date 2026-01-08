@@ -5,12 +5,10 @@ Provides convenient async context manager for creating and using
 research agents without manual initialization.
 """
 
-from typing import Any
+# Import at runtime to avoid circular dependency
+from typing import TYPE_CHECKING, Any
 
 from src.providers import ProviderType
-
-# Import at runtime to avoid circular dependency
-from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from src.agent.core import ResearchAgent
@@ -36,7 +34,7 @@ class ResearchAgentContext:
     ):
         self.provider_type = provider_type
         self.readonly = readonly
-        self._agent: "ResearchAgent | None" = None
+        self._agent: ResearchAgent | None = None
 
     async def __aenter__(self) -> "ResearchAgent":
         from src.agent.core import create_research_agent

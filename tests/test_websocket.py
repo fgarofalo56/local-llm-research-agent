@@ -6,8 +6,8 @@ Tests for WebSocketManager, WebSocketConnection, and HeartbeatManager.
 """
 
 import asyncio
-from datetime import datetime, timedelta, timezone
-from unittest.mock import AsyncMock, MagicMock, patch
+from datetime import UTC, datetime, timedelta
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -106,7 +106,7 @@ class TestWebSocketConnection:
         connection = WebSocketConnection(mock_websocket, "test-1")
 
         # Set last activity to 5 seconds ago
-        connection.last_activity = datetime.now(timezone.utc) - timedelta(seconds=5)
+        connection.last_activity = datetime.now(UTC) - timedelta(seconds=5)
 
         idle = connection.idle_seconds
         assert idle >= 5
@@ -114,9 +114,7 @@ class TestWebSocketConnection:
 
     def test_connection_tracking(self, mock_websocket):
         """Test connection ID and conversation tracking."""
-        connection = WebSocketConnection(
-            mock_websocket, "test-1", conversation_id=42
-        )
+        connection = WebSocketConnection(mock_websocket, "test-1", conversation_id=42)
 
         assert connection.connection_id == "test-1"
         assert connection.conversation_id == 42
@@ -129,9 +127,7 @@ class TestWebSocketManager:
     @pytest.mark.asyncio
     async def test_connect(self, websocket_manager, mock_websocket):
         """Test connecting a WebSocket."""
-        connection = await websocket_manager.connect(
-            mock_websocket, "conn-1", conversation_id=1
-        )
+        connection = await websocket_manager.connect(mock_websocket, "conn-1", conversation_id=1)
 
         assert connection.connection_id == "conn-1"
         assert connection.conversation_id == 1
@@ -159,9 +155,7 @@ class TestWebSocketManager:
         """Test sending to specific connection."""
         await websocket_manager.connect(mock_websocket, "conn-1")
 
-        result = await websocket_manager.send_to_connection(
-            "conn-1", {"type": "test"}
-        )
+        result = await websocket_manager.send_to_connection("conn-1", {"type": "test"})
 
         assert result is True
         mock_websocket.send_json.assert_called_once()
@@ -169,9 +163,7 @@ class TestWebSocketManager:
     @pytest.mark.asyncio
     async def test_send_to_nonexistent_connection(self, websocket_manager):
         """Test sending to nonexistent connection."""
-        result = await websocket_manager.send_to_connection(
-            "nonexistent", {"type": "test"}
-        )
+        result = await websocket_manager.send_to_connection("nonexistent", {"type": "test"})
 
         assert result is False
 
@@ -192,9 +184,7 @@ class TestWebSocketManager:
         await websocket_manager.connect(ws1, "conn-1", conversation_id=1)
         await websocket_manager.connect(ws2, "conn-2", conversation_id=1)
 
-        sent_count = await websocket_manager.send_to_conversation(
-            1, {"type": "test"}
-        )
+        sent_count = await websocket_manager.send_to_conversation(1, {"type": "test"})
 
         assert sent_count == 2
         ws1.send_json.assert_called_once()
@@ -203,9 +193,7 @@ class TestWebSocketManager:
     @pytest.mark.asyncio
     async def test_send_to_empty_conversation(self, websocket_manager):
         """Test sending to conversation with no connections."""
-        sent_count = await websocket_manager.send_to_conversation(
-            999, {"type": "test"}
-        )
+        sent_count = await websocket_manager.send_to_conversation(999, {"type": "test"})
 
         assert sent_count == 0
 
@@ -406,7 +394,7 @@ class TestHeartbeatManager:
         connection = await websocket_manager.connect(ws, "conn-1")
 
         # Make connection stale
-        connection.last_activity = datetime.now(timezone.utc) - timedelta(seconds=100)
+        connection.last_activity = datetime.now(UTC) - timedelta(seconds=100)
 
         heartbeat = HeartbeatManager(websocket_manager)
         await heartbeat._cleanup_stale_connections()

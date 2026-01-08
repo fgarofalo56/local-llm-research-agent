@@ -6,9 +6,6 @@ Tests comprehensive error handling and user-friendly error messages
 for PDF, DOCX, and text file processing failures.
 """
 
-import tempfile
-from pathlib import Path
-
 import pytest
 
 from src.rag.document_processor import DocumentProcessor
@@ -61,11 +58,7 @@ class TestPDFErrorHandling:
         # Create a PDF-like file with basic structure but corrupted xref
         corrupted_pdf = tmp_path / "corrupted.pdf"
         corrupted_pdf.write_bytes(
-            b"%PDF-1.4\n"
-            b"1 0 obj\n<< /Type /Catalog >>\nendobj\n"
-            b"xref\n"
-            b"corrupt data here\n"
-            b"%%EOF"
+            b"%PDF-1.4\n1 0 obj\n<< /Type /Catalog >>\nendobj\nxref\ncorrupt data here\n%%EOF"
         )
 
         with pytest.raises(ValueError) as exc_info:
@@ -247,11 +240,7 @@ class TestHelpfulErrorMessages:
 
         # Create minimally valid but problematic PDF
         bad_pdf = tmp_path / "bad.pdf"
-        bad_pdf.write_bytes(
-            b"%PDF-1.4\n"
-            b"1 0 obj\n<< /Type /Catalog >>\nendobj\n"
-            b"xref\nbad\n%%EOF"
-        )
+        bad_pdf.write_bytes(b"%PDF-1.4\n1 0 obj\n<< /Type /Catalog >>\nendobj\nxref\nbad\n%%EOF")
 
         with pytest.raises(ValueError) as exc_info:
             await processor.process_file(bad_pdf)
@@ -259,8 +248,7 @@ class TestHelpfulErrorMessages:
         error_msg = str(exc_info.value)
         # Should suggest re-saving or provide actionable guidance
         assert any(
-            phrase in error_msg.lower()
-            for phrase in ["re-saving", "pdf reader", "corrupted"]
+            phrase in error_msg.lower() for phrase in ["re-saving", "pdf reader", "corrupted"]
         )
 
     @pytest.mark.asyncio

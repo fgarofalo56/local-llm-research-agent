@@ -138,9 +138,7 @@ class Settings(BaseSettings):
         default="localhost", description="Backend SQL Server 2025 hostname"
     )
     backend_db_port: int = Field(default=1434, description="Backend SQL Server port")
-    backend_db_name: str = Field(
-        default="LLM_BackEnd", description="Backend database name"
-    )
+    backend_db_name: str = Field(default="LLM_BackEnd", description="Backend database name")
     backend_db_username: str = Field(
         default="", description="Backend database username (defaults to sql_username)"
     )

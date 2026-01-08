@@ -161,9 +161,7 @@ class DocumentService:
         )
         suffix = Path(filename).suffix.lower()
         if suffix not in processor.SUPPORTED_EXTENSIONS:
-            raise ValueError(
-                f"Unsupported file type. Supported: {processor.SUPPORTED_EXTENSIONS}"
-            )
+            raise ValueError(f"Unsupported file type. Supported: {processor.SUPPORTED_EXTENSIONS}")
 
     async def save_upload(
         self,

@@ -144,13 +144,12 @@ class TestUpdateDatabaseSettings:
     @pytest.mark.asyncio
     async def test_update_database_settings(self):
         """Test updating database settings."""
+        # Clear runtime settings
+        import src.api.routes.settings as settings_module
         from src.api.routes.settings import (
             DatabaseSettings,
             update_database_settings,
         )
-
-        # Clear runtime settings
-        import src.api.routes.settings as settings_module
 
         settings_module._runtime_db_settings = None
 
@@ -183,13 +182,12 @@ class TestDatabaseConnectionTest:
     @pytest.mark.asyncio
     async def test_connection_test_success(self):
         """Test successful database connection."""
+        # Clear runtime settings
+        import src.api.routes.settings as settings_module
         from src.api.routes.settings import (
             DatabaseSettings,
             test_database_connection,
         )
-
-        # Clear runtime settings
-        import src.api.routes.settings as settings_module
 
         settings_module._runtime_db_settings = None
 
@@ -270,9 +268,7 @@ class TestDatabaseConnectionTest:
         # Mock aioodbc to raise database not found error
         with patch(
             "aioodbc.connect",
-            AsyncMock(
-                side_effect=Exception("Cannot open database 'NonExistentDB'")
-            ),
+            AsyncMock(side_effect=Exception("Cannot open database 'NonExistentDB'")),
         ):
             result = await test_database_connection(test_settings)
 
@@ -301,9 +297,7 @@ class TestDatabaseConnectionTest:
         with patch(
             "aioodbc.connect",
             AsyncMock(
-                side_effect=Exception(
-                    "TCP Provider: Error code 0x2749 - Connection timeout"
-                )
+                side_effect=Exception("TCP Provider: Error code 0x2749 - Connection timeout")
             ),
         ):
             result = await test_database_connection(test_settings)

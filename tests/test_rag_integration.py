@@ -4,10 +4,11 @@ RAG Pipeline Integration Tests
 Tests the complete flow: Document → Embed → Store → Search → Retrieve
 """
 
-import pytest
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch
 from tempfile import NamedTemporaryFile
+from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 
 from src.rag.document_processor import DocumentProcessor
 from src.rag.embedder import OllamaEmbedder
@@ -224,9 +225,7 @@ class TestVectorStoreOperations:
         # Mock embedder
         mock_embedder = MagicMock()
         mock_embedder.embed = AsyncMock(return_value=[0.1] * 768)
-        mock_embedder.embed_batch = AsyncMock(
-            return_value=[[0.1] * 768, [0.2] * 768]
-        )
+        mock_embedder.embed_batch = AsyncMock(return_value=[[0.1] * 768, [0.2] * 768])
 
         # Test with mock store
         mock_store = MagicMock(spec=VectorStoreBase)
@@ -326,40 +325,44 @@ class TestVectorStoreFactory:
         mock_embedder = MagicMock()
         mock_redis = MagicMock()
 
-        with patch.object(
-            VectorStoreFactory, "_create_mssql_store", side_effect=RuntimeError("MSSQL failed")
-        ):
-            with patch.object(
+        with (
+            patch.object(
+                VectorStoreFactory, "_create_mssql_store", side_effect=RuntimeError("MSSQL failed")
+            ),
+            patch.object(
                 VectorStoreFactory,
                 "_create_redis_store",
                 return_value=MagicMock(spec=VectorStoreBase),
-            ):
-                store = await VectorStoreFactory.create_with_fallback(
-                    primary_type="mssql",
-                    fallback_type="redis",
-                    embedder=mock_embedder,
-                    redis_client=mock_redis,
-                )
-                assert store is not None
+            ),
+        ):
+            store = await VectorStoreFactory.create_with_fallback(
+                primary_type="mssql",
+                fallback_type="redis",
+                embedder=mock_embedder,
+                redis_client=mock_redis,
+            )
+            assert store is not None
 
     @pytest.mark.asyncio
     async def test_create_with_fallback_both_fail(self):
         """Test factory when both primary and fallback fail."""
         mock_embedder = MagicMock()
 
-        with patch.object(
-            VectorStoreFactory, "_create_mssql_store", side_effect=RuntimeError("MSSQL failed")
-        ):
-            with patch.object(
+        with (
+            patch.object(
+                VectorStoreFactory, "_create_mssql_store", side_effect=RuntimeError("MSSQL failed")
+            ),
+            patch.object(
                 VectorStoreFactory, "_create_redis_store", side_effect=RuntimeError("Redis failed")
-            ):
-                with pytest.raises(RuntimeError) as exc_info:
-                    await VectorStoreFactory.create_with_fallback(
-                        primary_type="mssql",
-                        fallback_type="redis",
-                        embedder=mock_embedder,
-                    )
-                assert "Failed to create vector store" in str(exc_info.value)
+            ),
+        ):
+            with pytest.raises(RuntimeError) as exc_info:
+                await VectorStoreFactory.create_with_fallback(
+                    primary_type="mssql",
+                    fallback_type="redis",
+                    embedder=mock_embedder,
+                )
+            assert "Failed to create vector store" in str(exc_info.value)
 
 
 class TestRAGPipelineEndToEnd:
@@ -415,9 +418,7 @@ class TestRAGPipelineEndToEnd:
         chunks = ["Chunk 1", "Chunk 2", "Chunk 3"]
 
         mock_embedder = MagicMock()
-        mock_embedder.embed_batch = AsyncMock(
-            return_value=[[0.1] * 768, [0.2] * 768, [0.3] * 768]
-        )
+        mock_embedder.embed_batch = AsyncMock(return_value=[[0.1] * 768, [0.2] * 768, [0.3] * 768])
 
         mock_store = MagicMock(spec=VectorStoreBase)
         mock_store.add_document = AsyncMock()
@@ -454,9 +455,7 @@ class TestRAGPipelineEndToEnd:
             ]
         )
 
-        results = await mock_store.search(
-            "test query", top_k=5, source_type="schema"
-        )
+        results = await mock_store.search("test query", top_k=5, source_type="schema")
         assert len(results) > 0
         assert results[0]["source_type"] == "schema"
 
@@ -486,9 +485,7 @@ class TestErrorHandling:
         import httpx
 
         with patch("httpx.AsyncClient") as mock_client_cls:
-            mock_post = AsyncMock(
-                side_effect=httpx.ConnectError("Connection refused")
-            )
+            mock_post = AsyncMock(side_effect=httpx.ConnectError("Connection refused"))
             mock_client = MagicMock()
             mock_client.post = mock_post
             mock_client.__aenter__ = AsyncMock(return_value=mock_client)
@@ -533,14 +530,19 @@ class TestErrorHandling:
     @pytest.mark.asyncio
     async def test_vector_store_clear_not_implemented(self):
         """Test clear_all raises NotImplementedError for base class."""
+
         # Create a concrete implementation that doesn't override clear_all
         class MinimalVectorStore(VectorStoreBase):
             async def create_index(self, overwrite: bool = False) -> None:
                 pass
 
             async def add_document(
-                self, document_id: str, chunks: list[str], source: str,
-                source_type: str = "document", metadata: dict = None
+                self,
+                document_id: str,
+                chunks: list[str],
+                source: str,
+                source_type: str = "document",
+                metadata: dict = None,
             ) -> None:
                 pass
 

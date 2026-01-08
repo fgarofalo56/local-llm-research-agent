@@ -3,7 +3,7 @@ Tests for retry utilities with exponential backoff and circuit breaker.
 """
 
 import asyncio
-from unittest.mock import AsyncMock, Mock
+from unittest.mock import Mock
 
 import httpx
 import pytest
@@ -24,7 +24,7 @@ class TestIsRetriableError:
 
     def test_timeout_errors_are_retriable(self):
         """Timeout errors should be retriable."""
-        assert is_retriable_error(asyncio.TimeoutError())
+        assert is_retriable_error(TimeoutError())
         assert is_retriable_error(TimeoutError())
 
     def test_connection_errors_are_retriable(self):

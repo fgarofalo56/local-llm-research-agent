@@ -13,11 +13,10 @@ Test scenarios:
 - AnonymousUser: Public endpoints (health, docs)
 """
 
-import json
 import random
 import string
-import time
-from locust import HttpUser, TaskSet, task, between, events
+
+from locust import HttpUser, TaskSet, between, events, task
 
 
 def generate_random_email():
@@ -243,9 +242,7 @@ class DatabaseConnectionTasks(AuthenticatedTaskSet):
     @task(1)
     def get_active_connection(self):
         """Get active database connection."""
-        self.client.get(
-            "/api/database-connections/active", headers=self.get_auth_headers()
-        )
+        self.client.get("/api/database-connections/active", headers=self.get_auth_headers())
 
 
 class MCPServerTasks(AuthenticatedTaskSet):

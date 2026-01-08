@@ -368,7 +368,10 @@ class RedisCacheBackend:
         return None
 
     async def set_embedding(
-        self, text: str, embedding: list[float], ttl: int = 604800  # 7 days
+        self,
+        text: str,
+        embedding: list[float],
+        ttl: int = 604800,  # 7 days
     ) -> None:
         """
         Cache embedding for text.

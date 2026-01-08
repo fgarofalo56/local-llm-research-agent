@@ -5,8 +5,8 @@ Phase 2.5: Advanced Features & Polish
 Service for scheduling automated query execution.
 """
 
+from collections.abc import Callable
 from datetime import datetime
-from typing import Callable
 
 import structlog
 from apscheduler.schedulers.asyncio import AsyncIOScheduler

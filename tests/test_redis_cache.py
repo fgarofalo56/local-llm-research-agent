@@ -5,7 +5,7 @@ Tests the Redis-backed caching functionality for embeddings and search results.
 """
 
 import json
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -147,9 +147,7 @@ class TestRedisCacheBackend:
         """Test search results with None source_type uses 'all'."""
         mock_redis.get.return_value = None
 
-        await cache_backend.get_search_results(
-            query="test query", top_k=5, source_type=None
-        )
+        await cache_backend.get_search_results(query="test query", top_k=5, source_type=None)
 
         # Should use 'all' in cache key when source_type is None
         # Verify the cache key was generated with 'all' by checking the hash matches
@@ -330,9 +328,7 @@ class TestEmbedderWithCache:
         mock_redis.setex.assert_not_called()  # Should not cache again
 
     @pytest.mark.asyncio
-    async def test_embed_with_cache_saves_on_miss(
-        self, mock_embedder, cache_backend, mock_redis
-    ):
+    async def test_embed_with_cache_saves_on_miss(self, mock_embedder, cache_backend, mock_redis):
         """Test that cache saves embedding on miss."""
         mock_redis.get.return_value = None
         expected_embedding = [0.1, 0.2, 0.3]

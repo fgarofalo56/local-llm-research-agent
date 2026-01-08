@@ -10,11 +10,10 @@ import logging
 import time
 from collections import defaultdict
 from dataclasses import dataclass, field
-from typing import Any, Dict, List
+from typing import Any
 
 from sqlalchemy import event
 from sqlalchemy.engine import Engine
-from sqlalchemy.pool import Pool
 
 logger = logging.getLogger(__name__)
 
@@ -29,8 +28,8 @@ class QueryStats:
     avg_time_ms: float = 0.0
     min_time_ms: float = float("inf")
     max_time_ms: float = 0.0
-    queries_by_table: Dict[str, int] = field(default_factory=lambda: defaultdict(int))
-    slow_query_log: List[Dict[str, Any]] = field(default_factory=list)
+    queries_by_table: dict[str, int] = field(default_factory=lambda: defaultdict(int))
+    slow_query_log: list[dict[str, Any]] = field(default_factory=list)
 
 
 class QueryProfiler:
@@ -47,7 +46,7 @@ class QueryProfiler:
         self.slow_query_threshold_ms = slow_query_threshold_ms
         self.max_slow_queries = max_slow_queries
         self.stats = QueryStats()
-        self._query_start_times: Dict[Any, float] = {}
+        self._query_start_times: dict[Any, float] = {}
 
     def enable(self, engine: Engine) -> None:
         """
@@ -136,9 +135,7 @@ class QueryProfiler:
                     if table_name and not table_name.startswith("("):
                         self.stats.queries_by_table[table_name] += 1
 
-    def _log_slow_query(
-        self, statement: str, parameters: Any, execution_time_ms: float
-    ) -> None:
+    def _log_slow_query(self, statement: str, parameters: Any, execution_time_ms: float) -> None:
         """Log a slow query."""
         self.stats.slow_queries += 1
 
@@ -156,11 +153,9 @@ class QueryProfiler:
             self.stats.slow_query_log.pop(0)
 
         # Log warning
-        logger.warning(
-            f"Slow query detected ({execution_time_ms:.2f}ms): {statement[:200]}"
-        )
+        logger.warning(f"Slow query detected ({execution_time_ms:.2f}ms): {statement[:200]}")
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """
         Get current profiling statistics.
 
@@ -183,7 +178,7 @@ class QueryProfiler:
             )[:10],
         }
 
-    def get_slow_queries(self, limit: int = 20) -> List[Dict[str, Any]]:
+    def get_slow_queries(self, limit: int = 20) -> list[dict[str, Any]]:
         """
         Get recent slow queries.
 
@@ -206,9 +201,7 @@ class QueryProfiler:
 _profiler: QueryProfiler | None = None
 
 
-def get_profiler(
-    slow_query_threshold_ms: int = 100, max_slow_queries: int = 100
-) -> QueryProfiler:
+def get_profiler(slow_query_threshold_ms: int = 100, max_slow_queries: int = 100) -> QueryProfiler:
     """
     Get or create the global query profiler instance.
 
@@ -251,13 +244,13 @@ def disable_profiling(engine: Engine) -> None:
     profiler.disable(engine)
 
 
-def get_stats() -> Dict[str, Any]:
+def get_stats() -> dict[str, Any]:
     """Get current profiling statistics."""
     profiler = get_profiler()
     return profiler.get_stats()
 
 
-def get_slow_queries(limit: int = 20) -> List[Dict[str, Any]]:
+def get_slow_queries(limit: int = 20) -> list[dict[str, Any]]:
     """Get recent slow queries."""
     profiler = get_profiler()
     return profiler.get_slow_queries(limit=limit)

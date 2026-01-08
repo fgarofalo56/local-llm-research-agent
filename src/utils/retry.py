@@ -85,13 +85,9 @@ class RetryStats:
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
-        avg_delay = (
-            self.total_delay_ms / self.total_attempts if self.total_attempts > 0 else 0
-        )
+        avg_delay = self.total_delay_ms / self.total_attempts if self.total_attempts > 0 else 0
         success_rate = (
-            (self.successful_retries / self.total_attempts * 100)
-            if self.total_attempts > 0
-            else 0
+            (self.successful_retries / self.total_attempts * 100) if self.total_attempts > 0 else 0
         )
         return {
             "total_attempts": self.total_attempts,
@@ -287,7 +283,9 @@ class CircuitBreaker:
             # Limit calls in half-open state
             if self._state == CircuitState.HALF_OPEN:
                 if self._half_open_calls >= self.half_open_max_calls:
-                    raise CircuitBreakerOpenError("Circuit breaker is half-open (max calls reached)")
+                    raise CircuitBreakerOpenError(
+                        "Circuit breaker is half-open (max calls reached)"
+                    )
                 self._half_open_calls += 1
 
         # Execute the function
@@ -303,7 +301,7 @@ class CircuitBreaker:
 
             return result
 
-        except Exception as e:
+        except Exception:
             # Record failure
             async with self._lock:
                 self._on_failure()

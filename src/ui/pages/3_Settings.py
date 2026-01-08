@@ -29,6 +29,7 @@ st.set_page_config(
 # API base URL - try container name first (Docker), fall back to localhost
 # Note: API_HOST=0.0.0.0 is for server binding, not client connections
 import os
+
 _api_host = os.environ.get("API_HOST", "localhost")
 if _api_host == "0.0.0.0":
     _api_host = "localhost"  # 0.0.0.0 is bind address, use localhost for client

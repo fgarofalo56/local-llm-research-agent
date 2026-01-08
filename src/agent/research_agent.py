@@ -11,9 +11,6 @@ All existing imports from src.agent.research_agent will continue to work.
 # Re-export pydantic_ai Agent for backward compatibility with tests
 from pydantic_ai import Agent
 
-# Re-export MCPClientManager for backward compatibility with tests
-from src.mcp.client import MCPClientManager
-
 # Re-export core components for backward compatibility
 from src.agent.context import ResearchAgentContext
 from src.agent.core import (
@@ -23,6 +20,9 @@ from src.agent.core import (
     ResearchAgentError,
     create_research_agent,
 )
+
+# Re-export MCPClientManager for backward compatibility with tests
+from src.mcp.client import MCPClientManager
 
 __all__ = [
     "Agent",

@@ -28,7 +28,6 @@ import shutil
 import subprocess
 import sys
 from datetime import datetime
-from typing import Any
 
 try:
     import uvicorn
@@ -182,9 +181,7 @@ async def start_ollama_service() -> StartResponse:
         # Start ollama serve as background process
         if is_windows():
             # On Windows, use CREATE_NEW_PROCESS_GROUP and DETACHED_PROCESS
-            creation_flags = (
-                subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.DETACHED_PROCESS
-            )
+            creation_flags = subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.DETACHED_PROCESS
             subprocess.Popen(
                 ["ollama", "serve"],
                 stdout=subprocess.DEVNULL,
@@ -237,7 +234,7 @@ async def start_foundry_service(model: str | None = None) -> StartResponse:
     if running:
         return StartResponse(
             success=True,
-            message=f"Foundry Local is already running",
+            message="Foundry Local is already running",
             service="foundry",
             endpoint=f"http://127.0.0.1:{FOUNDRY_PORT}",
         )
@@ -257,9 +254,7 @@ async def start_foundry_service(model: str | None = None) -> StartResponse:
         cmd = ["foundry", "model", "run", model]
 
         if is_windows():
-            creation_flags = (
-                subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.DETACHED_PROCESS
-            )
+            creation_flags = subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.DETACHED_PROCESS
             subprocess.Popen(
                 cmd,
                 stdout=subprocess.DEVNULL,

@@ -119,7 +119,9 @@ class DynamicMCPManager:
                         self.servers[server_id] = MCPServerConfig(
                             id=server_id,
                             name=server_config.get("name", default_config.name),
-                            description=server_config.get("description", default_config.description),
+                            description=server_config.get(
+                                "description", default_config.description
+                            ),
                             type=server_config.get("type", default_config.type),
                             command=server_config.get("command", default_config.command),
                             args=server_config.get("args", default_config.args),

@@ -151,6 +151,7 @@ class TestTypeCompatibility:
 
     def test_base_class_can_be_type_hint(self):
         """Test that VectorStoreBase can be used as a type hint."""
+
         def accept_vector_store(store: VectorStoreBase) -> str:
             return repr(store)
 

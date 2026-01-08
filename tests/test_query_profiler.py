@@ -11,9 +11,8 @@ from sqlalchemy.orm import DeclarativeBase, Session
 
 from src.utils.query_profiler import (
     QueryProfiler,
-    enable_profiling,
     disable_profiling,
-    get_profiler,
+    enable_profiling,
     get_stats,
     reset_stats,
 )

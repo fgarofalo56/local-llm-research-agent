@@ -112,7 +112,10 @@ TOOLS = [
                     "description": "Numeric columns to analyze (all if not specified)",
                 },
                 "where_clause": {"type": "string", "description": "Optional WHERE clause filter"},
-                "database": {"type": "string", "description": "Database: 'sample' or 'backend' (default)"},
+                "database": {
+                    "type": "string",
+                    "description": "Database: 'sample' or 'backend' (default)",
+                },
             },
             "required": ["table_name"],
         },
@@ -203,8 +206,14 @@ TOOLS = [
             "properties": {
                 "table_name": {"type": "string", "description": "Table name"},
                 "row_column": {"type": "string", "description": "Column for rows"},
-                "pivot_column": {"type": "string", "description": "Column to pivot (creates columns)"},
-                "value_column": {"type": "string", "description": "Column with values to aggregate"},
+                "pivot_column": {
+                    "type": "string",
+                    "description": "Column to pivot (creates columns)",
+                },
+                "value_column": {
+                    "type": "string",
+                    "description": "Column with values to aggregate",
+                },
                 "aggregate_function": {
                     "type": "string",
                     "enum": ["SUM", "AVG", "COUNT", "MIN", "MAX"],
@@ -235,7 +244,11 @@ TOOLS = [
                     "description": "Include moving average",
                     "default": True,
                 },
-                "moving_average_window": {"type": "integer", "description": "Window size", "default": 7},
+                "moving_average_window": {
+                    "type": "integer",
+                    "description": "Window size",
+                    "default": 7,
+                },
                 "database": {"type": "string", "description": "Database to connect to"},
             },
             "required": ["table_name", "date_column", "value_column"],
@@ -269,7 +282,11 @@ TOOLS = [
             "type": "object",
             "properties": {
                 "table_name": {"type": "string", "description": "Table name to profile"},
-                "sample_size": {"type": "integer", "description": "Number of sample values", "default": 5},
+                "sample_size": {
+                    "type": "integer",
+                    "description": "Number of sample values",
+                    "default": 5,
+                },
                 "database": {"type": "string", "description": "Database to connect to"},
             },
             "required": ["table_name"],
@@ -283,8 +300,16 @@ TOOLS = [
             "properties": {
                 "table_name": {"type": "string", "description": "Table name"},
                 "column": {"type": "string", "description": "Column to analyze"},
-                "bins": {"type": "integer", "description": "Number of histogram bins (for numeric)", "default": 10},
-                "top_n": {"type": "integer", "description": "Top N values (for categorical)", "default": 20},
+                "bins": {
+                    "type": "integer",
+                    "description": "Number of histogram bins (for numeric)",
+                    "default": 10,
+                },
+                "top_n": {
+                    "type": "integer",
+                    "description": "Top N values (for categorical)",
+                    "default": 20,
+                },
                 "database": {"type": "string", "description": "Database to connect to"},
             },
             "required": ["table_name", "column"],
@@ -302,9 +327,21 @@ TOOLS = [
                     "items": {"type": "string"},
                     "description": "Columns to check (all if not specified)",
                 },
-                "check_duplicates": {"type": "boolean", "description": "Check for duplicates", "default": True},
-                "check_outliers": {"type": "boolean", "description": "Check for outliers (IQR)", "default": True},
-                "outlier_threshold": {"type": "number", "description": "IQR multiplier", "default": 1.5},
+                "check_duplicates": {
+                    "type": "boolean",
+                    "description": "Check for duplicates",
+                    "default": True,
+                },
+                "check_outliers": {
+                    "type": "boolean",
+                    "description": "Check for outliers (IQR)",
+                    "default": True,
+                },
+                "outlier_threshold": {
+                    "type": "number",
+                    "description": "IQR multiplier",
+                    "default": 1.5,
+                },
                 "database": {"type": "string", "description": "Database to connect to"},
             },
             "required": ["table_name"],
@@ -329,8 +366,16 @@ TOOLS = [
                     "description": "IQR multiplier (1.5) or Z-score threshold (3)",
                     "default": 1.5,
                 },
-                "return_data": {"type": "boolean", "description": "Return outlier rows", "default": True},
-                "limit": {"type": "integer", "description": "Max outliers to return", "default": 100},
+                "return_data": {
+                    "type": "boolean",
+                    "description": "Return outlier rows",
+                    "default": True,
+                },
+                "limit": {
+                    "type": "integer",
+                    "description": "Max outliers to return",
+                    "default": 100,
+                },
                 "database": {"type": "string", "description": "Database to connect to"},
             },
             "required": ["table_name", "column"],
@@ -345,7 +390,11 @@ TOOLS = [
                 "table_name": {"type": "string", "description": "Table name"},
                 "date_column": {"type": "string", "description": "Date column"},
                 "value_column": {"type": "string", "description": "Value column"},
-                "window_size": {"type": "integer", "description": "Rolling window size", "default": 7},
+                "window_size": {
+                    "type": "integer",
+                    "description": "Rolling window size",
+                    "default": 7,
+                },
                 "std_threshold": {
                     "type": "number",
                     "description": "Standard deviations for anomaly",
@@ -387,7 +436,10 @@ TOOLS = [
             "type": "object",
             "properties": {
                 "table_name": {"type": "string", "description": "Table name"},
-                "cohort_date_column": {"type": "string", "description": "Date column for cohort grouping"},
+                "cohort_date_column": {
+                    "type": "string",
+                    "description": "Date column for cohort grouping",
+                },
                 "event_date_column": {"type": "string", "description": "Date column for events"},
                 "value_column": {"type": "string", "description": "Value to aggregate"},
                 "aggregate_function": {
@@ -597,6 +649,7 @@ async def execute_tool(name: str, arguments: dict[str, Any]) -> dict[str, Any]:
 # Tool Implementations
 # =============================================================================
 
+
 async def descriptive_statistics(
     table_name: str,
     columns: list[str] | None = None,
@@ -628,7 +681,9 @@ async def descriptive_statistics(
 
         for col in columns:
             where = f"WHERE {where_clause}" if where_clause else ""
-            where_null = f"WHERE {col} IS NOT NULL" + (f" AND {where_clause}" if where_clause else "")
+            where_null = f"WHERE {col} IS NOT NULL" + (
+                f" AND {where_clause}" if where_clause else ""
+            )
 
             query = f"""
                 SELECT
@@ -721,8 +776,7 @@ async def correlation_analysis(
                             mean2 = sum(data[col2]) / n
 
                             numerator = sum(
-                                (data[col1][i] - mean1) * (data[col2][i] - mean2)
-                                for i in range(n)
+                                (data[col1][i] - mean1) * (data[col2][i] - mean2) for i in range(n)
                             )
                             std1 = math.sqrt(sum((x - mean1) ** 2 for x in data[col1]))
                             std2 = math.sqrt(sum((x - mean2) ** 2 for x in data[col2]))
@@ -735,7 +789,7 @@ async def correlation_analysis(
                             n = len(ranks1)
 
                             d_squared = sum((ranks1[i] - ranks2[i]) ** 2 for i in range(n))
-                            corr = 1 - (6 * d_squared) / (n * (n ** 2 - 1))
+                            corr = 1 - (6 * d_squared) / (n * (n**2 - 1))
 
                         correlation_matrix[col1][col2] = round(corr, 4)
                     except Exception:
@@ -846,7 +900,9 @@ async def pivot_analysis(
         cursor = conn.cursor()
 
         # Get distinct pivot values
-        cursor.execute(f"SELECT DISTINCT {pivot_column} FROM {table_name} WHERE {pivot_column} IS NOT NULL")
+        cursor.execute(
+            f"SELECT DISTINCT {pivot_column} FROM {table_name} WHERE {pivot_column} IS NOT NULL"
+        )
         pivot_values = [row[0] for row in cursor.fetchall()]
 
         if not pivot_values:
@@ -1003,7 +1059,11 @@ async def trend_detection(
                 "current": row[0],
                 "previous": row[1],
                 "growth_rate_pct": round(row[2], 2) if row[2] else None,
-                "trend": "up" if row[2] and row[2] > 0 else "down" if row[2] and row[2] < 0 else "flat",
+                "trend": "up"
+                if row[2] and row[2] > 0
+                else "down"
+                if row[2] and row[2] < 0
+                else "flat",
             }
 
         return {
@@ -1115,7 +1175,17 @@ async def column_distribution(
             return {"error": f"Column {column} not found"}
 
         data_type = row[0]
-        numeric_types = ["int", "bigint", "smallint", "tinyint", "decimal", "numeric", "float", "real", "money"]
+        numeric_types = [
+            "int",
+            "bigint",
+            "smallint",
+            "tinyint",
+            "decimal",
+            "numeric",
+            "float",
+            "real",
+            "money",
+        ]
 
         if data_type in numeric_types:
             # Histogram for numeric columns
@@ -1150,12 +1220,14 @@ async def column_distribution(
                     )
 
                 count = cursor.fetchone()[0]
-                histogram.append({
-                    "bin": i + 1,
-                    "lower": lower,
-                    "upper": upper,
-                    "count": count,
-                })
+                histogram.append(
+                    {
+                        "bin": i + 1,
+                        "lower": lower,
+                        "upper": upper,
+                        "count": count,
+                    }
+                )
 
             return {
                 "table": table_name,
@@ -1226,13 +1298,19 @@ async def data_quality_check(
             null_pct = (nulls / total * 100) if total > 0 else 0
 
             if null_pct > 0:
-                quality_report["issues"].append({
-                    "type": "null_values",
-                    "column": col,
-                    "count": nulls,
-                    "percentage": round(null_pct, 2),
-                    "severity": "high" if null_pct > 50 else "medium" if null_pct > 10 else "low",
-                })
+                quality_report["issues"].append(
+                    {
+                        "type": "null_values",
+                        "column": col,
+                        "count": nulls,
+                        "percentage": round(null_pct, 2),
+                        "severity": "high"
+                        if null_pct > 50
+                        else "medium"
+                        if null_pct > 10
+                        else "low",
+                    }
+                )
 
         # Check duplicates
         if check_duplicates:
@@ -1251,11 +1329,13 @@ async def data_quality_check(
             dup_groups = cursor.fetchone()[0]
 
             if dup_groups > 0:
-                quality_report["issues"].append({
-                    "type": "duplicate_rows",
-                    "duplicate_groups": dup_groups,
-                    "severity": "medium",
-                })
+                quality_report["issues"].append(
+                    {
+                        "type": "duplicate_rows",
+                        "duplicate_groups": dup_groups,
+                        "severity": "medium",
+                    }
+                )
 
         # Check outliers for numeric columns
         if check_outliers:
@@ -1294,14 +1374,16 @@ async def data_quality_check(
                     outlier_count = cursor.fetchone()[0]
 
                     if outlier_count > 0:
-                        quality_report["issues"].append({
-                            "type": "outliers",
-                            "column": col,
-                            "count": outlier_count,
-                            "lower_bound": lower,
-                            "upper_bound": upper,
-                            "severity": "low",
-                        })
+                        quality_report["issues"].append(
+                            {
+                                "type": "outliers",
+                                "column": col,
+                                "count": outlier_count,
+                                "lower_bound": lower,
+                                "upper_bound": upper,
+                                "severity": "low",
+                            }
+                        )
 
         quality_report["total_issues"] = len(quality_report["issues"])
 
@@ -1508,13 +1590,15 @@ async def segment_analysis(
         # Build aggregation expressions
         agg_exprs = []
         for col in metric_columns:
-            agg_exprs.extend([
-                f"COUNT({col}) as {col}_count",
-                f"SUM(CAST({col} AS FLOAT)) as {col}_sum",
-                f"AVG(CAST({col} AS FLOAT)) as {col}_avg",
-                f"MIN({col}) as {col}_min",
-                f"MAX({col}) as {col}_max",
-            ])
+            agg_exprs.extend(
+                [
+                    f"COUNT({col}) as {col}_count",
+                    f"SUM(CAST({col} AS FLOAT)) as {col}_sum",
+                    f"AVG(CAST({col} AS FLOAT)) as {col}_avg",
+                    f"MIN({col}) as {col}_min",
+                    f"MAX({col}) as {col}_max",
+                ]
+            )
 
         agg_str = ", ".join(agg_exprs)
 
@@ -1540,9 +1624,7 @@ async def segment_analysis(
 
         if include_comparison:
             # Calculate overall stats for comparison
-            cursor.execute(
-                f"SELECT COUNT(*) as total, {agg_str} FROM {table_name}"
-            )
+            cursor.execute(f"SELECT COUNT(*) as total, {agg_str} FROM {table_name}")
             overall = row_to_dict(cursor, cursor.fetchone())
             result["overall"] = overall
 
@@ -1619,7 +1701,17 @@ async def run_analytics_query(
         return {"error": "Only SELECT queries are allowed"}
 
     # Block dangerous keywords
-    dangerous = ["INSERT", "UPDATE", "DELETE", "DROP", "CREATE", "ALTER", "TRUNCATE", "EXEC", "EXECUTE"]
+    dangerous = [
+        "INSERT",
+        "UPDATE",
+        "DELETE",
+        "DROP",
+        "CREATE",
+        "ALTER",
+        "TRUNCATE",
+        "EXEC",
+        "EXECUTE",
+    ]
     for kw in dangerous:
         if kw in query_upper:
             return {"error": f"Query contains forbidden keyword: {kw}"}
@@ -1645,6 +1737,7 @@ async def run_analytics_query(
 # =============================================================================
 # Main Entry Point
 # =============================================================================
+
 
 async def main():
     """Run the MCP server."""

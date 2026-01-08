@@ -7,7 +7,6 @@ Extracted from src/api/routes/queries.py to separate concerns.
 """
 
 import time
-from datetime import datetime
 from typing import Any
 
 import structlog

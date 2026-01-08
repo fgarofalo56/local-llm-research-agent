@@ -94,8 +94,15 @@ TOOLS = [
             "type": "object",
             "properties": {
                 "user_id": {"type": "integer", "description": "Filter by user ID (optional)"},
-                "is_public": {"type": "boolean", "description": "Filter by public status (optional)"},
-                "limit": {"type": "integer", "description": "Max results (default: 50)", "default": 50},
+                "is_public": {
+                    "type": "boolean",
+                    "description": "Filter by public status (optional)",
+                },
+                "limit": {
+                    "type": "integer",
+                    "description": "Max results (default: 50)",
+                    "default": 50,
+                },
             },
         },
     ),
@@ -119,7 +126,11 @@ TOOLS = [
                 "name": {"type": "string", "description": "Dashboard name"},
                 "description": {"type": "string", "description": "Dashboard description"},
                 "user_id": {"type": "integer", "description": "Owner user ID"},
-                "is_public": {"type": "boolean", "description": "Make dashboard public", "default": False},
+                "is_public": {
+                    "type": "boolean",
+                    "description": "Make dashboard public",
+                    "default": False,
+                },
                 "layout": {"type": "object", "description": "Dashboard layout configuration"},
             },
             "required": ["name"],
@@ -177,7 +188,10 @@ TOOLS = [
                 },
                 "title": {"type": "string", "description": "Widget title"},
                 "query": {"type": "string", "description": "SQL query for data"},
-                "config": {"type": "object", "description": "Widget configuration (colors, axes, etc.)"},
+                "config": {
+                    "type": "object",
+                    "description": "Widget configuration (colors, axes, etc.)",
+                },
                 "position": {
                     "type": "object",
                     "description": "Position and size",
@@ -188,7 +202,10 @@ TOOLS = [
                         "h": {"type": "integer"},
                     },
                 },
-                "refresh_interval": {"type": "integer", "description": "Auto-refresh interval in seconds"},
+                "refresh_interval": {
+                    "type": "integer",
+                    "description": "Auto-refresh interval in seconds",
+                },
             },
             "required": ["dashboard_id", "widget_type", "title"],
         },
@@ -244,7 +261,11 @@ TOOLS = [
                 "description": {"type": "string", "description": "Query description"},
                 "query_text": {"type": "string", "description": "SQL query text"},
                 "user_id": {"type": "integer", "description": "Owner user ID"},
-                "is_favorite": {"type": "boolean", "description": "Mark as favorite", "default": False},
+                "is_favorite": {
+                    "type": "boolean",
+                    "description": "Mark as favorite",
+                    "default": False,
+                },
             },
             "required": ["name", "query_text"],
         },
@@ -269,8 +290,15 @@ TOOLS = [
         inputSchema={
             "type": "object",
             "properties": {
-                "dashboard_id": {"type": "integer", "description": "Specific dashboard ID (optional)"},
-                "period_days": {"type": "integer", "description": "Analysis period in days", "default": 30},
+                "dashboard_id": {
+                    "type": "integer",
+                    "description": "Specific dashboard ID (optional)",
+                },
+                "period_days": {
+                    "type": "integer",
+                    "description": "Analysis period in days",
+                    "default": 30,
+                },
             },
         },
     ),
@@ -280,7 +308,11 @@ TOOLS = [
         inputSchema={
             "type": "object",
             "properties": {
-                "period_days": {"type": "integer", "description": "Analysis period in days", "default": 30},
+                "period_days": {
+                    "type": "integer",
+                    "description": "Analysis period in days",
+                    "default": 30,
+                },
                 "group_by": {
                     "type": "string",
                     "description": "Grouping",
@@ -298,7 +330,11 @@ TOOLS = [
             "type": "object",
             "properties": {
                 "dashboard_id": {"type": "integer", "description": "Dashboard ID to export"},
-                "include_queries": {"type": "boolean", "description": "Include widget queries", "default": True},
+                "include_queries": {
+                    "type": "boolean",
+                    "description": "Include widget queries",
+                    "default": True,
+                },
             },
             "required": ["dashboard_id"],
         },
@@ -459,6 +495,7 @@ async def execute_tool(name: str, arguments: dict[str, Any]) -> dict[str, Any]:
 # =============================================================================
 # Tool Implementations
 # =============================================================================
+
 
 async def list_dashboards(
     user_id: int | None = None,
@@ -1083,6 +1120,7 @@ async def import_dashboard(
 # =============================================================================
 # Main Entry Point
 # =============================================================================
+
 
 async def main():
     """Run the MCP server."""

@@ -8,22 +8,23 @@
 #   - SQL Server 2025 (Backend with Vector Search - Docker)
 #   - Redis Stack (Caching - Docker)
 #   - Alembic Migrations (Database schema)
-#   - FastAPI Backend (local)
-#   - React Frontend (local dev server)
+#   - FastAPI Backend (local or Docker)
+#   - React Frontend (local dev server or Docker)
 #   - Streamlit UI (Docker - optional)
 #   - Apache Superset (Docker - optional)
 #
 # Prerequisites:
 #   - Docker running
 #   - Ollama running with qwen3:30b model
-#   - Node.js installed
-#   - Python/uv installed
+#   - Node.js installed (for local mode)
+#   - Python/uv installed (for local mode)
 #
 # Usage:
-#   ./start-dev.sh              - Start core services (default)
+#   ./start-dev.sh              - Start core services (hybrid: local FastAPI + React)
 #   ./start-dev.sh --streamlit  - Also start Streamlit UI
 #   ./start-dev.sh --superset   - Also start Apache Superset
-#   ./start-dev.sh --full       - Start everything
+#   ./start-dev.sh --full       - Start everything (hybrid mode)
+#   ./start-dev.sh --docker     - Run everything in Docker (fresh build)
 #
 # =============================================================================
 
@@ -42,6 +43,7 @@ cd "$SCRIPT_DIR"
 # Parse command line arguments
 START_STREAMLIT=0
 START_SUPERSET=0
+DOCKER_MODE=0
 
 while [[ $# -gt 0 ]]; do
     case $1 in
@@ -58,13 +60,148 @@ while [[ $# -gt 0 ]]; do
             START_SUPERSET=1
             shift
             ;;
+        --docker)
+            DOCKER_MODE=1
+            START_STREAMLIT=1
+            START_SUPERSET=1
+            shift
+            ;;
         *)
             echo "Unknown option: $1"
-            echo "Usage: $0 [--streamlit] [--superset] [--full]"
+            echo "Usage: $0 [--streamlit] [--superset] [--full] [--docker]"
             exit 1
             ;;
     esac
 done
+
+# If Docker mode, run the Docker-only startup
+if [ $DOCKER_MODE -eq 1 ]; then
+    echo ""
+    echo "  MODE: Full Docker (fresh build)"
+    echo ""
+
+    # Check if .env file exists
+    if [ ! -f ".env" ]; then
+        echo "[ERROR] .env file not found!"
+        echo "Please copy .env.example to .env and configure it."
+        exit 1
+    fi
+
+    # Check if Docker is running
+    if ! docker info > /dev/null 2>&1; then
+        echo "[ERROR] Docker is not running!"
+        echo "Please start Docker first."
+        exit 1
+    fi
+
+    # Check if Ollama is running
+    if ! curl -s http://localhost:11434/api/tags > /dev/null 2>&1; then
+        echo "[WARNING] Ollama does not appear to be running."
+        echo "The agent will not work without Ollama."
+        echo "Start Ollama and ensure qwen3:30b model is available."
+        echo ""
+    else
+        echo "[OK] Ollama is running"
+        if ! curl -s http://localhost:11434/api/tags | grep -qi "qwen3:30b"; then
+            echo "[WARNING] qwen3:30b model not found in Ollama."
+            echo "Run: ollama pull qwen3:30b"
+            echo ""
+        else
+            echo "[OK] qwen3:30b model is available"
+        fi
+    fi
+
+    echo "[Step 1/8] Creating Docker volumes if needed..."
+    docker volume create local-llm-mssql-data 2>/dev/null || true
+    docker volume create local-llm-backend-data 2>/dev/null || true
+    docker volume create local-llm-redis-data 2>/dev/null || true
+    docker volume create local-llm-superset-data 2>/dev/null || true
+
+    echo "[Step 2/8] Building all Docker images (fresh build, no cache)..."
+    echo "  This may take several minutes..."
+    docker-compose -f docker/docker-compose.yml --env-file .env build --no-cache
+
+    echo "[Step 3/8] Starting SQL Server 2022 (Sample Database)..."
+    docker-compose -f docker/docker-compose.yml --env-file .env up -d mssql
+
+    echo "Waiting for SQL Server 2022 to be healthy..."
+    until docker inspect --format='{{.State.Health.Status}}' local-agent-mssql 2>/dev/null | grep -q "healthy"; do
+        echo "  Still waiting for SQL Server 2022..."
+        sleep 5
+    done
+    echo "  SQL Server 2022 is ready!"
+
+    echo "[Step 4/8] Initializing ResearchAnalytics sample database..."
+    docker-compose -f docker/docker-compose.yml --env-file .env --profile init up mssql-tools 2>/dev/null || true
+
+    echo "[Step 5/8] Starting SQL Server 2025 (Backend Database)..."
+    docker-compose -f docker/docker-compose.yml --env-file .env up -d mssql-backend
+
+    echo "Waiting for SQL Server 2025 to be healthy..."
+    until docker inspect --format='{{.State.Health.Status}}' local-agent-mssql-backend 2>/dev/null | grep -q "healthy"; do
+        echo "  Still waiting for SQL Server 2025..."
+        sleep 5
+    done
+    echo "  SQL Server 2025 is ready!"
+
+    echo "[Step 6/8] Initializing LLM_BackEnd database (vectors + hybrid search)..."
+    docker-compose -f docker/docker-compose.yml --env-file .env --profile init up mssql-backend-tools 2>/dev/null || true
+
+    echo "[Step 7/8] Starting Redis Stack..."
+    docker-compose -f docker/docker-compose.yml --env-file .env up -d redis-stack
+
+    echo "Waiting for Redis to be healthy..."
+    until docker inspect --format='{{.State.Health.Status}}' local-agent-redis 2>/dev/null | grep -q "healthy"; do
+        echo "  Still waiting for Redis..."
+        sleep 3
+    done
+    echo "  Redis Stack is ready!"
+
+    echo "[Step 8/8] Starting all application services..."
+    docker-compose -f docker/docker-compose.yml --env-file .env --profile full up -d
+
+    echo "Waiting for FastAPI to be ready..."
+    until curl -s http://localhost:8000/api/health > /dev/null 2>&1; do
+        echo "  Still waiting for FastAPI..."
+        sleep 5
+    done
+    echo "  FastAPI is ready!"
+
+    echo "Waiting for React frontend to be ready..."
+    sleep 10
+    echo "  React frontend should be ready!"
+
+    echo ""
+    echo "============================================================"
+    echo "  All Docker services started successfully!"
+    echo "============================================================"
+    echo ""
+    echo "  Database Services:"
+    echo "    - SQL Server 2022: localhost:1433 (ResearchAnalytics)"
+    echo "    - SQL Server 2025: localhost:1434 (LLM_BackEnd + Vectors)"
+    echo "    - Redis Stack:     localhost:6379"
+    echo "    - RedisInsight:    http://localhost:8001"
+    echo ""
+    echo "  Application Services (ALL IN DOCKER):"
+    echo "    - FastAPI Backend: http://localhost:8000"
+    echo "    - FastAPI Docs:    http://localhost:8000/docs"
+    echo "    - React Frontend:  http://localhost:5173"
+    echo "    - Streamlit UI:    http://localhost:8501"
+    echo "    - Apache Superset: http://localhost:8088"
+    echo ""
+    echo "  Docker Containers:"
+    echo "    - local-agent-api         (FastAPI)"
+    echo "    - local-agent-frontend    (React)"
+    echo "    - local-agent-streamlit-ui (Streamlit)"
+    echo "    - local-agent-superset    (Superset)"
+    echo ""
+    echo "  To stop all services:"
+    echo "    Run: ./stop-dev.sh"
+    echo "    Or:  docker-compose -f docker/docker-compose.yml --env-file .env --profile full down"
+    echo ""
+
+    exit 0
+fi
 
 # Check if .env file exists
 if [ ! -f ".env" ]; then
@@ -236,7 +373,8 @@ echo ""
 echo "  Command-line options:"
 echo "    ./start-dev.sh --streamlit  - Also start Streamlit UI"
 echo "    ./start-dev.sh --superset   - Also start Apache Superset"
-echo "    ./start-dev.sh --full       - Start everything"
+echo "    ./start-dev.sh --full       - Start everything (hybrid mode)"
+echo "    ./start-dev.sh --docker     - Run everything in Docker (fresh build)"
 echo ""
 
 # Wait for Ctrl+C

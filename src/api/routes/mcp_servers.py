@@ -343,13 +343,19 @@ MCP_TOOL_DEFINITIONS = {
         "create_index": {"description": "Create indexes for query optimization"},
     },
     "analytics-management": {
-        "list_dashboards": {"description": "List all dashboards with optional filtering by user or status"},
-        "get_dashboard": {"description": "Get detailed information about a specific dashboard including its widgets"},
+        "list_dashboards": {
+            "description": "List all dashboards with optional filtering by user or status"
+        },
+        "get_dashboard": {
+            "description": "Get detailed information about a specific dashboard including its widgets"
+        },
         "create_dashboard": {"description": "Create a new dashboard"},
         "update_dashboard": {"description": "Update an existing dashboard's properties"},
         "delete_dashboard": {"description": "Delete a dashboard and all its widgets"},
         "list_widgets": {"description": "List widgets for a dashboard"},
-        "add_widget": {"description": "Add a new widget to a dashboard (bar, line, pie, kpi, table, etc.)"},
+        "add_widget": {
+            "description": "Add a new widget to a dashboard (bar, line, pie, kpi, table, etc.)"
+        },
         "update_widget": {"description": "Update an existing widget"},
         "delete_widget": {"description": "Remove a widget from a dashboard"},
         "list_saved_queries": {"description": "List saved queries with optional filtering"},
@@ -357,25 +363,49 @@ MCP_TOOL_DEFINITIONS = {
         "get_query_history": {"description": "Get recent query execution history"},
         "get_dashboard_metrics": {"description": "Get usage metrics for dashboards"},
         "get_usage_analytics": {"description": "Get overall system usage analytics"},
-        "export_dashboard": {"description": "Export dashboard configuration as JSON for backup or sharing"},
+        "export_dashboard": {
+            "description": "Export dashboard configuration as JSON for backup or sharing"
+        },
         "import_dashboard": {"description": "Import a dashboard from JSON configuration"},
     },
     "data-analytics": {
-        "descriptive_statistics": {"description": "Calculate descriptive statistics (mean, median, std dev, quartiles) for numeric columns"},
-        "correlation_analysis": {"description": "Calculate correlation matrix between numeric columns using Pearson or Spearman method"},
+        "descriptive_statistics": {
+            "description": "Calculate descriptive statistics (mean, median, std dev, quartiles) for numeric columns"
+        },
+        "correlation_analysis": {
+            "description": "Calculate correlation matrix between numeric columns using Pearson or Spearman method"
+        },
         "percentile_analysis": {"description": "Calculate percentile values for a numeric column"},
-        "group_aggregation": {"description": "Perform GROUP BY aggregations with multiple aggregate functions"},
+        "group_aggregation": {
+            "description": "Perform GROUP BY aggregations with multiple aggregate functions"
+        },
         "pivot_analysis": {"description": "Create a pivot table summarization"},
-        "time_series_analysis": {"description": "Analyze time series data for trends, patterns, and seasonality with moving averages"},
-        "trend_detection": {"description": "Detect trends and calculate growth rates in time series data"},
-        "profile_table": {"description": "Generate a comprehensive data profile (column types, nulls, cardinality, sample values)"},
-        "column_distribution": {"description": "Analyze value distribution for a column (histograms for numeric, frequencies for categorical)"},
-        "data_quality_check": {"description": "Check data quality issues: nulls, duplicates, outliers"},
-        "detect_outliers": {"description": "Detect outliers in numeric columns using IQR or Z-score method"},
-        "detect_anomalies_timeseries": {"description": "Detect anomalies in time series data using rolling statistics"},
+        "time_series_analysis": {
+            "description": "Analyze time series data for trends, patterns, and seasonality with moving averages"
+        },
+        "trend_detection": {
+            "description": "Detect trends and calculate growth rates in time series data"
+        },
+        "profile_table": {
+            "description": "Generate a comprehensive data profile (column types, nulls, cardinality, sample values)"
+        },
+        "column_distribution": {
+            "description": "Analyze value distribution for a column (histograms for numeric, frequencies for categorical)"
+        },
+        "data_quality_check": {
+            "description": "Check data quality issues: nulls, duplicates, outliers"
+        },
+        "detect_outliers": {
+            "description": "Detect outliers in numeric columns using IQR or Z-score method"
+        },
+        "detect_anomalies_timeseries": {
+            "description": "Detect anomalies in time series data using rolling statistics"
+        },
         "segment_analysis": {"description": "Analyze data by segments with comparison metrics"},
         "cohort_analysis": {"description": "Perform cohort analysis based on date columns"},
-        "run_analytics_query": {"description": "Execute a custom analytics SQL query (SELECT only)"},
+        "run_analytics_query": {
+            "description": "Execute a custom analytics SQL query (SELECT only)"
+        },
     },
 }
 

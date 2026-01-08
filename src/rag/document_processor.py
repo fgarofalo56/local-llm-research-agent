@@ -98,9 +98,9 @@ class DocumentProcessor:
         try:
             from pypdf import PdfReader
             from pypdf.errors import (
-                PdfReadError,
-                FileNotDecryptedError,
                 EmptyFileError,
+                FileNotDecryptedError,
+                PdfReadError,
                 PdfStreamError,
             )
         except ImportError as e:
@@ -212,8 +212,7 @@ class DocumentProcessor:
                 traceback=traceback.format_exc(),
             )
             raise ValueError(
-                f"System error when accessing PDF file: {e}. "
-                "Check file permissions and disk space."
+                f"System error when accessing PDF file: {e}. Check file permissions and disk space."
             ) from e
         except MemoryError as e:
             logger.error(
@@ -470,7 +469,10 @@ class DocumentProcessor:
                 )
 
             logger.info(
-                "docx_extracted", path=str(file_path), paragraphs=len(text_parts), chars=len(full_text)
+                "docx_extracted",
+                path=str(file_path),
+                paragraphs=len(text_parts),
+                chars=len(full_text),
             )
             return full_text, None
         except ValueError:
@@ -485,9 +487,7 @@ class DocumentProcessor:
                 error=str(e),
                 traceback=traceback.format_exc(),
             )
-            raise ValueError(
-                f"Error extracting text from DOCX ({error_type}): {e}"
-            ) from e
+            raise ValueError(f"Error extracting text from DOCX ({error_type}): {e}") from e
 
     def _extract_text_file(self, file_path: Path) -> tuple[str, None]:
         """
@@ -547,9 +547,7 @@ class DocumentProcessor:
                     error=str(e),
                     traceback=traceback.format_exc(),
                 )
-                raise ValueError(
-                    f"System error when accessing text file: {e}"
-                ) from e
+                raise ValueError(f"System error when accessing text file: {e}") from e
 
         # If we get here, none of the encodings worked
         logger.error(

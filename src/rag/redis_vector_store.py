@@ -297,7 +297,9 @@ class RedisVectorStore(VectorStoreBase):
 
                 ft_query = (
                     Query(ft_query_str)
-                    .return_fields("content", "source", "source_type", "document_id", "chunk_index", "metadata")
+                    .return_fields(
+                        "content", "source", "source_type", "document_id", "chunk_index", "metadata"
+                    )
                     .paging(0, fetch_count)
                 )
 
@@ -348,12 +350,14 @@ class RedisVectorStore(VectorStoreBase):
 
             rrf_score = alpha * vector_score + (1 - alpha) * keyword_score
 
-            combined_scores.append({
-                "doc_id": doc_id,
-                "rrf_score": rrf_score,
-                "data": data,
-                "distance": vector_ranks.get(doc_id, {}).get("distance", 0),
-            })
+            combined_scores.append(
+                {
+                    "doc_id": doc_id,
+                    "rrf_score": rrf_score,
+                    "data": data,
+                    "distance": vector_ranks.get(doc_id, {}).get("distance", 0),
+                }
+            )
 
         # Sort by RRF score (higher is better)
         combined_scores.sort(key=lambda x: x["rrf_score"], reverse=True)
@@ -368,17 +372,19 @@ class RedisVectorStore(VectorStoreBase):
             except (json.JSONDecodeError, TypeError):
                 pass
 
-            formatted.append({
-                "content": data.get("content"),
-                "source": data.get("source"),
-                "source_type": data.get("source_type"),
-                "document_id": data.get("document_id"),
-                "chunk_index": int(data.get("chunk_index", 0)),
-                "metadata": metadata,
-                "score": item["rrf_score"],
-                "distance": item["distance"],
-                "search_type": "hybrid",
-            })
+            formatted.append(
+                {
+                    "content": data.get("content"),
+                    "source": data.get("source"),
+                    "source_type": data.get("source_type"),
+                    "document_id": data.get("document_id"),
+                    "chunk_index": int(data.get("chunk_index", 0)),
+                    "metadata": metadata,
+                    "score": item["rrf_score"],
+                    "distance": item["distance"],
+                    "search_type": "hybrid",
+                }
+            )
 
         return formatted
 
@@ -393,15 +399,35 @@ class RedisVectorStore(VectorStoreBase):
             Escaped query safe for RediSearch
         """
         # Characters that need escaping in RediSearch
-        special_chars = ['@', '!', '{', '}', '(', ')', '|', '-', '=', '>', '[', ']', '"', "'", '~', '*', ':', '\\', '/']
+        special_chars = [
+            "@",
+            "!",
+            "{",
+            "}",
+            "(",
+            ")",
+            "|",
+            "-",
+            "=",
+            ">",
+            "[",
+            "]",
+            '"',
+            "'",
+            "~",
+            "*",
+            ":",
+            "\\",
+            "/",
+        ]
         result = query
         for char in special_chars:
-            result = result.replace(char, f'\\{char}')
+            result = result.replace(char, f"\\{char}")
 
         # Handle empty query
         result = result.strip()
         if not result:
-            result = '*'
+            result = "*"
 
         return result
 

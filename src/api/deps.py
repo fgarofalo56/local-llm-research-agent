@@ -89,9 +89,7 @@ async def _seed_preset_themes(session_factory) -> None:
 
     async with session_factory() as session:
         # Check if any preset themes exist
-        result = await session.execute(
-            select(ThemeConfig).where(ThemeConfig.is_preset == True)
-        )
+        result = await session.execute(select(ThemeConfig).where(ThemeConfig.is_preset == True))
         existing_presets = {t.name for t in result.scalars().all()}
 
         # Add missing preset themes
@@ -196,7 +194,9 @@ async def init_services() -> None:
                     dimensions=settings.vector_dimensions,
                 )
                 await _vector_store.create_index()
-                logger.info("vector_store_initialized", type="mssql", dimensions=settings.vector_dimensions)
+                logger.info(
+                    "vector_store_initialized", type="mssql", dimensions=settings.vector_dimensions
+                )
             except Exception as e:
                 logger.warning("mssql_vector_store_init_failed", error=str(e))
                 # Fall back to Redis if MSSQL fails
@@ -215,7 +215,9 @@ async def init_services() -> None:
                     dimensions=settings.vector_dimensions,
                 )
                 await _vector_store.create_index()
-                logger.info("vector_store_initialized", type="redis", dimensions=settings.vector_dimensions)
+                logger.info(
+                    "vector_store_initialized", type="redis", dimensions=settings.vector_dimensions
+                )
             except Exception as e:
                 logger.warning("redis_vector_store_init_failed", error=str(e))
 

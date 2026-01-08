@@ -262,9 +262,7 @@ class WebSocketManager:
             List of WebSocketConnection instances
         """
         connection_ids = self._conversation_connections.get(conversation_id, [])
-        return [
-            self._connections[cid] for cid in connection_ids if cid in self._connections
-        ]
+        return [self._connections[cid] for cid in connection_ids if cid in self._connections]
 
     def get_all_connections(self) -> list[WebSocketConnection]:
         """

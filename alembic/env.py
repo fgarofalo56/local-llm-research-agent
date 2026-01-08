@@ -8,8 +8,9 @@ Handles database migrations for the API backend.
 import os
 from logging.config import fileConfig
 
-from alembic import context
 from sqlalchemy import engine_from_config, pool
+
+from alembic import context
 
 # Import the Base from our models to get all table metadata
 from src.api.models.database import Base

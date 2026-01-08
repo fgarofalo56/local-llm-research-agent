@@ -32,20 +32,20 @@ class DoclingDocumentProcessor:
 
     # Supported formats by Docling
     SUPPORTED_EXTENSIONS = {
-        ".pdf",    # PDF documents
-        ".docx",   # Microsoft Word
-        ".pptx",   # Microsoft PowerPoint
-        ".xlsx",   # Microsoft Excel
-        ".html",   # HTML pages
-        ".htm",    # HTML pages
-        ".png",    # Images
-        ".jpg",    # Images
-        ".jpeg",   # Images
-        ".tiff",   # Images
-        ".tif",    # Images
-        ".bmp",    # Images
-        ".md",     # Markdown
-        ".txt",    # Plain text
+        ".pdf",  # PDF documents
+        ".docx",  # Microsoft Word
+        ".pptx",  # Microsoft PowerPoint
+        ".xlsx",  # Microsoft Excel
+        ".html",  # HTML pages
+        ".htm",  # HTML pages
+        ".png",  # Images
+        ".jpg",  # Images
+        ".jpeg",  # Images
+        ".tiff",  # Images
+        ".tif",  # Images
+        ".bmp",  # Images
+        ".md",  # Markdown
+        ".txt",  # Plain text
     }
 
     def __init__(
@@ -81,13 +81,14 @@ class DoclingDocumentProcessor:
 
         try:
             from docling.document_converter import DocumentConverter
+
             self._docling_available = True
             logger.info("docling_available", status="installed")
         except ImportError:
             self._docling_available = False
             logger.warning(
                 "docling_not_available",
-                message="Docling not installed. Install with: pip install docling"
+                message="Docling not installed. Install with: pip install docling",
             )
         return self._docling_available
 
@@ -119,6 +120,7 @@ class DoclingDocumentProcessor:
                 # Fall back to HierarchicalChunker if HybridChunker not available
                 try:
                     from docling.chunking import HierarchicalChunker
+
                     self._chunker = HierarchicalChunker(
                         merge_list_items=True,
                     )
@@ -215,8 +217,7 @@ class DoclingDocumentProcessor:
         # Check if Docling is available
         if not self._check_docling_available():
             raise ImportError(
-                "Docling is required for document processing. "
-                "Install with: pip install docling"
+                "Docling is required for document processing. Install with: pip install docling"
             )
 
         try:
@@ -232,7 +233,7 @@ class DoclingDocumentProcessor:
                 logger.warning(
                     "docling_no_text_extracted",
                     path=str(file_path),
-                    message="Document may be empty or contain only images without OCR"
+                    message="Document may be empty or contain only images without OCR",
                 )
                 raise ValueError(
                     f"No text could be extracted from {file_path.name}. "
@@ -241,7 +242,7 @@ class DoclingDocumentProcessor:
 
             # Get document metadata
             page_count = None
-            if hasattr(doc, 'pages') and doc.pages:
+            if hasattr(doc, "pages") and doc.pages:
                 page_count = len(doc.pages)
 
             # Chunk the document
@@ -269,7 +270,7 @@ class DoclingDocumentProcessor:
                         "docling_chunking_failed",
                         path=str(file_path),
                         error=str(e),
-                        message="Falling back to simple chunking"
+                        message="Falling back to simple chunking",
                     )
                     chunks = self._fallback_chunk_text(full_text)
             else:
@@ -297,7 +298,7 @@ class DoclingDocumentProcessor:
             }
 
             # Add table count if available
-            if hasattr(doc, 'tables') and doc.tables:
+            if hasattr(doc, "tables") and doc.tables:
                 metadata["table_count"] = len(doc.tables)
 
             logger.info(
@@ -328,9 +329,7 @@ class DoclingDocumentProcessor:
                 error=str(e),
                 traceback=traceback.format_exc(),
             )
-            raise ValueError(
-                f"Failed to process document with Docling ({error_type}): {e}"
-            ) from e
+            raise ValueError(f"Failed to process document with Docling ({error_type}): {e}") from e
 
     async def process_bytes(
         self,
@@ -457,8 +456,7 @@ class DoclingDocumentProcessor:
 
         if not self._check_docling_available():
             raise ImportError(
-                "Docling is required for URL processing. "
-                "Install with: pip install docling"
+                "Docling is required for URL processing. Install with: pip install docling"
             )
 
         try:
@@ -523,9 +521,7 @@ class DoclingDocumentProcessor:
                 error=str(e),
                 traceback=traceback.format_exc(),
             )
-            raise ValueError(
-                f"Failed to process URL with Docling ({error_type}): {e}"
-            ) from e
+            raise ValueError(f"Failed to process URL with Docling ({error_type}): {e}") from e
 
 
 # Factory function to get the appropriate processor
@@ -557,12 +553,12 @@ def get_document_processor(
         if processor._check_docling_available():
             return processor
         logger.warning(
-            "docling_fallback",
-            message="Docling not available, falling back to legacy processor"
+            "docling_fallback", message="Docling not available, falling back to legacy processor"
         )
 
     # Fall back to legacy processor
     from src.rag.document_processor import DocumentProcessor
+
     return DocumentProcessor(
         chunk_size=chunk_size,
         chunk_overlap=chunk_overlap,

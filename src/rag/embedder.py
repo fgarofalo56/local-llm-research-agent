@@ -133,10 +133,20 @@ class OllamaEmbedder:
                         embeddings[idx] = result
 
                 # Log progress
-                completed = total - len(new_failed) - len(
-                    [i for i in failed_indices if i not in batch_indices and embeddings[i] is None]
+                completed = (
+                    total
+                    - len(new_failed)
+                    - len(
+                        [
+                            i
+                            for i in failed_indices
+                            if i not in batch_indices and embeddings[i] is None
+                        ]
+                    )
                 )
-                if batch_start % (batch_size * 5) == 0 or batch_start + batch_size >= len(failed_indices):
+                if batch_start % (batch_size * 5) == 0 or batch_start + batch_size >= len(
+                    failed_indices
+                ):
                     logger.info(
                         "embedding_batch_progress",
                         completed=completed,

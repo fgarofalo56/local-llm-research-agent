@@ -11,8 +11,6 @@ from typing import Any
 
 from pydantic_ai.models.openai import OpenAIModel
 
-from src.utils.retry import RetryConfig, retry
-
 
 class ProviderType(str, Enum):
     """Supported LLM provider types."""

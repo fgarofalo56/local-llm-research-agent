@@ -65,8 +65,7 @@ class VectorStoreFactory:
             )
         else:
             raise ValueError(
-                f"Invalid vector store type: {store_type}. "
-                f"Supported types: 'mssql', 'redis'"
+                f"Invalid vector store type: {store_type}. Supported types: 'mssql', 'redis'"
             )
 
     @staticmethod

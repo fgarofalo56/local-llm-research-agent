@@ -26,20 +26,20 @@ FOUNDRY_DEFAULT_ENDPOINT = "http://127.0.0.1:53760"
 # - phi-3.5-mini supports function calling
 # See: https://github.com/microsoft/PhiCookBook/tree/main/md/02.Application/07.FunctionCalling
 FOUNDRY_TOOL_CAPABLE_MODELS = [
-    "phi-4-mini",      # Supports function calling
-    "phi-3.5-mini",    # Supports function calling
-    "phi-3-mini",      # Supports function calling
-    "qwen2.5",         # Supports function calling
-    "llama3.1",        # Supports function calling
-    "llama3.2",        # Supports function calling
-    "mistral-nemo",    # Supports function calling
+    "phi-4-mini",  # Supports function calling
+    "phi-3.5-mini",  # Supports function calling
+    "phi-3-mini",  # Supports function calling
+    "qwen2.5",  # Supports function calling
+    "llama3.1",  # Supports function calling
+    "llama3.2",  # Supports function calling
+    "mistral-nemo",  # Supports function calling
 ]
 
 # Models that do NOT support tool calling (common mistake)
 FOUNDRY_NON_TOOL_MODELS = [
-    "phi-4",           # Regular phi-4 does NOT support tools - use phi-4-mini
-    "phi-4-multimodal", # Does NOT support tool calling
-    "gpt-oss-20b",     # General purpose, no tool support
+    "phi-4",  # Regular phi-4 does NOT support tools - use phi-4-mini
+    "phi-4-multimodal",  # Does NOT support tool calling
+    "gpt-oss-20b",  # General purpose, no tool support
 ]
 
 
@@ -165,22 +165,30 @@ class FoundryLocalProvider(LLMProvider):
                 for m_id in model_ids:
                     if m_id.lower() == model_lower:
                         self._actual_model_name = m_id
-                        logger.info("foundry_model_resolved", requested=self._model_name, actual=m_id)
+                        logger.info(
+                            "foundry_model_resolved", requested=self._model_name, actual=m_id
+                        )
                         return
 
                 # Starts with
                 for m_id in model_ids:
                     m_lower = m_id.lower()
-                    if m_lower.startswith(model_lower) or m_lower.startswith(model_lower.replace("-", "")):
+                    if m_lower.startswith(model_lower) or m_lower.startswith(
+                        model_lower.replace("-", "")
+                    ):
                         self._actual_model_name = m_id
-                        logger.info("foundry_model_resolved", requested=self._model_name, actual=m_id)
+                        logger.info(
+                            "foundry_model_resolved", requested=self._model_name, actual=m_id
+                        )
                         return
 
                 # Contains
                 for m_id in model_ids:
                     if model_lower in m_id.lower():
                         self._actual_model_name = m_id
-                        logger.info("foundry_model_resolved", requested=self._model_name, actual=m_id)
+                        logger.info(
+                            "foundry_model_resolved", requested=self._model_name, actual=m_id
+                        )
                         return
 
                 # Use first available as fallback
@@ -396,8 +404,7 @@ class FoundryLocalProvider(LLMProvider):
                 # But make sure it's not actually a tool-capable variant
                 # e.g., "phi-4-mini" contains "phi-4" but IS tool capable
                 is_tool_capable = any(
-                    tool_model.lower() in model_lower
-                    for tool_model in FOUNDRY_TOOL_CAPABLE_MODELS
+                    tool_model.lower() in model_lower for tool_model in FOUNDRY_TOOL_CAPABLE_MODELS
                 )
                 if not is_tool_capable:
                     return False

@@ -235,9 +235,7 @@ class VectorStoreBase(ABC):
         Raises:
             NotImplementedError: If not implemented by subclass
         """
-        raise NotImplementedError(
-            f"{self.__class__.__name__} does not implement clear_all()"
-        )
+        raise NotImplementedError(f"{self.__class__.__name__} does not implement clear_all()")
 
     def __repr__(self) -> str:
         """String representation of the vector store."""

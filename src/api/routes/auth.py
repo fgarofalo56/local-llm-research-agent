@@ -6,7 +6,7 @@ Endpoints for user registration, login, logout, and token management.
 """
 
 import hashlib
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Request, status
@@ -148,7 +148,7 @@ async def revoke_refresh_token(db: AsyncSession, token: str) -> bool:
     )
     token_record = result.scalar_one_or_none()
     if token_record:
-        token_record.revoked_at = datetime.now(timezone.utc)
+        token_record.revoked_at = datetime.now(UTC)
         await db.commit()
         return True
     return False
@@ -161,7 +161,7 @@ async def is_refresh_token_valid(db: AsyncSession, token: str) -> bool:
         select(RefreshToken).where(
             RefreshToken.token_hash == token_hash,
             RefreshToken.revoked_at.is_(None),
-            RefreshToken.expires_at > datetime.now(timezone.utc),
+            RefreshToken.expires_at > datetime.now(UTC),
         )
     )
     return result.scalar_one_or_none() is not None
@@ -299,7 +299,7 @@ async def register(
     refresh_token = create_refresh_token(user.id, user.email)
 
     # Store refresh token
-    expires_at = datetime.now(timezone.utc) + timedelta(days=JWT_REFRESH_TOKEN_EXPIRE_DAYS)
+    expires_at = datetime.now(UTC) + timedelta(days=JWT_REFRESH_TOKEN_EXPIRE_DAYS)
     await store_refresh_token(db, user.id, refresh_token, expires_at)
 
     return TokenResponse(
@@ -315,8 +315,8 @@ LOCKOUT_DURATION_MINUTES = 15
 
 async def check_account_lockout(user: User) -> tuple[bool, str | None]:
     """Check if a user account is locked."""
-    if user.locked_until and user.locked_until > datetime.now(timezone.utc):
-        remaining = (user.locked_until - datetime.now(timezone.utc)).seconds // 60
+    if user.locked_until and user.locked_until > datetime.now(UTC):
+        remaining = (user.locked_until - datetime.now(UTC)).seconds // 60
         return True, f"Account locked. Try again in {remaining + 1} minutes."
     return False, None
 
@@ -324,10 +324,10 @@ async def check_account_lockout(user: User) -> tuple[bool, str | None]:
 async def record_failed_login(db: AsyncSession, user: User) -> None:
     """Record a failed login attempt and lock account if threshold exceeded."""
     user.failed_login_attempts = (user.failed_login_attempts or 0) + 1
-    user.last_failed_login_at = datetime.now(timezone.utc)
+    user.last_failed_login_at = datetime.now(UTC)
 
     if user.failed_login_attempts >= MAX_FAILED_ATTEMPTS:
-        user.locked_until = datetime.now(timezone.utc) + timedelta(minutes=LOCKOUT_DURATION_MINUTES)
+        user.locked_until = datetime.now(UTC) + timedelta(minutes=LOCKOUT_DURATION_MINUTES)
         logger.warning(
             "account_locked",
             user_id=user.id,
@@ -401,7 +401,7 @@ async def login(
     await reset_failed_login_attempts(db, user)
 
     # Update last login
-    user.last_login_at = datetime.now(timezone.utc)
+    user.last_login_at = datetime.now(UTC)
     await db.commit()
 
     logger.info("user_logged_in", user_id=user.id, email=user.email)
@@ -411,7 +411,7 @@ async def login(
     refresh_token = create_refresh_token(user.id, user.email)
 
     # Store refresh token
-    expires_at = datetime.now(timezone.utc) + timedelta(days=JWT_REFRESH_TOKEN_EXPIRE_DAYS)
+    expires_at = datetime.now(UTC) + timedelta(days=JWT_REFRESH_TOKEN_EXPIRE_DAYS)
     await store_refresh_token(db, user.id, refresh_token, expires_at)
 
     return TokenResponse(
@@ -458,7 +458,7 @@ async def refresh_tokens(
         new_refresh_token = create_refresh_token(user.id, user.email)
 
         # Store new refresh token
-        expires_at = datetime.now(timezone.utc) + timedelta(days=JWT_REFRESH_TOKEN_EXPIRE_DAYS)
+        expires_at = datetime.now(UTC) + timedelta(days=JWT_REFRESH_TOKEN_EXPIRE_DAYS)
         await store_refresh_token(db, user.id, new_refresh_token, expires_at)
 
         logger.debug("tokens_refreshed", user_id=user.id)

@@ -6,7 +6,7 @@ Handles JWT token creation, validation, and refresh.
 """
 
 import os
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import jwt
@@ -28,7 +28,7 @@ if JWT_SECRET_KEY == _DEFAULT_SECRET:
     warnings.warn(
         "SECURITY WARNING: Using default JWT_SECRET_KEY! "
         "Set JWT_SECRET_KEY environment variable in production. "
-        "Generate with: python -c \"import secrets; print(secrets.token_urlsafe(32))\"",
+        'Generate with: python -c "import secrets; print(secrets.token_urlsafe(32))"',
         UserWarning,
         stacklevel=1,
     )
@@ -68,7 +68,7 @@ def create_access_token(
     Returns:
         Encoded JWT token string
     """
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     expires = now + timedelta(minutes=JWT_ACCESS_TOKEN_EXPIRE_MINUTES)
 
     payload = {
@@ -100,7 +100,7 @@ def create_refresh_token(user_id: int, email: str) -> str:
     Returns:
         Encoded JWT refresh token string
     """
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     expires = now + timedelta(days=JWT_REFRESH_TOKEN_EXPIRE_DAYS)
 
     payload = {
@@ -197,7 +197,7 @@ def get_token_expiry(token: str) -> datetime | None:
         )
         exp = payload.get("exp")
         if exp:
-            return datetime.fromtimestamp(exp, tz=timezone.utc)
+            return datetime.fromtimestamp(exp, tz=UTC)
         return None
     except jwt.InvalidTokenError:
         return None

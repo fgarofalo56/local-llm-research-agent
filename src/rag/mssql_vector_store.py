@@ -67,9 +67,7 @@ class MSSQLVectorStore(VectorStoreBase):
                     expected=2,
                     found=table_count,
                 )
-                raise RuntimeError(
-                    "Vector tables not found. Run init-backend scripts first."
-                )
+                raise RuntimeError("Vector tables not found. Run init-backend scripts first.")
 
     def _embedding_to_json(self, embedding: list[float]) -> str:
         """Convert embedding list to JSON array string for SQL Server."""
@@ -306,18 +304,18 @@ class MSSQLVectorStore(VectorStoreBase):
             Prepared search text
         """
         # Remove characters that break full-text search
-        special_chars = ['"', "'", '(', ')', '&', '|', '!', '~', '*']
+        special_chars = ['"', "'", "(", ")", "&", "|", "!", "~", "*"]
         result = query
         for char in special_chars:
-            result = result.replace(char, ' ')
+            result = result.replace(char, " ")
 
-        result = ' '.join(result.split())  # Normalize whitespace
+        result = " ".join(result.split())  # Normalize whitespace
 
         if not result:
-            return '*'
+            return "*"
 
         # Wrap in quotes for phrase search if multiple words
-        if ' ' in result:
+        if " " in result:
             result = f'"{result}"'
 
         return result
@@ -528,15 +526,11 @@ class MSSQLVectorStore(VectorStoreBase):
         """
         async with self._session_factory() as session:
             # Delete all document chunks
-            chunk_result = await session.execute(
-                text("DELETE FROM vectors.document_chunks")
-            )
+            chunk_result = await session.execute(text("DELETE FROM vectors.document_chunks"))
             chunks_deleted = chunk_result.rowcount
 
             # Delete all schema embeddings
-            schema_result = await session.execute(
-                text("DELETE FROM vectors.schema_embeddings")
-            )
+            schema_result = await session.execute(text("DELETE FROM vectors.schema_embeddings"))
             schemas_deleted = schema_result.rowcount
 
             await session.commit()

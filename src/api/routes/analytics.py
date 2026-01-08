@@ -12,11 +12,10 @@ import structlog
 from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
 from redis.asyncio import Redis
-from sqlalchemy import func, text
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.deps import get_db, get_redis_optional
-from src.api.models.database import Message, QueryHistory
 
 router = APIRouter()
 logger = structlog.get_logger()
@@ -145,7 +144,6 @@ async def get_analytics_overview(
 
     Returns aggregated metrics for queries, system health, and cache performance.
     """
-    from src.api.models.database import Conversation, Document, MCPServerConfig
 
     now = datetime.utcnow()
     today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)

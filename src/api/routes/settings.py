@@ -309,7 +309,9 @@ async def list_providers():
                 foundry_info.available = True
                 foundry_info.version = "local"
     except httpx.ConnectError:
-        foundry_info.error = f"Not running at {settings.foundry_endpoint}. Start with: foundry model run phi-4"
+        foundry_info.error = (
+            f"Not running at {settings.foundry_endpoint}. Start with: foundry model run phi-4"
+        )
     except Exception as e:
         foundry_info.error = str(e)[:100]
     providers.append(foundry_info)
@@ -367,8 +369,7 @@ def _check_foundry_tool_support(model_name: str) -> tuple[bool, str | None]:
         if non_tool_model.lower() in model_lower:
             # But make sure it's not actually a tool-capable variant
             is_tool_capable = any(
-                tool_model.lower() in model_lower
-                for tool_model in FOUNDRY_TOOL_CAPABLE_MODELS
+                tool_model.lower() in model_lower for tool_model in FOUNDRY_TOOL_CAPABLE_MODELS
             )
             if not is_tool_capable:
                 # Provide specific warnings
@@ -526,7 +527,9 @@ def _is_running_in_docker() -> bool:
     return False
 
 
-async def _call_host_agent(endpoint: str, method: str = "POST", json_data: dict | None = None) -> dict | None:
+async def _call_host_agent(
+    endpoint: str, method: str = "POST", json_data: dict | None = None
+) -> dict | None:
     """
     Call the host agent sidecar to start services on the host machine.
 
@@ -653,7 +656,12 @@ async def start_ollama():
         common_paths = [
             Path(os.environ.get("LOCALAPPDATA", "")) / "Programs" / "Ollama" / "ollama.exe",
             Path(os.environ.get("PROGRAMFILES", "")) / "Ollama" / "ollama.exe",
-            Path(os.environ.get("USERPROFILE", "")) / "AppData" / "Local" / "Programs" / "Ollama" / "ollama.exe",
+            Path(os.environ.get("USERPROFILE", ""))
+            / "AppData"
+            / "Local"
+            / "Programs"
+            / "Ollama"
+            / "ollama.exe",
         ]
         for path in common_paths:
             if path.exists():
@@ -684,7 +692,9 @@ async def start_ollama():
         # These constants only exist on Windows, so use getattr with defaults
         creation_flags = 0
         if is_windows:
-            creation_flags = getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000) | getattr(subprocess, "DETACHED_PROCESS", 0x00000008)
+            creation_flags = getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000) | getattr(
+                subprocess, "DETACHED_PROCESS", 0x00000008
+            )
 
         if is_windows:
             # On Windows, try to start the Ollama app
@@ -760,8 +770,7 @@ async def start_ollama():
                 success=False,
                 message="Failed to start Ollama",
                 error=(
-                    f"Error: {str(e)[:150]}\n\n"
-                    f"Try starting Ollama manually from the Start Menu."
+                    f"Error: {str(e)[:150]}\n\nTry starting Ollama manually from the Start Menu."
                 ),
             )
         return OllamaStartResponse(
@@ -1298,7 +1307,9 @@ async def test_database_connection(settings_test: DatabaseSettings | None = None
         elif "Cannot open database" in error_msg:
             message = f"Database '{db_config.database}' not found or not accessible"
         elif "Named Pipes Provider" in error_msg or "TCP Provider" in error_msg:
-            message = f"Cannot connect to server {db_config.host}:{db_config.port} - check host and port"
+            message = (
+                f"Cannot connect to server {db_config.host}:{db_config.port} - check host and port"
+            )
         elif "SSL Provider" in error_msg or "certificate" in error_msg.lower():
             message = "SSL/Certificate error - try enabling 'Trust Certificate'"
         else:

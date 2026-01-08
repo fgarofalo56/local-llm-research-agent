@@ -5,8 +5,7 @@ Phase 2.5: WebSocket Connection Management Refactor
 Wraps WebSocket with connection tracking and error handling.
 """
 
-import asyncio
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 import structlog
@@ -35,8 +34,8 @@ class WebSocketConnection:
         self.websocket = websocket
         self.connection_id = connection_id
         self.conversation_id = conversation_id
-        self.connected_at = datetime.now(timezone.utc)
-        self.last_activity = datetime.now(timezone.utc)
+        self.connected_at = datetime.now(UTC)
+        self.last_activity = datetime.now(UTC)
         self._closed = False
 
     async def send_json(self, data: dict[str, Any]) -> bool:
@@ -58,7 +57,7 @@ class WebSocketConnection:
 
         try:
             await self.websocket.send_json(data)
-            self.last_activity = datetime.now(timezone.utc)
+            self.last_activity = datetime.now(UTC)
             return True
         except Exception as e:
             logger.warning(
@@ -88,7 +87,7 @@ class WebSocketConnection:
 
         try:
             await self.websocket.send_text(text)
-            self.last_activity = datetime.now(timezone.utc)
+            self.last_activity = datetime.now(UTC)
             return True
         except Exception as e:
             logger.warning(
@@ -111,7 +110,7 @@ class WebSocketConnection:
 
         try:
             data = await self.websocket.receive_json()
-            self.last_activity = datetime.now(timezone.utc)
+            self.last_activity = datetime.now(UTC)
             return data
         except Exception as e:
             logger.debug(
@@ -134,7 +133,7 @@ class WebSocketConnection:
 
         try:
             text = await self.websocket.receive_text()
-            self.last_activity = datetime.now(timezone.utc)
+            self.last_activity = datetime.now(UTC)
             return text
         except Exception as e:
             logger.debug(
@@ -174,7 +173,7 @@ class WebSocketConnection:
     @property
     def idle_seconds(self) -> float:
         """Get seconds since last activity."""
-        delta = datetime.now(timezone.utc) - self.last_activity
+        delta = datetime.now(UTC) - self.last_activity
         return delta.total_seconds()
 
     def __repr__(self) -> str:

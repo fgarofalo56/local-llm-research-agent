@@ -236,7 +236,9 @@ async def agent_websocket(
     if ws_manager:
         connection_id = f"agent-{conversation_id}-{id(websocket)}"
         connection = await ws_manager.connect(websocket, connection_id, conversation_id)
-        logger.info("websocket_connected", conversation_id=conversation_id, connection_id=connection_id)
+        logger.info(
+            "websocket_connected", conversation_id=conversation_id, connection_id=connection_id
+        )
     else:
         # Fallback to direct WebSocket if manager not available
         await websocket.accept()
@@ -308,12 +310,14 @@ async def agent_websocket(
                                 context_parts = []
                                 for result in rag_results:
                                     context_parts.append(result.get("content", ""))
-                                    rag_sources.append({
-                                        "document_id": result.get("document_id"),
-                                        "title": result.get("title", "Unknown"),
-                                        "score": result.get("score", 0.0),
-                                        "search_type": result.get("search_type", search_mode),
-                                    })
+                                    rag_sources.append(
+                                        {
+                                            "document_id": result.get("document_id"),
+                                            "title": result.get("title", "Unknown"),
+                                            "score": result.get("score", 0.0),
+                                            "search_type": result.get("search_type", search_mode),
+                                        }
+                                    )
                                 rag_context = "\n---\n".join(context_parts)
                                 augmented_content = f"Based on the following context from relevant documents:\n\n{rag_context}\n\nUser question: {content}"
                                 logger.info(

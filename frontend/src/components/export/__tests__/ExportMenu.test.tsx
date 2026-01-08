@@ -24,13 +24,22 @@ vi.mock('file-saver', () => ({
   saveAs: vi.fn(),
 }));
 
-vi.mock('xlsx', () => ({
-  utils: {
-    json_to_sheet: vi.fn().mockReturnValue({}),
-    book_new: vi.fn().mockReturnValue({}),
-    book_append_sheet: vi.fn(),
+vi.mock('exceljs', () => ({
+  default: {
+    Workbook: vi.fn().mockImplementation(() => ({
+      addWorksheet: vi.fn().mockReturnValue({
+        columns: [],
+        addRow: vi.fn(),
+        getRow: vi.fn().mockReturnValue({
+          font: {},
+          fill: {},
+        }),
+      }),
+      xlsx: {
+        writeBuffer: vi.fn().mockResolvedValue(new ArrayBuffer(8)),
+      },
+    })),
   },
-  writeFile: vi.fn(),
 }));
 
 describe('ExportMenu', () => {

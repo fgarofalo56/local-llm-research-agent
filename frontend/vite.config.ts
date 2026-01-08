@@ -42,7 +42,7 @@ export default defineConfig({
           ],
           'vendor-charts': ['recharts'],
           'vendor-query': ['@tanstack/react-query'],
-          'vendor-export': ['xlsx', 'jspdf', 'html2canvas', 'file-saver'],
+          'vendor-export': ['exceljs', 'jspdf', 'html2canvas', 'file-saver'],
           'vendor-markdown': ['react-markdown', 'react-syntax-highlighter', 'remark-gfm'],
           'vendor-utils': ['zustand', 'clsx', 'tailwind-merge', 'date-fns', 'react-grid-layout'],
         },

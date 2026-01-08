@@ -58,8 +58,8 @@
 | Recharts | 2.15.3 | Chart components |
 | react-grid-layout | 1.5.1 | Dashboard drag & drop |
 | html2canvas | 1.4.1 | Screenshot for PNG export |
-| jspdf | 3.0.1 | PDF generation |
-| xlsx | 0.18.5 | Excel file creation |
+| jspdf | 4.0.0 | PDF generation |
+| exceljs | 4.4.0 | Excel file creation |
 | file-saver | 2.0.5 | Cross-browser file downloads |
 
 ---

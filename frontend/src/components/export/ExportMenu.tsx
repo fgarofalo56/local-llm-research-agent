@@ -55,7 +55,7 @@ export function ExportMenu({
           break;
         case 'excel':
           if (data) {
-            exportToExcel(data, `${filename}.xlsx`);
+            await exportToExcel(data, `${filename}.xlsx`);
           }
           break;
         case 'powerbi':

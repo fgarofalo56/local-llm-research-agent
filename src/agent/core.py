@@ -13,7 +13,7 @@ from pydantic_ai import Agent
 from src.agent.cache import AgentCache
 from src.agent.prompts import get_system_prompt, format_mcp_servers_info
 from src.agent.stats import AgentStats
-from src.mcp.dynamic_manager import DynamicMCPManager
+from src.mcp.client import MCPClientManager
 from src.models.chat import AgentResponse, ChatMessage, Conversation, ConversationTurn, TokenUsage
 from src.providers import LLMProvider, ProviderType, create_provider
 from src.utils.cache import ResponseCache, get_response_cache
@@ -96,7 +96,7 @@ class ResearchAgent:
         )
 
         # Initialize MCP components
-        self.mcp_manager = DynamicMCPManager()
+        self.mcp_manager = MCPClientManager()
         
         # Active toolsets will be loaded in initialize()
         self._active_toolsets = []
@@ -221,20 +221,12 @@ class ResearchAgent:
         Gracefully handles failures - agent continues without failed tools.
         """
         # Load configuration first
-        await self.mcp_manager.load_config()
+        self.mcp_manager.load_config()
         
-        if self._enabled_mcp_servers == ["mssql"]:
-            # Default case - load all enabled servers from config
-            servers = self.mcp_manager.get_enabled_servers()
-            self._active_toolsets.extend(servers)
-            logger.info("mcp_toolsets_loaded_all", count=len(servers))
-        else:
-            # Specific servers requested
-            servers = self.mcp_manager.get_servers_by_ids(self._enabled_mcp_servers)
-            self._active_toolsets.extend(servers)
-            logger.info("mcp_toolsets_loaded_specific", 
-                       servers=self._enabled_mcp_servers, 
-                       count=len(servers))
+        # Get active toolsets from the manager
+        self._active_toolsets = self.mcp_manager.get_active_toolsets()
+        
+        logger.info("mcp_toolsets_loaded", count=len(self._active_toolsets))
         
         if not self._active_toolsets:
             logger.warning(

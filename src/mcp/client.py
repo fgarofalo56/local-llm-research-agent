@@ -333,6 +333,15 @@ class MCPClientManager:
 
         return self._config.list_server_names()
 
+    def get_enabled_servers(self) -> list[MCPServerStdio]:
+        """
+        Get all enabled MCP servers as toolsets.
+        
+        Returns:
+            List of MCPServerStdio instances for enabled servers
+        """
+        return self.get_active_toolsets()
+
     def clear_cache(self) -> None:
         """Clear the configuration cache and reload."""
         self._config = None

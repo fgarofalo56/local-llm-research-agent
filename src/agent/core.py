@@ -253,6 +253,24 @@ class ResearchAgent:
         """Get the endpoint (legacy property for backwards compatibility)."""
         return self.provider.endpoint
 
+    async def __aenter__(self):
+        """
+        Enter the agent context.
+        
+        This establishes MCP server connections once at the start of a session,
+        rather than reconnecting on every message.
+        """
+        await self.agent.__aenter__()
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        """
+        Exit the agent context.
+        
+        This cleanly closes MCP server connections at the end of the session.
+        """
+        return await self.agent.__aexit__(exc_type, exc_val, exc_tb)
+
     async def _run_agent_with_retry(self, message: str) -> str:
         """
         Execute agent.run() with retry logic and circuit breaker.
@@ -272,9 +290,9 @@ class ResearchAgent:
 
         @retry(config=self._retry_config, circuit_breaker=self._circuit_breaker)
         async def _execute():
-            async with self.agent:
-                result = await self.agent.run(message)
-                return result.output
+            # Agent context is managed at session level, not per-message
+            result = await self.agent.run(message)
+            return result.output
 
         return await _execute()
 

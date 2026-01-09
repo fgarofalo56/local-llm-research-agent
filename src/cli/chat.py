@@ -344,451 +344,456 @@ async def run_chat_loop(
 
     print_help_commands()
 
-    while True:
-        try:
-            # Get user input with styled prompt
-            console.print()
-            user_input = Prompt.ask(f"[{COLORS['accent_light']}]{Icons.USER} You[/]")
+    # Establish MCP sessions once for the entire chat session
+    async with agent:
+        console.print(f"[{COLORS['success']}]{Icons.CHECK} MCP sessions established[/]")
+        console.print()
 
-            if not user_input.strip():
-                continue
-
-            # Handle commands
-            command = user_input.strip().lower()
-
-            if command in ("quit", "exit", "q"):
+        while True:
+            try:
+                # Get user input with styled prompt
                 console.print()
-                console.print(format_goodbye())
-                break
+                user_input = Prompt.ask(f"[{COLORS['accent_light']}]{Icons.USER} You[/]")
 
-            if command == "clear":
-                agent.clear_history()
-                console.print(success_message("Conversation cleared"))
-                continue
-
-            if command == "status":
-                await print_status_async(effective_provider)
-                continue
-
-            if command == "cache":
-                print_cache_stats(agent)
-                continue
-
-            if command == "cache-clear":
-                count = agent.clear_cache()
-                console.print(success_message(f"Cache cleared ({count} entries removed)"))
-                continue
-
-            if command.startswith("export"):
-                parts = command.split()
-                if len(parts) == 1:
-                    # Prompt for format
-                    fmt = Prompt.ask(
-                        f"[{COLORS['gray_400']}]Export format[/]",
-                        choices=["json", "csv", "md"],
-                        default="json",
-                    )
-                else:
-                    fmt = parts[1].lower()
-
-                if agent.conversation.total_turns == 0:
-                    console.print(warning_message("No conversation to export"))
+                if not user_input.strip():
                     continue
 
-                try:
-                    filename = generate_export_filename("chat", fmt)
-                    if fmt == "json":
-                        export_to_json(agent.conversation, filename)
-                    elif fmt == "csv":
-                        export_conversation_to_csv(agent.conversation, filename)
-                    elif fmt in ("md", "markdown"):
-                        export_to_markdown(agent.conversation, filename)
-                    else:
-                        console.print(error_message(f"Unknown format: {fmt}"))
-                        continue
-                    console.print(success_message(f"Exported to: {filename}"))
-                except Exception as e:
-                    console.print(error_message(f"Export failed: {e}"))
-                continue
+                # Handle commands
+                command = user_input.strip().lower()
 
-            if command.startswith("history"):
-                parts = command.split()
-                history = get_history_manager()
+                if command in ("quit", "exit", "q"):
+                    console.print()
+                    console.print(format_goodbye())
+                    break
 
-                if len(parts) == 1:
-                    # List sessions
-                    sessions = history.list_sessions(limit=10)
-                    if not sessions:
-                        console.print(warning_message("No saved sessions"))
-                    else:
-                        console.print()
-                        table = create_session_table()
-
-                        for session in sessions:
-                            table.add_row(
-                                session.session_id,
-                                session.title[:35],
-                                str(session.turn_count),
-                                session.updated_at.strftime("%Y-%m-%d %H:%M"),
-                            )
-                        console.print(table)
+                if command == "clear":
+                    agent.clear_history()
+                    console.print(success_message("Conversation cleared"))
                     continue
 
-                elif parts[1] == "save":
+                if command == "status":
+                    await print_status_async(effective_provider)
+                    continue
+
+                if command == "cache":
+                    print_cache_stats(agent)
+                    continue
+
+                if command == "cache-clear":
+                    count = agent.clear_cache()
+                    console.print(success_message(f"Cache cleared ({count} entries removed)"))
+                    continue
+
+                if command.startswith("export"):
+                    parts = command.split()
+                    if len(parts) == 1:
+                        # Prompt for format
+                        fmt = Prompt.ask(
+                            f"[{COLORS['gray_400']}]Export format[/]",
+                            choices=["json", "csv", "md"],
+                            default="json",
+                        )
+                    else:
+                        fmt = parts[1].lower()
+
                     if agent.conversation.total_turns == 0:
-                        console.print(warning_message("No conversation to save"))
-                    else:
-                        title = Prompt.ask(f"[{COLORS['gray_400']}]Session title[/]", default="")
-                        session_id = history.save_session(
-                            agent.conversation,
-                            title=title if title else None,
-                            provider=effective_provider,
-                            model=model or "",
-                        )
-                        console.print(success_message(f"Session saved: {session_id}"))
-                    continue
-
-                elif parts[1] == "load" and len(parts) >= 3:
-                    session_id = parts[2]
-                    session = history.load_session(session_id)
-                    if session:
-                        # Restore conversation
-                        agent.conversation = session.to_conversation()
-                        console.print(success_message(f"Session loaded: {session.metadata.title}"))
-                        console.print(
-                            f"  {Icons.BULLET} [{COLORS['gray_400']}]{session.metadata.turn_count} turns restored[/]"
-                        )
-                    else:
-                        console.print(error_message(f"Session not found: {session_id}"))
-                    continue
-
-                elif parts[1] == "delete" and len(parts) >= 3:
-                    session_id = parts[2]
-                    if history.delete_session(session_id):
-                        console.print(success_message(f"Session deleted: {session_id}"))
-                    else:
-                        console.print(error_message(f"Session not found: {session_id}"))
-                    continue
-
-                else:
-                    console.print(info_message("Usage: history [list|save|load <id>|delete <id>]"))
-                    continue
-
-            if command.startswith("db"):
-                parts = command.split()
-                db_manager = get_database_manager()
-
-                if len(parts) == 1:
-                    # List databases
-                    databases = db_manager.list_databases()
-                    console.print()
-                    table = create_database_table()
-
-                    for db in databases:
-                        mode_text = Text()
-                        if db["readonly"]:
-                            mode_text.append("RO", style=COLORS["info"])
-                        else:
-                            mode_text.append("RW", style=COLORS["warning"])
-
-                        active_text = Text()
-                        if db["active"]:
-                            active_text.append(f"{Icons.CHECK} Yes", style=COLORS["success"])
-                        else:
-                            active_text.append("")
-
-                        table.add_row(
-                            db["name"],
-                            db["host"],
-                            db["database"],
-                            mode_text,
-                            active_text,
-                        )
-                    console.print(table)
-                    continue
-
-                elif parts[1] == "switch" and len(parts) >= 3:
-                    db_name = parts[2]
-                    if db_manager.set_active(db_name):
-                        db_config = db_manager.active
-                        console.print(success_message(f"Switched to database: {db_name}"))
-                        console.print(
-                            f"  {Icons.BULLET} [{COLORS['gray_400']}]Connection: {db_config.connection_string_display}[/]"
-                        )
-                        console.print(
-                            warning_message("Restart chat to apply new database connection")
-                        )
-                    else:
-                        console.print(error_message(f"Database not found: {db_name}"))
-                    continue
-
-                elif parts[1] == "add":
-                    console.print()
-                    console.print(
-                        f"[bold {COLORS['primary']}]{Icons.DATABASE} Add New Database Configuration[/]"
-                    )
-                    console.print(styled_divider())
-                    console.print()
-
-                    name = Prompt.ask(f"[{COLORS['gray_400']}]Database name (unique identifier)[/]")
-                    if not name:
-                        console.print(error_message("Name is required"))
+                        console.print(warning_message("No conversation to export"))
                         continue
-
-                    host = Prompt.ask(
-                        f"[{COLORS['gray_400']}]SQL Server host[/]", default="localhost"
-                    )
-                    port = int(Prompt.ask(f"[{COLORS['gray_400']}]Port[/]", default="1433"))
-                    database = Prompt.ask(f"[{COLORS['gray_400']}]Database name[/]")
-                    username = Prompt.ask(
-                        f"[{COLORS['gray_400']}]Username (blank for Windows Auth)[/]", default=""
-                    )
-                    password = ""
-                    if username:
-                        password = Prompt.ask(
-                            f"[{COLORS['gray_400']}]Password[/]", password=True, default=""
-                        )
-                    readonly = (
-                        Prompt.ask(
-                            f"[{COLORS['gray_400']}]Read-only mode?[/]",
-                            choices=["y", "n"],
-                            default="n",
-                        )
-                        == "y"
-                    )
-                    description = Prompt.ask(
-                        f"[{COLORS['gray_400']}]Description (optional)[/]", default=""
-                    )
 
                     try:
-                        config = DatabaseConfig(
-                            name=name,
-                            host=host,
-                            port=port,
-                            database=database,
-                            username=username,
-                            password=password,
-                            readonly=readonly,
-                            description=description,
-                        )
-                        db_manager.add_database(config)
-                        console.print(success_message(f"Database added: {name}"))
+                        filename = generate_export_filename("chat", fmt)
+                        if fmt == "json":
+                            export_to_json(agent.conversation, filename)
+                        elif fmt == "csv":
+                            export_conversation_to_csv(agent.conversation, filename)
+                        elif fmt in ("md", "markdown"):
+                            export_to_markdown(agent.conversation, filename)
+                        else:
+                            console.print(error_message(f"Unknown format: {fmt}"))
+                            continue
+                        console.print(success_message(f"Exported to: {filename}"))
                     except Exception as e:
-                        console.print(error_message(f"Failed to add database: {e}"))
+                        console.print(error_message(f"Export failed: {e}"))
                     continue
 
-                elif parts[1] == "remove" and len(parts) >= 3:
-                    db_name = parts[2]
-                    if db_manager.remove_database(db_name):
-                        console.print(success_message(f"Database removed: {db_name}"))
-                    else:
-                        console.print(error_message(f"Cannot remove database: {db_name}"))
-                        console.print(
-                            f"  {Icons.BULLET} [{COLORS['gray_400']}](default database cannot be removed)[/]"
-                        )
-                    continue
+                if command.startswith("history"):
+                    parts = command.split()
+                    history = get_history_manager()
 
-                else:
-                    console.print(info_message("Usage: db [list|switch <name>|add|remove <name>]"))
-                    continue
+                    if len(parts) == 1:
+                        # List sessions
+                        sessions = history.list_sessions(limit=10)
+                        if not sessions:
+                            console.print(warning_message("No saved sessions"))
+                        else:
+                            console.print()
+                            table = create_session_table()
 
-            if command == "help":
-                print_help_commands()
-                continue
-
-            # Handle /mcp commands
-            if command.startswith("/mcp") or command.startswith("mcp"):
-                from src.cli.mcp_commands import handle_mcp_command
-                
-                # Normalize command to start with /mcp
-                normalized_cmd = command if command.startswith("/mcp") else f"/{command}"
-                handle_mcp_command(console, normalized_cmd)
-                continue
-
-            # Handle /provider command - switch LLM provider
-            if command.startswith("/provider"):
-                parts = command.split()
-                if len(parts) < 2:
-                    console.print(info_message("Usage: /provider <ollama|foundry_local>"))
-                    console.print(
-                        f"  {Icons.BULLET} [{COLORS['gray_400']}]Current: {effective_provider}[/]"
-                    )
-                    continue
-
-                new_provider = parts[1].lower()
-                if new_provider not in ("ollama", "foundry_local"):
-                    console.print(error_message(f"Unknown provider: {new_provider}"))
-                    console.print(
-                        f"  {Icons.BULLET} [{COLORS['gray_400']}]Available: ollama, foundry_local[/]"
-                    )
-                    continue
-
-                # Check if the new provider is available
-                new_status = await check_provider_status(new_provider)
-                if not new_status["available"]:
-                    console.print(error_message(f"Provider not available: {new_provider}"))
-                    if new_status.get("error"):
-                        console.print(
-                            f"  {Icons.BULLET} [{COLORS['gray_400']}]{new_status['error']}[/]"
-                        )
-                    continue
-
-                # Create new agent with the new provider
-                try:
-                    effective_provider = new_provider
-                    model = new_status.get("model")  # Use provider's default/available model
-                    agent = ResearchAgent(
-                        provider_type=effective_provider,
-                        model_name=model,
-                        readonly=readonly,
-                        cache_enabled=cache_enabled,
-                        explain_mode=explain_mode,
-                    )
-                    console.print(success_message(f"Switched to {new_provider}"))
-                    console.print(
-                        f"  {Icons.BULLET} [{COLORS['gray_400']}]Model: {agent.provider.model_name}[/]"
-                    )
-                except Exception as e:
-                    console.print(error_message(f"Failed to switch provider: {e}"))
-                continue
-
-            # Handle /models command - list available models (before /model to avoid conflict)
-            if command == "/models":
-                console.print()
-                console.print(f"[bold {COLORS['primary']}]{Icons.DATABASE} Available Models[/]")
-                console.print(styled_divider())
-
-                # List models for both providers
-                for prov in ["ollama", "foundry_local"]:
-                    prov_name = "Ollama" if prov == "ollama" else "Foundry Local"
-                    console.print(f"\n[{COLORS['accent']}]{prov_name}[/]:")
-
-                    models = await list_provider_models(prov)
-                    if models:
-                        for m in models[:15]:  # Limit to 15 models
-                            is_current = (
-                                prov == effective_provider and m == agent.provider.model_name
-                            )
-                            if is_current:
-                                console.print(
-                                    f"  {Icons.STAR} [{COLORS['success']}]{m}[/] (active)"
+                            for session in sessions:
+                                table.add_row(
+                                    session.session_id,
+                                    session.title[:35],
+                                    str(session.turn_count),
+                                    session.updated_at.strftime("%Y-%m-%d %H:%M"),
                                 )
-                            else:
-                                console.print(f"  {Icons.BULLET} [{COLORS['gray_300']}]{m}[/]")
-                        if len(models) > 15:
-                            console.print(
-                                f"  [{COLORS['gray_500']}]... and {len(models) - 15} more[/]"
+                            console.print(table)
+                        continue
+
+                    elif parts[1] == "save":
+                        if agent.conversation.total_turns == 0:
+                            console.print(warning_message("No conversation to save"))
+                        else:
+                            title = Prompt.ask(f"[{COLORS['gray_400']}]Session title[/]", default="")
+                            session_id = history.save_session(
+                                agent.conversation,
+                                title=title if title else None,
+                                provider=effective_provider,
+                                model=model or "",
                             )
+                            console.print(success_message(f"Session saved: {session_id}"))
+                        continue
+
+                    elif parts[1] == "load" and len(parts) >= 3:
+                        session_id = parts[2]
+                        session = history.load_session(session_id)
+                        if session:
+                            # Restore conversation
+                            agent.conversation = session.to_conversation()
+                            console.print(success_message(f"Session loaded: {session.metadata.title}"))
+                            console.print(
+                                f"  {Icons.BULLET} [{COLORS['gray_400']}]{session.metadata.turn_count} turns restored[/]"
+                            )
+                        else:
+                            console.print(error_message(f"Session not found: {session_id}"))
+                        continue
+
+                    elif parts[1] == "delete" and len(parts) >= 3:
+                        session_id = parts[2]
+                        if history.delete_session(session_id):
+                            console.print(success_message(f"Session deleted: {session_id}"))
+                        else:
+                            console.print(error_message(f"Session not found: {session_id}"))
+                        continue
+
                     else:
+                        console.print(info_message("Usage: history [list|save|load <id>|delete <id>]"))
+                        continue
+
+                if command.startswith("db"):
+                    parts = command.split()
+                    db_manager = get_database_manager()
+
+                    if len(parts) == 1:
+                        # List databases
+                        databases = db_manager.list_databases()
+                        console.print()
+                        table = create_database_table()
+
+                        for db in databases:
+                            mode_text = Text()
+                            if db["readonly"]:
+                                mode_text.append("RO", style=COLORS["info"])
+                            else:
+                                mode_text.append("RW", style=COLORS["warning"])
+
+                            active_text = Text()
+                            if db["active"]:
+                                active_text.append(f"{Icons.CHECK} Yes", style=COLORS["success"])
+                            else:
+                                active_text.append("")
+
+                            table.add_row(
+                                db["name"],
+                                db["host"],
+                                db["database"],
+                                mode_text,
+                                active_text,
+                            )
+                        console.print(table)
+                        continue
+
+                    elif parts[1] == "switch" and len(parts) >= 3:
+                        db_name = parts[2]
+                        if db_manager.set_active(db_name):
+                            db_config = db_manager.active
+                            console.print(success_message(f"Switched to database: {db_name}"))
+                            console.print(
+                                f"  {Icons.BULLET} [{COLORS['gray_400']}]Connection: {db_config.connection_string_display}[/]"
+                            )
+                            console.print(
+                                warning_message("Restart chat to apply new database connection")
+                            )
+                        else:
+                            console.print(error_message(f"Database not found: {db_name}"))
+                        continue
+
+                    elif parts[1] == "add":
+                        console.print()
                         console.print(
-                            f"  [{COLORS['gray_500']}]Not available or no models found[/]"
+                            f"[bold {COLORS['primary']}]{Icons.DATABASE} Add New Database Configuration[/]"
+                        )
+                        console.print(styled_divider())
+                        console.print()
+
+                        name = Prompt.ask(f"[{COLORS['gray_400']}]Database name (unique identifier)[/]")
+                        if not name:
+                            console.print(error_message("Name is required"))
+                            continue
+
+                        host = Prompt.ask(
+                            f"[{COLORS['gray_400']}]SQL Server host[/]", default="localhost"
+                        )
+                        port = int(Prompt.ask(f"[{COLORS['gray_400']}]Port[/]", default="1433"))
+                        database = Prompt.ask(f"[{COLORS['gray_400']}]Database name[/]")
+                        username = Prompt.ask(
+                            f"[{COLORS['gray_400']}]Username (blank for Windows Auth)[/]", default=""
+                        )
+                        password = ""
+                        if username:
+                            password = Prompt.ask(
+                                f"[{COLORS['gray_400']}]Password[/]", password=True, default=""
+                            )
+                        readonly = (
+                            Prompt.ask(
+                                f"[{COLORS['gray_400']}]Read-only mode?[/]",
+                                choices=["y", "n"],
+                                default="n",
+                            )
+                            == "y"
+                        )
+                        description = Prompt.ask(
+                            f"[{COLORS['gray_400']}]Description (optional)[/]", default=""
                         )
 
-                console.print()
-                continue
+                        try:
+                            config = DatabaseConfig(
+                                name=name,
+                                host=host,
+                                port=port,
+                                database=database,
+                                username=username,
+                                password=password,
+                                readonly=readonly,
+                                description=description,
+                            )
+                            db_manager.add_database(config)
+                            console.print(success_message(f"Database added: {name}"))
+                        except Exception as e:
+                            console.print(error_message(f"Failed to add database: {e}"))
+                        continue
 
-            # Handle /model command - switch model
-            if command.startswith(
-                "/model "
-            ):  # Note: space after /model to differentiate from /models
-                parts = command.split(maxsplit=1)
-                if len(parts) < 2:
+                    elif parts[1] == "remove" and len(parts) >= 3:
+                        db_name = parts[2]
+                        if db_manager.remove_database(db_name):
+                            console.print(success_message(f"Database removed: {db_name}"))
+                        else:
+                            console.print(error_message(f"Cannot remove database: {db_name}"))
+                            console.print(
+                                f"  {Icons.BULLET} [{COLORS['gray_400']}](default database cannot be removed)[/]"
+                            )
+                        continue
+
+                    else:
+                        console.print(info_message("Usage: db [list|switch <name>|add|remove <name>]"))
+                        continue
+
+                if command == "help":
+                    print_help_commands()
+                    continue
+
+                # Handle /mcp commands
+                if command.startswith("/mcp") or command.startswith("mcp"):
+                    from src.cli.mcp_commands import handle_mcp_command
+                
+                    # Normalize command to start with /mcp
+                    normalized_cmd = command if command.startswith("/mcp") else f"/{command}"
+                    handle_mcp_command(console, normalized_cmd)
+                    continue
+
+                # Handle /provider command - switch LLM provider
+                if command.startswith("/provider"):
+                    parts = command.split()
+                    if len(parts) < 2:
+                        console.print(info_message("Usage: /provider <ollama|foundry_local>"))
+                        console.print(
+                            f"  {Icons.BULLET} [{COLORS['gray_400']}]Current: {effective_provider}[/]"
+                        )
+                        continue
+
+                    new_provider = parts[1].lower()
+                    if new_provider not in ("ollama", "foundry_local"):
+                        console.print(error_message(f"Unknown provider: {new_provider}"))
+                        console.print(
+                            f"  {Icons.BULLET} [{COLORS['gray_400']}]Available: ollama, foundry_local[/]"
+                        )
+                        continue
+
+                    # Check if the new provider is available
+                    new_status = await check_provider_status(new_provider)
+                    if not new_status["available"]:
+                        console.print(error_message(f"Provider not available: {new_provider}"))
+                        if new_status.get("error"):
+                            console.print(
+                                f"  {Icons.BULLET} [{COLORS['gray_400']}]{new_status['error']}[/]"
+                            )
+                        continue
+
+                    # Create new agent with the new provider
+                    try:
+                        effective_provider = new_provider
+                        model = new_status.get("model")  # Use provider's default/available model
+                        agent = ResearchAgent(
+                            provider_type=effective_provider,
+                            model_name=model,
+                            readonly=readonly,
+                            cache_enabled=cache_enabled,
+                            explain_mode=explain_mode,
+                        )
+                        console.print(success_message(f"Switched to {new_provider}"))
+                        console.print(
+                            f"  {Icons.BULLET} [{COLORS['gray_400']}]Model: {agent.provider.model_name}[/]"
+                        )
+                    except Exception as e:
+                        console.print(error_message(f"Failed to switch provider: {e}"))
+                    continue
+
+                # Handle /models command - list available models (before /model to avoid conflict)
+                if command == "/models":
+                    console.print()
+                    console.print(f"[bold {COLORS['primary']}]{Icons.DATABASE} Available Models[/]")
+                    console.print(styled_divider())
+
+                    # List models for both providers
+                    for prov in ["ollama", "foundry_local"]:
+                        prov_name = "Ollama" if prov == "ollama" else "Foundry Local"
+                        console.print(f"\n[{COLORS['accent']}]{prov_name}[/]:")
+
+                        models = await list_provider_models(prov)
+                        if models:
+                            for m in models[:15]:  # Limit to 15 models
+                                is_current = (
+                                    prov == effective_provider and m == agent.provider.model_name
+                                )
+                                if is_current:
+                                    console.print(
+                                        f"  {Icons.STAR} [{COLORS['success']}]{m}[/] (active)"
+                                    )
+                                else:
+                                    console.print(f"  {Icons.BULLET} [{COLORS['gray_300']}]{m}[/]")
+                            if len(models) > 15:
+                                console.print(
+                                    f"  [{COLORS['gray_500']}]... and {len(models) - 15} more[/]"
+                                )
+                        else:
+                            console.print(
+                                f"  [{COLORS['gray_500']}]Not available or no models found[/]"
+                            )
+
+                    console.print()
+                    continue
+
+                # Handle /model command - switch model
+                if command.startswith(
+                    "/model "
+                ):  # Note: space after /model to differentiate from /models
+                    parts = command.split(maxsplit=1)
+                    if len(parts) < 2:
+                        console.print(info_message("Usage: /model <model_name>"))
+                        console.print(
+                            f"  {Icons.BULLET} [{COLORS['gray_400']}]Current: {agent.provider.model_name}[/]"
+                        )
+                        console.print(
+                            f"  {Icons.BULLET} [{COLORS['gray_400']}]Use '/models' to list available models[/]"
+                        )
+                        continue
+
+                    new_model = parts[1].strip()
+
+                    # Create new agent with the new model
+                    try:
+                        agent = ResearchAgent(
+                            provider_type=effective_provider,
+                            model_name=new_model,
+                            readonly=readonly,
+                            cache_enabled=cache_enabled,
+                            explain_mode=explain_mode,
+                        )
+                        model = new_model
+                        console.print(success_message(f"Switched to model: {new_model}"))
+                    except Exception as e:
+                        console.print(error_message(f"Failed to switch model: {e}"))
+                    continue
+
+                # Handle /model with no args - show current model info
+                if command == "/model":
                     console.print(info_message("Usage: /model <model_name>"))
                     console.print(
-                        f"  {Icons.BULLET} [{COLORS['gray_400']}]Current: {agent.provider.model_name}[/]"
+                        f"  {Icons.BULLET} [{COLORS['gray_400']}]Current provider: {effective_provider}[/]"
+                    )
+                    console.print(
+                        f"  {Icons.BULLET} [{COLORS['gray_400']}]Current model: {agent.provider.model_name}[/]"
                     )
                     console.print(
                         f"  {Icons.BULLET} [{COLORS['gray_400']}]Use '/models' to list available models[/]"
                     )
                     continue
 
-                new_model = parts[1].strip()
+                # Send to agent
+                console.print()
+                console.print(format_agent_response_header(), end="")
 
-                # Create new agent with the new model
-                try:
-                    agent = ResearchAgent(
-                        provider_type=effective_provider,
-                        model_name=new_model,
-                        readonly=readonly,
-                        cache_enabled=cache_enabled,
-                        explain_mode=explain_mode,
-                    )
-                    model = new_model
-                    console.print(success_message(f"Switched to model: {new_model}"))
-                except Exception as e:
-                    console.print(error_message(f"Failed to switch model: {e}"))
+                if stream:
+                    # Streaming mode - print chunks as they arrive
+                    with console.status(thinking_status(), spinner="dots"):
+                        async for chunk in agent.chat_stream(user_input):
+                            # Clear the status on first chunk
+                            console.print(chunk, end="")
+                    console.print()  # Final newline
+
+                    # Display token usage after streaming
+                    stats = agent.get_last_response_stats()
+                    token_usage = stats.get("token_usage")
+                    if token_usage and token_usage.total_tokens > 0:
+                        console.print(
+                            format_token_usage(
+                                prompt_tokens=token_usage.prompt_tokens,
+                                completion_tokens=token_usage.completion_tokens,
+                                total_tokens=token_usage.total_tokens,
+                                duration_ms=stats.get("duration_ms", 0),
+                            )
+                        )
+                else:
+                    # Non-streaming mode - show spinner while waiting
+                    with console.status(thinking_status(), spinner="dots"):
+                        detailed_response = await agent.chat_with_details(user_input)
+                    console.print(detailed_response.content)
+
+                    # Display token usage
+                    if detailed_response.token_usage and detailed_response.token_usage.total_tokens > 0:
+                        console.print(
+                            format_token_usage(
+                                prompt_tokens=detailed_response.token_usage.prompt_tokens,
+                                completion_tokens=detailed_response.token_usage.completion_tokens,
+                                total_tokens=detailed_response.token_usage.total_tokens,
+                                duration_ms=detailed_response.duration_ms,
+                            )
+                        )
+
+            except KeyboardInterrupt:
+                console.print()
+                console.print(warning_message("Interrupted. Type 'quit' to exit."))
                 continue
 
-            # Handle /model with no args - show current model info
-            if command == "/model":
-                console.print(info_message("Usage: /model <model_name>"))
-                console.print(
-                    f"  {Icons.BULLET} [{COLORS['gray_400']}]Current provider: {effective_provider}[/]"
-                )
-                console.print(
-                    f"  {Icons.BULLET} [{COLORS['gray_400']}]Current model: {agent.provider.model_name}[/]"
-                )
-                console.print(
-                    f"  {Icons.BULLET} [{COLORS['gray_400']}]Use '/models' to list available models[/]"
-                )
+            except ResearchAgentError as e:
+                console.print()
+                console.print(error_message(f"Agent error: {e}"))
                 continue
 
-            # Send to agent
-            console.print()
-            console.print(format_agent_response_header(), end="")
-
-            if stream:
-                # Streaming mode - print chunks as they arrive
-                with console.status(thinking_status(), spinner="dots"):
-                    async for chunk in agent.chat_stream(user_input):
-                        # Clear the status on first chunk
-                        console.print(chunk, end="")
-                console.print()  # Final newline
-
-                # Display token usage after streaming
-                stats = agent.get_last_response_stats()
-                token_usage = stats.get("token_usage")
-                if token_usage and token_usage.total_tokens > 0:
-                    console.print(
-                        format_token_usage(
-                            prompt_tokens=token_usage.prompt_tokens,
-                            completion_tokens=token_usage.completion_tokens,
-                            total_tokens=token_usage.total_tokens,
-                            duration_ms=stats.get("duration_ms", 0),
-                        )
-                    )
-            else:
-                # Non-streaming mode - show spinner while waiting
-                with console.status(thinking_status(), spinner="dots"):
-                    detailed_response = await agent.chat_with_details(user_input)
-                console.print(detailed_response.content)
-
-                # Display token usage
-                if detailed_response.token_usage and detailed_response.token_usage.total_tokens > 0:
-                    console.print(
-                        format_token_usage(
-                            prompt_tokens=detailed_response.token_usage.prompt_tokens,
-                            completion_tokens=detailed_response.token_usage.completion_tokens,
-                            total_tokens=detailed_response.token_usage.total_tokens,
-                            duration_ms=detailed_response.duration_ms,
-                        )
-                    )
-
-        except KeyboardInterrupt:
-            console.print()
-            console.print(warning_message("Interrupted. Type 'quit' to exit."))
-            continue
-
-        except ResearchAgentError as e:
-            console.print()
-            console.print(error_message(f"Agent error: {e}"))
-            continue
-
-        except Exception as e:
-            logger.exception("chat_loop_error")
-            console.print()
-            console.print(error_message(f"Unexpected error: {e}"))
-            continue
+            except Exception as e:
+                logger.exception("chat_loop_error")
+                console.print()
+                console.print(error_message(f"Unexpected error: {e}"))
+                continue
 
 
 @app.command()

@@ -96,14 +96,13 @@
     "archon": {
       "name": "archon",
       "server_type": "custom",
-      "transport": "stdio",
-      "command": "docker",
-      "args": ["exec", "-i", "archon-mcp", "python", "-m", "mcp_server"],
-      "env": {},
+      "transport": "streamable_http",
+      "url": "http://localhost:8051/mcp",
+      "headers": {},
       "enabled": true,
       "readonly": false,
       "timeout": 30,
-      "description": "Archon Project Management and Knowledge Base MCP Server (via Docker stdio)"
+      "description": "Archon Project Management and Knowledge Base MCP Server (Streamable HTTP)"
     }
   }
 }

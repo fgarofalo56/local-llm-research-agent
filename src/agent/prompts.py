@@ -24,27 +24,13 @@ def format_mcp_servers_info(enabled_servers: list[str]) -> str:
     if not enabled_servers:
         return "Currently, you do not have any MCP servers loaded. You can only respond using your base knowledge."
     
-    # Map common server names to descriptions
-    server_descriptions = {
-        "mssql": "**MSSQL Server** - SQL Server database operations (list_tables, describe_table, read_data, insert_data, update_data, create_table, drop_table, create_index)",
-        "analytics-management": "**Analytics Management** - Dashboard and widget management tools (list_dashboards, create_dashboard, update_dashboard, delete_dashboard, list_widgets, add_widget)",
-        "data-analytics": "**Data Analytics** - Advanced analytics functions (correlation_analysis, time_series_analysis, trend_detection, profile_table, detect_outliers, segment_analysis, cohort_analysis)",
-        "microsoft.docs.mcp": "**Microsoft Docs** - Documentation search and retrieval",
-        "brave-search": "**Brave Search** - Web search capabilities",
-    }
-    
-    lines = ["You currently have access to the following MCP servers and their tools:\n"]
-    
-    for server_name in enabled_servers:
-        if server_name in server_descriptions:
-            lines.append(f"- {server_descriptions[server_name]}")
-        else:
-            lines.append(f"- **{server_name}** - Custom MCP server")
-    
-    lines.append("\n**To answer questions about your capabilities:**")
-    lines.append("- Reference the MCP servers listed above")
-    lines.append("- Mention specific tool names when describing what you can do")
-    lines.append("- Users can manage these servers with `/mcp list`, `/mcp enable <name>`, `/mcp disable <name>`")
+    lines = [
+        "You currently have access to the following MCP servers:\n",
+        ", ".join(f"**{name}**" for name in enabled_servers),
+        "\n\n**Important:** You have access to ALL tools provided by these MCP servers.",
+        "When asked to use a specific server or perform a specific action, examine the available tools and use the appropriate ones.",
+        "You do not need tools to be explicitly listed here - you can discover and use any tool provided by the connected MCP servers.",
+    ]
     
     return "\n".join(lines)
 

@@ -107,19 +107,21 @@ Root directory: 52+ files
 - Config files: ~12
 - Scripts: ~16 (test_*.py, debug_*.py)
 - Documentation: ~10 (*.md)
+- Aider files: 3 (.aider.*)
 - Temporary: ~3 (nul, *.bak, etc.)
 - Other: ~11
 ```
 
 ### After Cleanup
 ```
-Root directory: 25 files
+Root directory: 22 files
 - Config files: 12 (pyproject.toml, .env, mcp_config.json, etc.)
 - Documentation: 5 (README.md, CLAUDE.md, CONTRIBUTING.md, LICENSE, SECURITY.md)
 - Dev scripts: 4 (start-dev.*, stop-dev.*)
-- Other: 4 (.gitignore, .dockerignore, Dockerfile, .pre-commit-config.yaml)
+- Other: 1 (.pre-commit-config.yaml)
 
 Organized into:
+- .aider/ (4 files: chat history, input history, tags cache, README)
 - scripts/debug/ (4 scripts + README)
 - scripts/testing/ (12 scripts + README)
 - docs/sessions/ (2 docs + README)
@@ -127,7 +129,7 @@ Organized into:
 - docs/ (2 testing docs + ROOT_STRUCTURE.md)
 ```
 
-**Reduction: 52 → 25 files in root (52% cleaner!)**
+**Reduction: 52 → 22 files in root (58% cleaner!)**
 
 ---
 
@@ -146,7 +148,7 @@ Organized into:
 │   ├── .env.example
 │   ├── .gitignore
 │   ├── .dockerignore
-│   ├── .pre-commit-config.yaml
+│   ├── .mcp.json
 │   └── Dockerfile
 │
 ├── Documentation (5 files)
@@ -162,28 +164,26 @@ Organized into:
 │   ├── stop-dev.bat
 │   └── stop-dev.sh
 │
-├── Aider Config (4 files)
-│   ├── .aider.chat.history.md
-│   ├── .aider.input.history
-│   ├── .aider.tags.cache.v4
-│   └── .mcp.json
+├── Other (1 file)
+│   └── .pre-commit-config.yaml
 │
 └── Key Directories
-    ├── src/                # Application source
-    ├── tests/              # Formal test suite
-    ├── examples/           # Usage examples
-    ├── scripts/            # Utility scripts
-    │   ├── debug/         # Debug tools
-    │   └── testing/       # Integration tests
-    ├── docs/              # Documentation
-    │   ├── sessions/      # Session archives
-    │   └── mcp/           # MCP docs
-    ├── docker/            # Docker configs
-    ├── frontend/          # React app
-    ├── alembic/           # DB migrations
-    ├── data/              # Data storage
-    ├── config/            # Additional config
-    └── PRPs/              # Product requirements
+    ├── .aider/            # Aider AI files (git-ignored)
+    ├── src/               # Application source
+    ├── tests/             # Formal test suite
+    ├── examples/          # Usage examples
+    ├── scripts/           # Utility scripts
+    │   ├── debug/        # Debug tools
+    │   └── testing/      # Integration tests
+    ├── docs/             # Documentation
+    │   ├── sessions/     # Session archives
+    │   └── mcp/          # MCP docs
+    ├── docker/           # Docker configs
+    ├── frontend/         # React app
+    ├── alembic/          # DB migrations
+    ├── data/             # Data storage
+    ├── config/           # Additional config
+    └── PRPs/             # Product requirements
 ```
 
 ---
@@ -261,4 +261,5 @@ ls docs/mcp/
 
 Root directory is now properly organized following industry best practices.
 
+**Commit:** `6d39a40` - "refactor: organize Aider files into .aider/ directory"  
 **Commit:** `fe63bdd` - "refactor: organize root directory and move files to proper locations"

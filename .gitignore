@@ -271,6 +271,15 @@ $RECYCLE.BIN/
 logs/
 *.tmp
 *.temp
+*.swp
+*~
+nul
+
+# Backup files
+*.bak
+
+# Session summaries (moved to docs/sessions/)
+/SESSION_*.md
 tmp/
 temp/
 *.bak

@@ -406,11 +406,11 @@ class ResearchAgent:
             # Run agent with retry logic (streaming simulation)
             @retry(config=self._retry_config, circuit_breaker=self._circuit_breaker)
             async def _execute_stream():
-                async with self.agent:
-                    # Use run() instead of run_stream() to ensure tool calls are executed
-                    # run_stream() stops after first output which breaks tool execution
-                    result = await self.agent.run(message)
-                    return result.output, TokenUsage.from_pydantic_usage(result.usage())
+                # Agent context is managed at session level, not per-message
+                # Use run() instead of run_stream() to ensure tool calls are executed
+                # run_stream() stops after first output which breaks tool execution
+                result = await self.agent.run(message)
+                return result.output, TokenUsage.from_pydantic_usage(result.usage())
 
             full_response, token_usage = await _execute_stream()
 
@@ -461,9 +461,9 @@ class ResearchAgent:
             # Run with retry logic
             @retry(config=self._retry_config, circuit_breaker=self._circuit_breaker)
             async def _execute_with_details():
-                async with self.agent:
-                    result = await self.agent.run(message)
-                    return result.output, TokenUsage.from_pydantic_usage(result.usage())
+                # Agent context is managed at session level, not per-message
+                result = await self.agent.run(message)
+                return result.output, TokenUsage.from_pydantic_usage(result.usage())
 
             response_text, token_usage = await _execute_with_details()
 

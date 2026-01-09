@@ -14,18 +14,51 @@ from src.utils.logger import get_logger
 logger = get_logger(__name__)
 
 # Models known to support tool calling in Ollama
+# Based on official Ollama documentation and modelfile templates
 OLLAMA_TOOL_CAPABLE_MODELS = [
-    "qwen2.5",
-    "qwen2",
-    "llama3.1",
-    "llama3.2",
-    "llama3.3",
-    "mistral",
-    "mixtral",
-    "command-r",
-    "firefunction",
-    "hermes",
-    "nous-hermes",
+    # Qwen family - all versions support tool calling
+    "qwen3",  # Latest - native tool calling support
+    "qwen2.5",  # Strong tool calling support
+    "qwen2",  # Tool calling support
+    "qwen3-vl",  # Vision + tool calling
+    # Llama family - 3.1+ versions support tool calling
+    "llama3.1",  # Native tool calling
+    "llama3.2",  # Native tool calling
+    "llama3.3",  # Native tool calling
+    "llama4",  # Latest - likely supports tools (needs verification per variant)
+    # Mistral family
+    "mistral",  # Tool calling support
+    "mistral-nemo",  # Tool calling support
+    "mixtral",  # MoE with tool calling
+    # Command-R family - specialized for RAG + tools
+    "command-r",  # Cohere's tool-optimized model
+    "command-r-plus",  # Enhanced version
+    # Phi family - check specific variants
+    "phi3",  # Phi-3 supports tools
+    "phi3.5",  # Phi-3.5 supports tools
+    "phi4",  # Phi-4 supports tools (14b variant)
+    # Gemma family
+    "gemma2",  # Tool calling support
+    "gemma3",  # Latest with tool support
+    # DeepSeek family - R1 variants support tools
+    "deepseek-r1",  # Reasoning + tools (may need custom template)
+    "deepseek-coder-v2",  # Coding specialized with tools
+    # Specialized tool-calling models
+    "firefunction",  # Optimized for function calling
+    "hermes",  # Tool calling support
+    "nous-hermes",  # Enhanced tool calling
+]
+
+# Models that do NOT support tool calling (common mistakes)
+OLLAMA_NON_TOOL_MODELS = [
+    "qwq",  # Pure reasoning model - no tool calling
+    "llama4:scout",  # Large scale, capabilities unclear
+    "llama4:maverick",  # Large scale, capabilities unclear
+    "gemma2:2b",  # Too small for reliable tool calling
+    "phi3:mini",  # Mini variants may have limited tool support
+    "embedding",  # Embedding models don't do tool calling
+    "bge-",  # Embedding models
+    "nomic-embed",  # Embedding model
 ]
 
 
@@ -35,6 +68,17 @@ class OllamaProvider(LLMProvider):
 
     Uses Ollama's OpenAI-compatible API endpoint for inference.
     Default endpoint: http://localhost:11434
+
+    Tool calling support varies by model:
+    - ✅ Qwen3, Qwen2.5, Qwen2 (all versions)
+    - ✅ Llama 3.1, 3.2, 3.3, 4 (most variants)
+    - ✅ Mistral, Mixtral, Mistral-Nemo
+    - ✅ Command-R, Command-R-Plus
+    - ✅ Phi-3, Phi-3.5, Phi-4
+    - ✅ Gemma2, Gemma3
+    - ✅ DeepSeek-R1, DeepSeek-Coder-v2
+    - ❌ QwQ (reasoning only, no tools)
+    - ❌ Embedding models (bge, nomic-embed)
     """
 
     def __init__(
@@ -181,4 +225,27 @@ class OllamaProvider(LLMProvider):
             True if tool calling is supported
         """
         model_lower = self._model_name.lower()
-        return any(model in model_lower for model in OLLAMA_TOOL_CAPABLE_MODELS)
+
+        # First check if it's explicitly a non-tool model
+        for non_tool_model in OLLAMA_NON_TOOL_MODELS:
+            if non_tool_model.lower() in model_lower:
+                logger.debug(
+                    "ollama_model_non_tool",
+                    model=self._model_name,
+                    reason=f"Matches non-tool pattern: {non_tool_model}",
+                )
+                return False
+
+        # Check if it matches a known tool-capable model
+        is_tool_capable = any(model.lower() in model_lower for model in OLLAMA_TOOL_CAPABLE_MODELS)
+        
+        if is_tool_capable:
+            logger.debug("ollama_model_tool_capable", model=self._model_name)
+        else:
+            logger.warning(
+                "ollama_model_tool_unknown",
+                model=self._model_name,
+                message="Model not in known tool-capable list",
+            )
+        
+        return is_tool_capable

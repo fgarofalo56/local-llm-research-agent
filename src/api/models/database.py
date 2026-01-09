@@ -32,6 +32,7 @@ class Conversation(Base):
     """Conversation model for chat history."""
 
     __tablename__ = "conversations"
+    __table_args__ = {"schema": "app"}
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     title = Column(String(255))
@@ -47,9 +48,10 @@ class Message(Base):
     """Message model for conversation messages."""
 
     __tablename__ = "messages"
+    __table_args__ = {"schema": "app"}
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    conversation_id = Column(Integer, ForeignKey("conversations.id", ondelete="CASCADE"))
+    conversation_id = Column(Integer, ForeignKey("app.conversations.id", ondelete="CASCADE"))
     role = Column(String(20))  # 'user', 'assistant', 'system'
     content = Column(Text)
     tool_calls = Column(Text)  # JSON array of tool calls
@@ -64,6 +66,7 @@ class Dashboard(Base):
     """Dashboard model for user dashboards."""
 
     __tablename__ = "dashboards"
+    __table_args__ = {"schema": "app"}
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     name = Column(String(255), nullable=False)
@@ -83,9 +86,10 @@ class Widget(Base):
     """Widget model for dashboard widgets."""
 
     __tablename__ = "dashboard_widgets"
+    __table_args__ = {"schema": "app"}
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    dashboard_id = Column(Integer, ForeignKey("dashboards.id", ondelete="CASCADE"))
+    dashboard_id = Column(Integer, ForeignKey("app.dashboards.id", ondelete="CASCADE"))
     widget_type = Column(String(50))  # 'chart', 'kpi', 'table'
     title = Column(String(255))
     query = Column(Text)
@@ -103,6 +107,7 @@ class DataAlert(Base):
     """Data alert model for monitoring queries."""
 
     __tablename__ = "data_alerts"
+    __table_args__ = {"schema": "app"}
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     name = Column(String(255))
@@ -120,6 +125,7 @@ class Document(Base):
     """Document model for uploaded documents."""
 
     __tablename__ = "documents"
+    __table_args__ = {"schema": "app"}
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     filename = Column(String(255))
@@ -138,6 +144,7 @@ class MCPServerConfig(Base):
     """MCP Server configuration model."""
 
     __tablename__ = "mcp_server_configs"
+    __table_args__ = {"schema": "app"}
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     server_id = Column(String(100), unique=True)
@@ -158,6 +165,7 @@ class SavedQuery(Base):
     """Saved query model for user-saved SQL queries."""
 
     __tablename__ = "saved_queries"
+    __table_args__ = {"schema": "app"}
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     name = Column(String(255))
@@ -171,6 +179,7 @@ class ScheduledQuery(Base):
     """Scheduled query model for automated query execution."""
 
     __tablename__ = "scheduled_queries"
+    __table_args__ = {"schema": "app"}
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     name = Column(String(255))
@@ -186,9 +195,10 @@ class QueryHistory(Base):
     """Query history model for tracking executed queries."""
 
     __tablename__ = "query_history"
+    __table_args__ = {"schema": "app"}
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    conversation_id = Column(Integer, ForeignKey("conversations.id", ondelete="SET NULL"))
+    conversation_id = Column(Integer, ForeignKey("app.conversations.id", ondelete="SET NULL"))
     natural_language = Column(Text)
     generated_sql = Column(Text)
     result_row_count = Column(Integer)
@@ -201,6 +211,7 @@ class ThemeConfig(Base):
     """Theme configuration model."""
 
     __tablename__ = "theme_configs"
+    __table_args__ = {"schema": "app"}
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     name = Column(String(100), unique=True)
@@ -216,6 +227,7 @@ class DatabaseConnection(Base):
     """Database connection profile for multi-database support."""
 
     __tablename__ = "database_connections"
+    __table_args__ = {"schema": "app"}
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     name = Column(String(100), unique=True, nullable=False)
@@ -242,6 +254,7 @@ class User(Base):
     """User model for authentication."""
 
     __tablename__ = "users"
+    __table_args__ = {"schema": "app"}
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     email = Column(String(255), unique=True, nullable=False, index=True)
@@ -263,9 +276,10 @@ class RefreshToken(Base):
     """Refresh token storage for token invalidation."""
 
     __tablename__ = "refresh_tokens"
+    __table_args__ = {"schema": "app"}
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(Integer, ForeignKey("app.users.id", ondelete="CASCADE"), nullable=False)
     token_hash = Column(String(255), nullable=False, index=True)
     expires_at = Column(DateTime, nullable=False)
     revoked_at = Column(DateTime)

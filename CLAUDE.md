@@ -325,15 +325,19 @@ local-llm-research-agent/
 
 ### Available Models (Your System)
 
-| Model | Size | Recommended Use |
-|-------|------|-----------------|
-| **qwen3:30b** | 18 GB | ⭐ PRIMARY - Best tool calling, MoE architecture |
-| qwen3:32b | 20 GB | Dense alternative, slightly better quality |
-| qwq:latest | 19 GB | Complex analytical reasoning |
-| qwen3:14b | 9.3 GB | Faster responses, good quality |
-| qwen3:8b | 5.2 GB | Quick responses |
-| deepseek-r1:8b | 5.2 GB | Reasoning focus |
-| llama4:scout | 67 GB | ❌ Too large - CPU spillover |
+| Model | Size | Tool Calling | Recommended Use |
+|-------|------|--------------|-----------------|
+| **qwen3:30b** ⭐ | 18 GB | ✅ Native | PRIMARY - Best tool calling, MoE architecture |
+| qwen3:32b | 20 GB | ✅ Native | Dense alternative, slightly better quality |
+| qwen3:14b | 9.3 GB | ✅ Native | Faster responses, good quality |
+| qwen3:8b | 5.2 GB | ✅ Native | Quick responses |
+| deepseek-r1:8b | 5.2 GB | ✅ Supported | Reasoning + tools (may need custom template) |
+| deepseek-r1:32b | 19 GB | ✅ Supported | Advanced reasoning with tools |
+| command-r:35b | 18 GB | ✅ Native | Optimized for RAG + tool calling |
+| phi4:14b | 9.1 GB | ✅ Native | Efficient reasoning with tools |
+| gemma3:latest | 3.3 GB | ✅ Native | Lightweight with tool support |
+| llama4:scout | 67 GB | ⚠️ Unknown | ❌ Too large - CPU spillover |
+| qwq:latest | 19 GB | ❌ No Tools | Pure reasoning only - no MCP tools |
 
 ### Recommended Configuration (.env)
 
@@ -341,11 +345,14 @@ local-llm-research-agent/
 # Primary model - Best balance for RTX 5090
 OLLAMA_MODEL=qwen3:30b
 
-# Alternative for complex reasoning
-# OLLAMA_MODEL=qwq:latest
+# Alternative for RAG + tools
+# OLLAMA_MODEL=command-r:35b
 
 # Alternative for faster responses
 # OLLAMA_MODEL=qwen3:14b
+
+# For reasoning WITHOUT tools (no MCP access)
+# OLLAMA_MODEL=qwq:latest
 ```
 
 ### Why qwen3:30b?
@@ -353,9 +360,28 @@ OLLAMA_MODEL=qwen3:30b
 | Feature | Benefit |
 |---------|---------|
 | MoE Architecture | 30B params, only 3B active = fast inference |
-| Tool Calling | Native support, excellent accuracy |
+| Tool Calling | ✅ Native support, excellent accuracy |
+| Thinking Tags | ✅ Native `<think>` tags for reasoning |
 | VRAM Usage | ~18GB fits comfortably in 32GB |
 | Speed | Faster than dense 32B models |
+
+### Tool Calling Support Matrix
+
+**✅ Full Tool Calling Support:**
+- Qwen3 (all sizes: 4b, 8b, 14b, 30b, 32b)
+- Qwen2.5 (all sizes)
+- Llama 3.1, 3.2, 3.3, 4 (most variants)
+- Mistral, Mixtral, Mistral-Nemo
+- Command-R, Command-R-Plus
+- Phi-3, Phi-3.5, Phi-4
+- Gemma2, Gemma3
+- DeepSeek-R1, DeepSeek-Coder-v2
+- Firefunction, Hermes, Nous-Hermes
+
+**❌ No Tool Calling:**
+- QwQ (reasoning only - cannot use MCP tools)
+- Embedding models (bge, nomic-embed)
+- Vision-only models
 
 ---
 
@@ -394,6 +420,9 @@ OLLAMA_MODEL=qwen3:30b
 
 ```bash
 # Ollama Configuration
+# IMPORTANT: For Docker containers, keep this as localhost:11434
+# Docker Compose automatically overrides it to http://host.docker.internal:11434
+# For local development outside Docker, this value is used directly
 OLLAMA_HOST=http://localhost:11434
 OLLAMA_MODEL=qwen3:30b
 
@@ -792,6 +821,32 @@ async def test_mssql_connection():
 ---
 
 ## Troubleshooting
+
+### Docker Connectivity to Host Ollama
+
+**Problem:** Docker containers cannot reach Ollama running on the host machine.
+
+**Solution:** The docker-compose.yml is now configured to automatically use `http://host.docker.internal:11434` for all containers, regardless of what's in your `.env` file. This ensures Docker containers always connect to the host correctly.
+
+**Verification:**
+```bash
+# 1. Check Ollama is running on host
+curl http://localhost:11434/api/tags
+
+# 2. Test from inside a container
+docker compose -f docker/docker-compose.yml --env-file .env exec agent-ui \
+  curl http://host.docker.internal:11434/api/tags
+
+# 3. Or use the test script
+docker compose -f docker/docker-compose.yml --env-file .env exec agent-ui \
+  bash /app/docker/test-ollama-connection.sh
+```
+
+**Windows Firewall:** If still not working, ensure Windows Firewall allows Docker containers to access port 11434:
+```powershell
+# Allow Ollama through Windows Firewall
+New-NetFirewallRule -DisplayName "Ollama API" -Direction Inbound -LocalPort 11434 -Protocol TCP -Action Allow
+```
 
 ### Ollama Issues
 

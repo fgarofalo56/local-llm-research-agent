@@ -170,27 +170,8 @@ class ResearchAgent:
             reset_timeout=60.0,
         )
 
-        # Note: MCP toolsets will be loaded when initialize() is called
-        logger.info(
-            "research_agent_created",
-            provider=self.provider.provider_type.value,
-            model=self.provider.model_name,
-            readonly=self.readonly,
-            cache_enabled=self._cache_enabled,
-            explain_mode=self.explain_mode,
-            thinking_mode=self.thinking_mode,
-            rate_limit_enabled=settings.rate_limit_enabled,
-            tool_calling_supported=self.provider.supports_tool_calling(),
-        )
-
-    async def initialize(self) -> None:
-        """
-        Initialize MCP toolsets and create the agent.
-        
-        This must be called after construction and before using the agent.
-        """
-        # Load MCP toolsets
-        await self._load_toolsets()
+        # Load MCP toolsets and create the Pydantic AI agent
+        self._load_toolsets()
         
         # Create agent with loaded toolsets
         enabled_server_names = [s.name for s in self.mcp_manager.list_servers() if s.enabled]
@@ -207,14 +188,31 @@ class ResearchAgent:
             ),
             toolsets=self._active_toolsets,
         )
-        
+
         logger.info(
-            "research_agent_initialized",
+            "research_agent_created",
+            provider=self.provider.provider_type.value,
+            model=self.provider.model_name,
+            readonly=self.readonly,
+            cache_enabled=self._cache_enabled,
+            explain_mode=self.explain_mode,
+            thinking_mode=self.thinking_mode,
+            rate_limit_enabled=settings.rate_limit_enabled,
+            tool_calling_supported=self.provider.supports_tool_calling(),
             active_toolsets=len(self._active_toolsets),
-            enabled_servers=[s.name for s in self.mcp_manager.list_servers() if s.enabled],
+            enabled_servers=enabled_server_names,
         )
 
-    async def _load_toolsets(self) -> None:
+    async def initialize(self) -> None:
+        """
+        Initialize MCP toolsets and create the agent.
+        
+        DEPRECATED: Initialization now happens in __init__.
+        This method is kept for backward compatibility and does nothing.
+        """
+        pass
+
+    def _load_toolsets(self) -> None:
         """
         Load MCP server toolsets based on enabled servers list.
         

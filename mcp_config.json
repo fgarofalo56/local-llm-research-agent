@@ -1,10 +1,9 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$comment": "MCP Server Configuration for Local LLM Research Analytics Tool",
   "mcpServers": {
     "mssql": {
-      "name": "MSSQL Server",
-      "server_type": "stdio",
+      "name": "mssql",
+      "server_type": "mssql",
+      "transport": "stdio",
       "command": "node",
       "args": [
         "${MCP_MSSQL_PATH}"
@@ -19,25 +18,31 @@
         "SQL_USERNAME": "${SQL_USERNAME}",
         "SQL_PASSWORD": "${SQL_PASSWORD}"
       },
-      "description": "Microsoft SQL Server MCP Server for database operations",
+      "url": null,
+      "headers": {},
       "enabled": true,
-      "timeout": 30
+      "readonly": false,
+      "timeout": 30,
+      "description": "Microsoft SQL Server MCP Server for database operations"
     },
     "microsoft.docs.mcp": {
-      "name": "Microsoft Docs MCP",
-      "server_type": "streamable_http",
-      "description": "Microsoft Learn Documentation MCP Server (Streamable HTTP)",
+      "name": "microsoft.docs.mcp",
+      "server_type": "custom",
+      "transport": "streamable_http",
       "command": null,
       "args": [],
-      "url": "https://learn.microsoft.com/api/mcp",
       "env": {},
+      "url": "https://learn.microsoft.com/api/mcp",
+      "headers": {},
       "enabled": true,
-      "timeout": 30
+      "readonly": false,
+      "timeout": 30,
+      "description": "Microsoft Learn Documentation MCP Server (Streamable HTTP)"
     },
     "analytics-management": {
-      "name": "Analytics Management",
-      "server_type": "stdio",
-      "description": "Analytics Management MCP Server for dashboards, widgets, queries, and metrics",
+      "name": "analytics-management",
+      "server_type": "custom",
+      "transport": "stdio",
       "command": "uv",
       "args": [
         "run",
@@ -54,12 +59,14 @@
         "BACKEND_DB_TRUST_CERT": "${BACKEND_DB_TRUST_CERT:-true}"
       },
       "enabled": true,
-      "timeout": 60
+      "readonly": false,
+      "timeout": 60,
+      "description": "Analytics Management MCP Server for dashboards, widgets, queries, and metrics"
     },
     "data-analytics": {
-      "name": "Data Analytics",
-      "server_type": "stdio",
-      "description": "Advanced Data Analytics MCP Server for statistical analysis, aggregations, time series, and anomaly detection",
+      "name": "data-analytics",
+      "server_type": "custom",
+      "transport": "stdio",
       "command": "uv",
       "args": [
         "run",
@@ -82,82 +89,21 @@
         "BACKEND_DB_TRUST_CERT": "${BACKEND_DB_TRUST_CERT:-true}"
       },
       "enabled": true,
-      "timeout": 60
+      "readonly": false,
+      "timeout": 60,
+      "description": "Advanced Data Analytics MCP Server for statistical analysis, aggregations, time series, and anomaly detection"
+    },
+    "archon": {
+      "name": "archon",
+      "server_type": "custom",
+      "transport": "stdio",
+      "command": "docker",
+      "args": ["exec", "-i", "archon-mcp", "python", "-m", "mcp_server"],
+      "env": {},
+      "enabled": true,
+      "readonly": false,
+      "timeout": 30,
+      "description": "Archon Project Management and Knowledge Base MCP Server (via Docker stdio)"
     }
-  },
-  "_documentation": {
-    "mssql_tools": {
-      "list_tables": "Lists all tables in the connected database",
-      "describe_table": "Get schema information for a specific table",
-      "read_data": "Query and retrieve data from tables",
-      "insert_data": "Insert new rows into tables (batch supported)",
-      "update_data": "Modify existing data in tables",
-      "create_table": "Create new database tables",
-      "drop_table": "Delete tables from the database",
-      "create_index": "Create indexes for query optimization"
-    },
-    "analytics_management_tools": {
-      "list_dashboards": "List all dashboards with optional filtering",
-      "get_dashboard": "Get dashboard details with its widgets",
-      "create_dashboard": "Create a new dashboard",
-      "update_dashboard": "Update dashboard properties",
-      "delete_dashboard": "Delete dashboard and all widgets",
-      "list_widgets": "List widgets for a dashboard",
-      "add_widget": "Add a new widget (bar, line, pie, kpi, table, etc.)",
-      "update_widget": "Update widget properties",
-      "delete_widget": "Remove a widget",
-      "list_saved_queries": "List saved queries with filtering",
-      "save_query": "Save a query for later reuse",
-      "get_query_history": "Get query execution history",
-      "get_dashboard_metrics": "Get dashboard usage metrics",
-      "get_usage_analytics": "Get system usage analytics",
-      "export_dashboard": "Export dashboard configuration as JSON",
-      "import_dashboard": "Import dashboard from JSON configuration"
-    },
-    "data_analytics_tools": {
-      "descriptive_statistics": "Calculate mean, median, std dev, quartiles for numeric columns",
-      "correlation_analysis": "Calculate correlation matrix between columns (Pearson/Spearman)",
-      "percentile_analysis": "Calculate percentile values for a column",
-      "group_aggregation": "Perform GROUP BY with multiple aggregate functions",
-      "pivot_analysis": "Create pivot table summarization",
-      "time_series_analysis": "Analyze trends, patterns, and seasonality with moving averages",
-      "trend_detection": "Detect trends and calculate growth rates",
-      "profile_table": "Generate comprehensive data profile (types, nulls, cardinality)",
-      "column_distribution": "Analyze value distribution (histograms, frequencies)",
-      "data_quality_check": "Check for nulls, duplicates, outliers",
-      "detect_outliers": "Detect outliers using IQR or Z-score method",
-      "detect_anomalies_timeseries": "Detect anomalies in time series using rolling statistics",
-      "segment_analysis": "Analyze data by segments with comparison metrics",
-      "cohort_analysis": "Perform cohort analysis based on date columns",
-      "run_analytics_query": "Execute custom analytics SQL queries (SELECT only)"
-    },
-    "authentication_types": {
-      "sql": "SQL Server authentication with username and password",
-      "windows": "Windows integrated authentication (uses current Windows credentials)",
-      "azure_ad_interactive": "Azure AD with interactive browser login",
-      "azure_ad_default": "Azure AD using DefaultAzureCredential chain"
-    },
-    "environment_variables": {
-      "MCP_MSSQL_PATH": "Full path to the MSSQL MCP Server index.js file",
-      "SQL_SERVER_HOST": "SQL Server hostname (e.g., localhost, server.database.windows.net)",
-      "SQL_DATABASE_NAME": "Name of the database to connect to",
-      "SQL_AUTH_TYPE": "Authentication type: sql, windows, azure_ad_interactive, azure_ad_default",
-      "SQL_USERNAME": "SQL Server username (required for sql auth type)",
-      "SQL_PASSWORD": "SQL Server password (required for sql auth type)",
-      "SQL_TRUST_SERVER_CERTIFICATE": "Set to 'true' for self-signed certificates",
-      "SQL_ENCRYPT": "Set to 'true' to encrypt connection (required for Azure)",
-      "MCP_MSSQL_READONLY": "Set to 'true' to disable write operations"
-    },
-    "setup_instructions": [
-      "1. Clone the MSSQL MCP Server repository:",
-      "   git clone https://github.com/Azure-Samples/SQL-AI-samples.git",
-      "2. Navigate to the Node.js implementation:",
-      "   cd SQL-AI-samples/MssqlMcp/Node",
-      "3. Install dependencies and build:",
-      "   npm install && npm run build",
-      "4. Set MCP_MSSQL_PATH to the dist/index.js location",
-      "5. Configure SQL Server connection in .env file",
-      "6. Set SQL_AUTH_TYPE=sql for SQL Server authentication"
-    ]
   }
 }

@@ -324,6 +324,70 @@ docker volume create my-custom-mssql-data
 
 ## 🔧 Troubleshooting
 
+### 🌐 Docker Connectivity to Host Ollama
+
+**Problem:** Docker containers cannot reach Ollama running on the host machine.
+
+**Root Cause:** Docker containers use an isolated network. The URL `http://localhost:11434` refers to the container's own localhost, not the host machine.
+
+**Solution:** The `docker-compose.yml` automatically overrides the `OLLAMA_HOST` environment variable to use `http://host.docker.internal:11434` for all containers. This works regardless of what's in your `.env` file.
+
+```yaml
+# In docker-compose.yml - applies to all agent services
+environment:
+  OLLAMA_HOST: "http://host.docker.internal:11434"  # Hardcoded override
+extra_hosts:
+  - "host.docker.internal:host-gateway"              # Maps to host IP
+```
+
+**Your .env File:**
+Keep your `.env` file using `localhost` - it works for both scenarios:
+
+```bash
+# .env - Works for both Docker and local dev
+OLLAMA_HOST=http://localhost:11434
+```
+
+- **Local development** (outside Docker): Uses `http://localhost:11434` from `.env`
+- **Docker containers**: Automatically overridden to `http://host.docker.internal:11434`
+
+**Verification:**
+
+```bash
+# 1. Check Ollama is running on host
+curl http://localhost:11434/api/tags
+
+# 2. Test from inside a container
+docker compose -f docker/docker-compose.yml --env-file .env exec agent-ui \
+  curl http://host.docker.internal:11434/api/tags
+
+# 3. Use the test script
+docker compose -f docker/docker-compose.yml --env-file .env exec agent-ui \
+  bash docker/test-ollama-connection.sh
+```
+
+**Troubleshooting Further:**
+
+If containers still can't reach Ollama:
+
+1. **Windows Firewall**: Allow Docker containers to access port 11434:
+   ```powershell
+   New-NetFirewallRule -DisplayName "Ollama API" -Direction Inbound -LocalPort 11434 -Protocol TCP -Action Allow
+   ```
+
+2. **Docker Desktop Settings**: Verify `host.docker.internal` is enabled:
+   - Open Docker Desktop
+   - Settings → Resources → Network
+   - Ensure "Enable host networking" is ON (if available)
+
+3. **Ollama Listening Address**: Verify Ollama is listening on all interfaces:
+   ```bash
+   # Should show: TCP 0.0.0.0:11434
+   netstat -an | findstr :11434
+   ```
+
+   If it shows `127.0.0.1:11434` only, Docker containers can't connect.
+
 ### Common Issues
 
 | Issue | Cause | Solution |

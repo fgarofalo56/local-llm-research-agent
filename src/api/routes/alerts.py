@@ -53,8 +53,7 @@ class AlertResponse(BaseModel):
     last_value: str | None
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class AlertListResponse(BaseModel):
@@ -75,6 +74,8 @@ class AlertCheckResponse(BaseModel):
     triggered: bool | None = None
     status: str
     error: str | None = None
+
+    model_config = ConfigDict(from_attributes=True)
 
 
 @router.get("", response_model=AlertListResponse)
@@ -99,21 +100,7 @@ async def list_alerts(
     alerts = result.scalars().all()
 
     return AlertListResponse(
-        alerts=[
-            AlertResponse(
-                id=a.id,
-                name=a.name,
-                query=a.query,
-                condition=a.condition,
-                threshold=float(a.threshold) if a.threshold else None,
-                is_active=a.is_active,
-                last_checked_at=a.last_checked_at,
-                last_triggered_at=a.last_triggered_at,
-                last_value=a.last_value,
-                created_at=a.created_at,
-            )
-            for a in alerts
-        ],
+        alerts=[AlertResponse.model_validate(a) for a in alerts],
         total=total,
     )
 
@@ -142,20 +129,7 @@ async def create_alert(
     await db.commit()
     await db.refresh(alert)
 
-    logger.info("alert_created", alert_id=alert.id, name=alert.name)
-
-    return AlertResponse(
-        id=alert.id,
-        name=alert.name,
-        query=alert.query,
-        condition=alert.condition,
-        threshold=float(alert.threshold) if alert.threshold else None,
-        is_active=alert.is_active,
-        last_checked_at=alert.last_checked_at,
-        last_triggered_at=alert.last_triggered_at,
-        last_value=alert.last_value,
-        created_at=alert.created_at,
-    )
+    return AlertResponse.model_validate(alert)
 
 
 @router.get("/{alert_id}", response_model=AlertResponse)
@@ -165,22 +139,7 @@ async def get_alert(
 ):
     """Get a specific data alert."""
     alert = await db.get(DataAlert, alert_id)
-    if not alert:
-        raise HTTPException(status_code=404, detail="Alert not found")
-
-    return AlertResponse(
-        id=alert.id,
-        name=alert.name,
-        query=alert.query,
-        condition=alert.condition,
-        threshold=float(alert.threshold) if alert.threshold else None,
-        is_active=alert.is_active,
-        last_checked_at=alert.last_checked_at,
-        last_triggered_at=alert.last_triggered_at,
-        last_value=alert.last_value,
-        created_at=alert.created_at,
-    )
-
+            return AlertResponse.model_validate(alert)
 
 @router.put("/{alert_id}", response_model=AlertResponse)
 async def update_alert(
@@ -211,18 +170,7 @@ async def update_alert(
 
     logger.info("alert_updated", alert_id=alert.id)
 
-    return AlertResponse(
-        id=alert.id,
-        name=alert.name,
-        query=alert.query,
-        condition=alert.condition,
-        threshold=float(alert.threshold) if alert.threshold else None,
-        is_active=alert.is_active,
-        last_checked_at=alert.last_checked_at,
-        last_triggered_at=alert.last_triggered_at,
-        last_value=alert.last_value,
-        created_at=alert.created_at,
-    )
+    return AlertResponse.model_validate(alert)
 
 
 @router.delete("/{alert_id}")
@@ -260,7 +208,7 @@ async def check_alert(
     if "error" in result and result.get("status") != "error":
         raise HTTPException(status_code=404, detail=result["error"])
 
-    return AlertCheckResponse(**result)
+    return AlertCheckResponse.model_validate(result)
 
 
 @router.post("/{alert_id}/toggle")

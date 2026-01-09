@@ -3,6 +3,7 @@ MCP Client Manager
 
 Provides a high-level interface for managing multiple MCP server connections.
 Supports dynamic loading/unloading, hot-reload, and configuration persistence.
+Supports all MCP transport types: stdio, streamable_http, sse.
 """
 
 import json
@@ -11,9 +12,9 @@ import re
 from pathlib import Path
 from typing import Any
 
-from pydantic_ai.mcp import MCPServerStdio
+from pydantic_ai.mcp import MCPServerStdio, MCPServerStreamableHTTP, MCPServerSSE
 
-from src.mcp.config import MCPConfigFile, MCPServerConfig
+from src.mcp.config import MCPConfigFile, MCPServerConfig, TransportType
 from src.mcp.mssql_config import MSSQLMCPConfig
 from src.utils.logger import get_logger
 
@@ -39,7 +40,7 @@ class MCPClientManager:
             config_path: Optional path to mcp_config.json file
         """
         self.config_path = Path(config_path) if config_path else None
-        self._servers: dict[str, MCPServerStdio] = {}
+        self._servers: dict[str, MCPServerStdio | MCPServerStreamableHTTP | MCPServerSSE] = {}
         self._config: MCPConfigFile | None = None
 
     def load_config(self) -> MCPConfigFile:
@@ -190,14 +191,14 @@ class MCPClientManager:
 
         return list(self._config.mcpServers.values())
 
-    def get_active_toolsets(self) -> list[MCPServerStdio]:
+    def get_active_toolsets(self) -> list[MCPServerStdio | MCPServerStreamableHTTP | MCPServerSSE]:
         """
         Get list of active MCP server toolsets for agent.
 
         Only returns enabled servers that have been loaded.
 
         Returns:
-            List of MCPServerStdio instances
+            List of MCP server instances (any transport type)
         """
         if self._config is None:
             self._config = self.load_config()
@@ -223,6 +224,11 @@ class MCPClientManager:
     def _load_server(self, config: MCPServerConfig) -> None:
         """
         Load an MCP server from configuration.
+        
+        Supports all three MCP transport types:
+        - stdio: subprocess-based (command + args)
+        - streamable_http: HTTP endpoint (production)
+        - sse: Server-Sent Events (legacy)
 
         Args:
             config: Server configuration
@@ -230,28 +236,94 @@ class MCPClientManager:
         Raises:
             ValueError: If configuration is invalid
         """
-        # Skip servers with no command (HTTP-based servers not yet supported)
-        if config.command is None:
-            logger.info(
-                "skipping_http_server",
+        try:
+            if config.transport == TransportType.STDIO:
+                # Stdio transport: subprocess-based
+                if not config.command:
+                    raise ValueError(f"Stdio transport requires command field: {config.name}")
+                
+                # Resolve environment variables
+                env = self._resolve_env(config.env)
+                args = [self._resolve_env_vars(arg) for arg in config.args]
+
+                server = MCPServerStdio(
+                    command=config.command,
+                    args=args,
+                    env=env,
+                    timeout=config.timeout,
+                )
+                
+                logger.info(
+                    "mcp_server_loaded",
+                    name=config.name,
+                    type=config.server_type.value,
+                    transport="stdio",
+                    command=config.command,
+                )
+
+            elif config.transport == TransportType.STREAMABLE_HTTP:
+                # Streamable HTTP transport: production standard
+                if not config.url:
+                    raise ValueError(f"Streamable HTTP transport requires url field: {config.name}")
+                
+                # Resolve environment variables in URL
+                url = self._resolve_env_vars(config.url)
+                
+                # Resolve environment variables in headers
+                headers = {k: self._resolve_env_vars(v) for k, v in config.headers.items()}
+
+                server = MCPServerStreamableHTTP(
+                    url=url,
+                    headers=headers if headers else None,
+                    timeout=config.timeout,
+                )
+                
+                logger.info(
+                    "mcp_server_loaded",
+                    name=config.name,
+                    type=config.server_type.value,
+                    transport="streamable_http",
+                    url=url,
+                )
+
+            elif config.transport == TransportType.SSE:
+                # SSE transport: legacy/deprecated
+                if not config.url:
+                    raise ValueError(f"SSE transport requires url field: {config.name}")
+                
+                # Resolve environment variables in URL
+                url = self._resolve_env_vars(config.url)
+                
+                # Resolve environment variables in headers
+                headers = {k: self._resolve_env_vars(v) for k, v in config.headers.items()}
+
+                server = MCPServerSSE(
+                    url=url,
+                    headers=headers if headers else None,
+                    timeout=config.timeout,
+                )
+                
+                logger.info(
+                    "mcp_server_loaded",
+                    name=config.name,
+                    type=config.server_type.value,
+                    transport="sse",
+                    url=url,
+                )
+
+            else:
+                raise ValueError(f"Unsupported transport type: {config.transport}")
+
+            self._servers[config.name] = server
+            
+        except Exception as e:
+            logger.error(
+                "failed_to_load_server",
                 name=config.name,
-                message="HTTP-based MCP servers not yet supported",
+                transport=config.transport.value,
+                error=str(e),
             )
-            return
-
-        # Resolve environment variables
-        env = self._resolve_env(config.env)
-        args = [self._resolve_env_vars(arg) for arg in config.args]
-
-        server = MCPServerStdio(
-            command=config.command,
-            args=args,
-            env=env,
-            timeout=config.timeout,
-        )
-
-        self._servers[config.name] = server
-        logger.info("mcp_server_loaded", name=config.name, type=config.server_type.value)
+            raise
 
     def _resolve_env_vars(self, value: str) -> str:
         """

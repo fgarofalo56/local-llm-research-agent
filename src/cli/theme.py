@@ -420,6 +420,16 @@ def create_help_panel() -> Panel:
         ("/model <name>", "Switch model"),
         ("/models", "List available models"),
     ]
+    
+    # MCP server management commands
+    mcp_commands = [
+        ("/mcp", "List all MCP servers"),
+        ("/mcp status <name>", "Show server details"),
+        ("/mcp add", "Add new server interactively"),
+        ("/mcp enable <name>", "Enable server"),
+        ("/mcp disable <name>", "Disable server"),
+        ("/mcp remove <name>", "Remove server"),
+    ]
 
     content = Text()
     content.append("Commands\n", style=f"bold {COLORS['white']}")
@@ -437,6 +447,13 @@ def create_help_panel() -> Panel:
 
     for cmd, desc in config_commands:
         content.append(f"\n  {cmd}", style=f"bold {COLORS['accent']}")
+        content.append(f"  {desc}", style=COLORS["gray_400"])
+    
+    content.append("\n\n")
+    content.append("MCP Servers\n", style=f"bold {COLORS['white']}")
+    
+    for cmd, desc in mcp_commands:
+        content.append(f"\n  {cmd}", style=f"bold {COLORS['primary']}")
         content.append(f"  {desc}", style=COLORS["gray_400"])
 
     content.append("\n\n  ")

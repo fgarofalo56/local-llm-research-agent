@@ -492,12 +492,10 @@ services:
         superset db upgrade &&
         superset fab create-admin --username admin --firstname Admin --lastname User --email admin@local.llm --password $${SUPERSET_ADMIN_PASSWORD} || true &&
         superset init &&
-        (superset run -h 0.0.0.0 -p 8088 --with-threads --reload &) &&
-        sleep 15 &&
         python /app/setup_databases.py &&
-        sleep 5 &&
+        sleep 3 &&
         python /app/create_examples.py &&
-        wait"
+        superset run -h 0.0.0.0 -p 8088 --with-threads"
     restart: unless-stopped
     networks:
       - llm-network

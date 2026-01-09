@@ -3,10 +3,11 @@ import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import { AuthProvider } from '@/contexts/AuthContext';
-import { ToastProvider } from '@/components/ui/Toast';
+import { ToastProvider, useToast } from '@/components/ui/Toast';
 import { GlobalUploadProgress } from '@/components/upload';
 import { LoadingPage } from '@/components/ui/LoadingPage';
 import { useDocuments } from '@/hooks/useDocuments';
+import { useAlertNotifications } from '@/hooks/useAlertNotifications';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { Header } from '@/components/layout/Header';
 
@@ -63,6 +64,21 @@ function DocumentPollingProvider() {
   useDocuments();
   return null;
 }
+
+// New component to handle global alert notifications
+function GlobalNotificationHandler() {
+  const { warning } = useToast();
+
+  useAlertNotifications({
+    onAlert: (alert) => {
+      warning(`Alert: ${alert.name}`, alert.message);
+    },
+    showBrowserNotification: true, // Also trigger native browser notifications
+  });
+
+  return null; // This component does not render anything
+}
+
 
 // Layout component using Outlet for nested routes
 function AppLayout() {
@@ -131,7 +147,8 @@ function App() {
                   </Route>
                 </Routes>
               </Suspense>
-              {/* Global upload progress and document polling */}
+              {/* Global components */}
+              <GlobalNotificationHandler />
               <DocumentPollingProvider />
               <GlobalUploadProgress />
             </BrowserRouter>

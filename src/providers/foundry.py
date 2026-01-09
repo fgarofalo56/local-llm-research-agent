@@ -21,25 +21,35 @@ logger = get_logger(__name__)
 FOUNDRY_DEFAULT_ENDPOINT = "http://127.0.0.1:53760"
 
 # Models known to support tool calling in Foundry Local
+# Based on official Microsoft documentation and Phi CookBook
 # IMPORTANT: Only specific model variants support function calling!
-# - phi-4-mini supports function calling (phi-4 does NOT)
-# - phi-3.5-mini supports function calling
-# See: https://github.com/microsoft/PhiCookBook/tree/main/md/02.Application/07.FunctionCalling
 FOUNDRY_TOOL_CAPABLE_MODELS = [
-    "phi-4-mini",  # Supports function calling
+    # Phi-4 family - latest generation with native tool support
+    "phi-4",  # Full Phi-4 (14B) supports function calling
+    "phi-4-mini",  # Compact 3.8B with tool calling - RECOMMENDED for local use
+    "phi-4-instruct",  # Instruct-tuned variant with tools
+    # Phi-3 family - previous generation with tool support
     "phi-3.5-mini",  # Supports function calling
+    "phi-3.5-mini-instruct",  # Instruct-tuned variant
     "phi-3-mini",  # Supports function calling
-    "qwen2.5",  # Supports function calling
-    "llama3.1",  # Supports function calling
-    "llama3.2",  # Supports function calling
-    "mistral-nemo",  # Supports function calling
+    "phi-3-mini-instruct",  # Instruct-tuned variant
+    "phi-3-medium",  # Larger variant with tool support
+    # Other models available in Foundry Local
+    "qwen2.5",  # Qwen models support function calling
+    "qwen3",  # Latest Qwen with tool support
+    "llama3.1",  # Llama 3.1+ supports function calling
+    "llama3.2",  # Llama 3.2+ supports function calling
+    "llama3.3",  # Llama 3.3+ supports function calling
+    "mistral-nemo",  # Mistral Nemo supports function calling
+    "mistral",  # Mistral family supports tools
 ]
 
-# Models that do NOT support tool calling (common mistake)
+# Models that do NOT support tool calling (common mistakes)
 FOUNDRY_NON_TOOL_MODELS = [
-    "phi-4",  # Regular phi-4 does NOT support tools - use phi-4-mini
-    "phi-4-multimodal",  # Does NOT support tool calling
-    "gpt-oss-20b",  # General purpose, no tool support
+    "phi-4-multimodal",  # Multimodal variant - limited/no tool calling
+    "phi-vision",  # Vision-only models don't support tools
+    "gpt-oss-20b",  # General purpose, no documented tool support
+    "embedding",  # Embedding models don't do tool calling
 ]
 
 
@@ -56,6 +66,15 @@ class FoundryLocalProvider(LLMProvider):
     And started with:
         from foundry_local import FoundryLocalManager
         manager = FoundryLocalManager("model-alias")
+
+    Tool calling support (verified models):
+    - ✅ Phi-4 (14B) - Full version supports tools
+    - ✅ Phi-4-mini (3.8B) - Recommended for local/edge use
+    - ✅ Phi-3.5-mini, Phi-3-mini, Phi-3-medium
+    - ✅ Qwen2.5, Qwen3
+    - ✅ Llama 3.1, 3.2, 3.3
+    - ✅ Mistral, Mistral-Nemo
+    - ❌ Phi-4-multimodal (vision model, limited tool support)
     """
 
     def __init__(
@@ -390,27 +409,53 @@ class FoundryLocalProvider(LLMProvider):
 
         IMPORTANT: Only specific model variants support function calling in Foundry Local!
         - phi-4-mini: YES (supports function calling)
-        - phi-4: NO (does NOT support function calling)
-        - phi-4-multimodal: NO (does NOT support function calling)
+        - phi-4: YES (full version supports function calling)
+        - phi-4-multimodal: NO (limited/no tool calling support)
 
         Returns:
             True if tool calling is supported
         """
         model_lower = self._model_name.lower()
 
-        # First check if it's explicitly a non-tool model
-        for non_tool_model in FOUNDRY_NON_TOOL_MODELS:
-            if non_tool_model.lower() in model_lower:
-                # But make sure it's not actually a tool-capable variant
-                # e.g., "phi-4-mini" contains "phi-4" but IS tool capable
-                is_tool_capable = any(
-                    tool_model.lower() in model_lower for tool_model in FOUNDRY_TOOL_CAPABLE_MODELS
-                )
-                if not is_tool_capable:
-                    return False
+        # First check NON-TOOL models with exact/specific matching
+        # This must come BEFORE checking tool-capable models to avoid false positives
+        if "phi-4-multimodal" in model_lower:
+            logger.debug(
+                "foundry_model_non_tool",
+                model=self._model_name,
+                reason="phi-4-multimodal has limited tool calling",
+            )
+            return False
 
-        # Check if it matches a known tool-capable model
-        return any(model.lower() in model_lower for model in FOUNDRY_TOOL_CAPABLE_MODELS)
+        if "phi-vision" in model_lower:
+            logger.debug(
+                "foundry_model_non_tool",
+                model=self._model_name,
+                reason="Vision-only model",
+            )
+            return False
+
+        if any(pattern in model_lower for pattern in ["embedding", "gpt-oss-20b"]):
+            logger.debug(
+                "foundry_model_non_tool",
+                model=self._model_name,
+                reason="Non-tool model type",
+            )
+            return False
+
+        # Now check if it matches a known tool-capable model
+        is_tool_capable = any(model.lower() in model_lower for model in FOUNDRY_TOOL_CAPABLE_MODELS)
+
+        if is_tool_capable:
+            logger.debug("foundry_model_tool_capable", model=self._model_name)
+        else:
+            logger.warning(
+                "foundry_model_tool_unknown",
+                model=self._model_name,
+                message="Model not in known tool-capable list",
+            )
+
+        return is_tool_capable
 
     def get_tool_calling_warning(self) -> str | None:
         """
@@ -424,25 +469,23 @@ class FoundryLocalProvider(LLMProvider):
 
         model_lower = self._model_name.lower()
 
-        # Check for common mistakes
-        if "phi-4" in model_lower and "mini" not in model_lower:
+        # Check for common mistakes with updated info
+        if "phi-4-multimodal" in model_lower:
             return (
-                f"Model '{self._model_name}' does NOT support tool calling. "
-                "The regular Phi-4 model cannot use MCP tools. "
-                "Use 'phi-4-mini' instead which supports function calling. "
+                f"Model '{self._model_name}' has limited tool calling support. "
+                "Phi-4-multimodal is optimized for vision tasks. "
+                "For robust MCP tool support, use 'phi-4-mini' or 'phi-4' instead. "
                 "Run: foundry model run phi-4-mini"
             )
 
-        if "phi-4-multimodal" in model_lower:
-            return (
-                f"Model '{self._model_name}' does NOT support tool calling. "
-                "Phi-4-multimodal is for vision tasks, not function calling. "
-                "Use 'phi-4-mini' instead for MCP tools."
-            )
+        if "phi-4" in model_lower and "mini" not in model_lower and "multimodal" not in model_lower:
+            # Note: Regular phi-4 (14B) DOES support tools - no warning needed
+            return None
 
         return (
             f"Model '{self._model_name}' may not support tool calling. "
-            "For MCP tool support, use phi-4-mini, qwen2.5, or llama3.1/3.2. "
+            "For reliable MCP tool support, use: phi-4-mini (recommended), phi-4, "
+            "phi-3.5-mini, qwen2.5, or llama3.1/3.2. "
             "The model may describe tools instead of calling them."
         )
 

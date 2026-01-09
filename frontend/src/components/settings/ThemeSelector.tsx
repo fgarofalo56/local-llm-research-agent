@@ -15,9 +15,11 @@ import {
   getAllThemes,
   getThemePreset,
   themePresets,
+  saveCustomTheme,
 } from '../../lib/themes';
 import { Button } from '../ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/Card';
+import { CustomThemeBuilder } from './CustomThemeBuilder';
 
 interface ThemeSelectorProps {
   showCustomBuilder?: boolean;
@@ -79,6 +81,11 @@ export function ThemeSelector({ showCustomBuilder = false }: ThemeSelectorProps)
         handlePresetSelect(defaultPreset);
       }
     }
+  };
+
+  const handleSaveCustomTheme = (theme: Omit<ThemePreset, 'id' | 'description'>) => {
+    saveCustomTheme(theme.colors, theme.name);
+    setCustomThemes(getAllThemes().filter((t: ThemePreset) => t.id.startsWith('custom-')));
   };
 
   const allThemes = [...themePresets, ...customThemes];
@@ -183,9 +190,7 @@ export function ThemeSelector({ showCustomBuilder = false }: ThemeSelectorProps)
             <CardTitle>Custom Theme Builder</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-sm text-muted-foreground">
-              Custom theme builder coming soon. For now, you can modify CSS variables directly.
-            </p>
+            <CustomThemeBuilder onSave={handleSaveCustomTheme} />
           </CardContent>
         </Card>
       )}

@@ -95,12 +95,24 @@ class DoclingDocumentProcessor:
     def _get_converter(self):
         """Get or create the Docling DocumentConverter."""
         if self._converter is None:
-            from docling.document_converter import DocumentConverter
+            from docling.document_converter import DocumentConverter, PdfFormatOption
+            from docling.datamodel.base_models import InputFormat
+            from docling.datamodel.pipeline_options import PdfPipelineOptions
 
-            # Create converter with default settings
-            # Docling will auto-detect format and apply appropriate pipeline
-            self._converter = DocumentConverter()
-            logger.debug("docling_converter_initialized")
+            # Configure PDF pipeline to use local-only mode (no external CAS service)
+            pdf_pipeline_options = PdfPipelineOptions()
+            pdf_pipeline_options.do_ocr = False  # Disable OCR to avoid external dependencies
+            pdf_pipeline_options.do_table_structure = True  # Keep table structure detection
+            
+            # Create converter with local-only configuration
+            self._converter = DocumentConverter(
+                format_options={
+                    InputFormat.PDF: PdfFormatOption(
+                        pipeline_options=pdf_pipeline_options
+                    )
+                }
+            )
+            logger.debug("docling_converter_initialized", mode="local-only")
 
         return self._converter
 

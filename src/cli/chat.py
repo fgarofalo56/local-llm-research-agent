@@ -306,13 +306,25 @@ async def run_chat_loop(
             console.print(f"  {Icons.BULLET} [{COLORS['warning']}]{err}[/]")
         console.print()
 
+    # Load enabled MCP servers
     try:
+        from src.mcp.client import MCPClientManager
+        
+        mcp_manager = MCPClientManager()
+        enabled_servers = [s.name for s in mcp_manager.list_servers() if s.enabled]
+        
+        if enabled_servers:
+            console.print(
+                f"[{COLORS['gray_400']}]{Icons.GEAR} Loading MCP servers: {', '.join(enabled_servers)}[/]"
+            )
+        
         agent = ResearchAgent(
             provider_type=effective_provider,
             model_name=model,
             readonly=readonly,
             cache_enabled=cache_enabled,
             explain_mode=explain_mode,
+            mcp_servers=enabled_servers,  # Load all enabled servers!
         )
     except Exception as e:
         console.print(error_message(f"Error creating agent: {e}"))
@@ -582,6 +594,15 @@ async def run_chat_loop(
 
             if command == "help":
                 print_help_commands()
+                continue
+
+            # Handle /mcp commands
+            if command.startswith("/mcp") or command.startswith("mcp"):
+                from src.cli.mcp_commands import handle_mcp_command
+                
+                # Normalize command to start with /mcp
+                normalized_cmd = command if command.startswith("/mcp") else f"/{command}"
+                handle_mcp_command(console, normalized_cmd)
                 continue
 
             # Handle /provider command - switch LLM provider

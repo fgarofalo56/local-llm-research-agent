@@ -106,13 +106,14 @@ class MSSQLVectorStore(VectorStoreBase):
                 embedding_json = self._embedding_to_json(embedding)
                 metadata_json = json.dumps(metadata or {})
 
+                # Use DECLARE to properly convert JSON to VECTOR type
                 await session.execute(
                     text("""
+                        DECLARE @vec VECTOR(768) = :embedding;
                         INSERT INTO vectors.document_chunks
                         (document_id, chunk_index, content, source, source_type, metadata, embedding)
                         VALUES
-                        (:doc_id, :chunk_idx, :content, :source, :source_type, :metadata,
-                         CAST(:embedding AS VECTOR(768)))
+                        (:doc_id, :chunk_idx, :content, :source, :source_type, :metadata, @vec)
                     """),
                     {
                         "doc_id": int(document_id),
@@ -158,10 +159,12 @@ class MSSQLVectorStore(VectorStoreBase):
 
         async with self._session_factory() as session:
             # Use the stored procedure for optimized search
+            # Note: We pass the JSON array string directly - SQL Server will convert it to VECTOR
             result = await session.execute(
                 text("""
+                    DECLARE @query_vec VECTOR(768) = :embedding;
                     EXEC vectors.SearchDocuments
-                        @query_vector = CAST(:embedding AS VECTOR(768)),
+                        @query_vector = @query_vec,
                         @top_n = :top_k,
                         @source_type = :source_type,
                         @document_id = :document_id
@@ -234,10 +237,12 @@ class MSSQLVectorStore(VectorStoreBase):
         async with self._session_factory() as session:
             try:
                 # Use the hybrid search stored procedure
+                # Note: We declare the VECTOR variable first for proper type conversion
                 result = await session.execute(
                     text("""
+                        DECLARE @query_vec VECTOR(768) = :embedding;
                         EXEC vectors.HybridSearchDocuments
-                            @query_vector = CAST(:embedding AS VECTOR(768)),
+                            @query_vector = @query_vec,
                             @query_text = :search_text,
                             @top_n = :top_k,
                             @source_type = :source_type,
@@ -344,10 +349,12 @@ class MSSQLVectorStore(VectorStoreBase):
         embedding_json = self._embedding_to_json(query_embedding)
 
         async with self._session_factory() as session:
+            # Use DECLARE to properly convert JSON to VECTOR type
             result = await session.execute(
                 text("""
+                    DECLARE @query_vec VECTOR(768) = :embedding;
                     EXEC vectors.SearchSchema
-                        @query_vector = CAST(:embedding AS VECTOR(768)),
+                        @query_vector = @query_vec,
                         @top_n = :top_k,
                         @database_name = :database_name,
                         @object_type = :object_type
@@ -419,13 +426,14 @@ class MSSQLVectorStore(VectorStoreBase):
                 },
             )
 
+            # Use DECLARE to properly convert JSON to VECTOR type
             await session.execute(
                 text("""
+                    DECLARE @vec VECTOR(768) = :embedding;
                     INSERT INTO vectors.schema_embeddings
                     (object_type, object_name, database_name, schema_name, description, embedding)
                     VALUES
-                    (:object_type, :object_name, :database_name, :schema_name, :description,
-                     CAST(:embedding AS VECTOR(768)))
+                    (:object_type, :object_name, :database_name, :schema_name, :description, @vec)
                 """),
                 {
                     "object_type": object_type,

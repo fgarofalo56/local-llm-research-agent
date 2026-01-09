@@ -3,6 +3,10 @@
 # .gitignore - Comprehensive ignore rules
 # ========================================
 
+# -------------------- AI ASSISTANTS --------------------
+# Aider AI coding assistant files
+.aider/
+
 # -------------------- SECURITY CRITICAL --------------------
 # Environment and secrets - NEVER commit these
 .env

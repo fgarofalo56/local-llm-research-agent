@@ -17,6 +17,13 @@ from src.agent.prompts import (
     get_system_prompt,
 )
 from src.agent.stats import AgentStats
+from src.agent.tools import (
+    DocumentContent,
+    KnowledgeSource,
+    RAGTools,
+    SearchResult,
+    create_rag_tools,
+)
 
 __all__ = [
     # Agent
@@ -34,4 +41,10 @@ __all__ = [
     "SYSTEM_PROMPT_READONLY",
     "SYSTEM_PROMPT_MINIMAL",
     "get_system_prompt",
+    # RAG Tools
+    "RAGTools",
+    "SearchResult",
+    "KnowledgeSource",
+    "DocumentContent",
+    "create_rag_tools",
 ]

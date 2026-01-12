@@ -423,6 +423,7 @@ def create_help_panel() -> Panel:
         ("/models", "List available models"),
         ("/thinking", "Toggle thinking mode (step-by-step reasoning)"),
         ("/websearch", "Toggle web search (DuckDuckGo + Brave MCP)"),
+        ("/rag", "Toggle RAG knowledge base (SQL Server 2025 vectors)"),
     ]
     
     # MCP server management commands

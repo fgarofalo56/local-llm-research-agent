@@ -115,4 +115,20 @@ Implementation details:
 - Task 9: Built-in web_search wrapper (DONE - merged into Task 8)
 - Task 10: Brave Search MCP config (DONE - merged into Task 8)
 
+### Task 11: RAG CLI Integration - COMPLETED
+- Added `rag_enabled` parameter to ResearchAgent constructor
+- Created `_init_rag_tools()` method to connect to LLM_BackEnd database
+- Created `_register_rag_tools()` method with 3 tools: search_knowledge_base, list_knowledge_sources, get_document
+- Added `/rag` toggle command in CLI with agent recreation
+- Added `--rag` / `-r` CLI flag for startup
+- Added visual indicator `📚 RAG` in mode status display
+- Updated system prompt with RAG tools description
+- Updated all 8 ResearchAgent instantiation calls in chat.py with rag_enabled
+- Updated help panel in theme.py with /rag command
+
+Implementation details:
+- src/agent/core.py: Added rag_enabled param, _init_rag_tools(), _register_rag_tools()
+- src/cli/chat.py: /rag command, --rag flag, rag_enabled in run_chat_loop()
+- src/cli/theme.py: Added /rag to config_commands
+
 ---

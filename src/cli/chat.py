@@ -370,6 +370,7 @@ async def run_chat_loop(
     explain_mode: bool = False,
     thinking_mode: bool = False,
     web_search_enabled: bool = False,
+    rag_enabled: bool = False,
 ) -> None:
     """
     Run the interactive chat loop.
@@ -383,6 +384,7 @@ async def run_chat_loop(
         explain_mode: Enable educational SQL query explanations
         thinking_mode: Enable step-by-step reasoning with <think> tags
         web_search_enabled: Enable built-in web search tool
+        rag_enabled: Enable RAG knowledge base search tools
     """
     # Use configured provider if not specified
     effective_provider = provider_type or settings.llm_provider
@@ -437,6 +439,7 @@ async def run_chat_loop(
             explain_mode=explain_mode,
             thinking_mode=thinking_mode,
             web_search_enabled=web_search_enabled,
+            rag_enabled=rag_enabled,
             mcp_servers=enabled_servers,  # Load all enabled servers!
         )
     except Exception as e:
@@ -453,6 +456,8 @@ async def run_chat_loop(
         mode_info.append(f"[{COLORS['primary']}]{Icons.THINKING} thinking mode[/]")
     if web_search_enabled:
         mode_info.append(f"[{COLORS['info']}]{Icons.SEARCH} web search[/]")
+    if rag_enabled:
+        mode_info.append(f"[{COLORS['accent']}]📚 RAG[/]")
     if readonly:
         mode_info.append(f"[{COLORS['warning']}]read-only[/]")
     if mode_info:
@@ -495,6 +500,7 @@ async def run_chat_loop(
                                 explain_mode=explain_mode,
                                 thinking_mode=thinking_mode,
                                 web_search_enabled=web_search_enabled,
+                                rag_enabled=rag_enabled,
                                 mcp_servers=enabled_servers,
                             )
                             # Re-enter the agent context since we created a new agent
@@ -801,6 +807,7 @@ async def run_chat_loop(
                             explain_mode=explain_mode,
                             thinking_mode=thinking_mode,
                             web_search_enabled=web_search_enabled,
+                            rag_enabled=rag_enabled,
                             mcp_servers=enabled_servers,
                         )
                         console.print(success_message(f"Switched to {new_provider}"))
@@ -873,6 +880,7 @@ async def run_chat_loop(
                             explain_mode=explain_mode,
                             thinking_mode=thinking_mode,
                             web_search_enabled=web_search_enabled,
+                            rag_enabled=rag_enabled,
                             mcp_servers=enabled_servers,
                         )
                         model = new_model
@@ -910,6 +918,7 @@ async def run_chat_loop(
                             explain_mode=explain_mode,
                             thinking_mode=thinking_mode,
                             web_search_enabled=web_search_enabled,
+                            rag_enabled=rag_enabled,
                             mcp_servers=enabled_servers,
                         )
                         # Re-enter the agent context
@@ -943,6 +952,7 @@ async def run_chat_loop(
                             explain_mode=explain_mode,
                             thinking_mode=thinking_mode,
                             web_search_enabled=web_search_enabled,
+                            rag_enabled=rag_enabled,
                             mcp_servers=enabled_servers,
                         )
                         # Re-enter the agent context
@@ -971,6 +981,40 @@ async def run_chat_loop(
                             console.print(info_message("Web search disabled"))
                     except Exception as e:
                         console.print(error_message(f"Failed to toggle web search: {e}"))
+                    continue
+
+                # Handle /rag command - toggle RAG knowledge base
+                if command == "/rag":
+                    rag_enabled = not rag_enabled
+                    # Recreate agent with updated RAG mode
+                    try:
+                        agent = ResearchAgent(
+                            provider_type=effective_provider,
+                            model_name=model,
+                            readonly=readonly,
+                            cache_enabled=cache_enabled,
+                            explain_mode=explain_mode,
+                            thinking_mode=thinking_mode,
+                            web_search_enabled=web_search_enabled,
+                            rag_enabled=rag_enabled,
+                            mcp_servers=enabled_servers,
+                        )
+                        # Re-enter the agent context
+                        await agent.__aenter__()
+                        if rag_enabled:
+                            console.print(
+                                success_message("📚 RAG knowledge base enabled")
+                            )
+                            console.print(
+                                f"  {Icons.BULLET} [{COLORS['gray_400']}]Tools: search_knowledge_base, list_knowledge_sources, get_document[/]"
+                            )
+                            console.print(
+                                f"  {Icons.BULLET} [{COLORS['gray_400']}]Uses SQL Server 2025 native vector search (LLM_BackEnd)[/]"
+                            )
+                        else:
+                            console.print(info_message("RAG knowledge base disabled"))
+                    except Exception as e:
+                        console.print(error_message(f"Failed to toggle RAG: {e}"))
                     continue
 
                 # Send to agent
@@ -1084,6 +1128,12 @@ def chat(
         "-w",
         help="Enable web search (DuckDuckGo + Brave MCP if configured)",
     ),
+    rag: bool = typer.Option(
+        False,
+        "--rag",
+        "-r",
+        help="Enable RAG knowledge base search (SQL Server 2025 vectors)",
+    ),
     debug: bool = typer.Option(
         False,
         "--debug",
@@ -1116,6 +1166,7 @@ def chat(
                 explain_mode=explain,
                 thinking_mode=thinking,
                 web_search_enabled=web_search,
+                rag_enabled=rag,
             )
         )
     except Exception as e:

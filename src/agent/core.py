@@ -13,7 +13,7 @@ from pydantic_ai import Agent
 from src.agent.cache import AgentCache
 from src.agent.prompts import get_system_prompt, format_mcp_servers_info
 from src.agent.stats import AgentStats
-from src.agent.tools import WebSearchTools, create_web_search_tools
+from src.agent.tools import RAGTools, WebSearchTools, create_rag_tools, create_web_search_tools
 from src.mcp.client import MCPClientManager
 from src.models.chat import AgentResponse, ChatMessage, Conversation, ConversationTurn, TokenUsage
 from src.providers import LLMProvider, ProviderType, create_provider
@@ -62,6 +62,7 @@ class ResearchAgent:
         explain_mode: bool = False,
         thinking_mode: bool = False,
         web_search_enabled: bool = False,
+        rag_enabled: bool = False,
         mcp_servers: list | None = None,  # List of MCP server names to enable
         # Legacy Ollama-specific parameters (for backwards compatibility)
         ollama_host: str | None = None,
@@ -80,6 +81,7 @@ class ResearchAgent:
             explain_mode: Enable educational query explanations
             thinking_mode: Enable step-by-step reasoning mode
             web_search_enabled: Enable built-in web search tool
+            rag_enabled: Enable RAG knowledge base search tools
             mcp_servers: List of MCP server names to enable (e.g., ['mssql', 'brave'])
             ollama_host: (Legacy) Ollama server URL
             ollama_model: (Legacy) Ollama model name
@@ -89,12 +91,18 @@ class ResearchAgent:
         self.explain_mode = explain_mode
         self.thinking_mode = thinking_mode
         self.web_search_enabled = web_search_enabled
+        self.rag_enabled = rag_enabled
         self._enabled_mcp_servers = mcp_servers or ["mssql"]  # Default to MSSQL for compatibility
 
         # Initialize web search tools if enabled
         self._web_search_tools: WebSearchTools | None = None
         if web_search_enabled:
             self._web_search_tools = create_web_search_tools()
+
+        # Initialize RAG tools if enabled
+        self._rag_tools: RAGTools | None = None
+        if rag_enabled:
+            self._init_rag_tools()
 
         # Initialize response cache
         self._cache_enabled = cache_enabled if cache_enabled is not None else settings.cache_enabled
@@ -190,6 +198,8 @@ class ResearchAgent:
         tools_info = mcp_info
         if self.web_search_enabled:
             tools_info += "\n\n**Web Search Tool:**\n- `search_web`: Search the internet using DuckDuckGo"
+        if self.rag_enabled:
+            tools_info += "\n\n**RAG Knowledge Base Tools:**\n- `search_knowledge_base`: Hybrid vector + keyword search\n- `list_knowledge_sources`: Show available document collections\n- `get_document`: Retrieve full document by ID"
 
         self.agent = Agent(
             model=self.model,
@@ -207,6 +217,10 @@ class ResearchAgent:
         if self._web_search_tools is not None:
             self._register_web_search_tool()
 
+        # Register RAG tools if enabled
+        if self._rag_tools is not None:
+            self._register_rag_tools()
+
         logger.info(
             "research_agent_created",
             provider=self.provider.provider_type.value,
@@ -216,6 +230,7 @@ class ResearchAgent:
             explain_mode=self.explain_mode,
             thinking_mode=self.thinking_mode,
             web_search_enabled=self.web_search_enabled,
+            rag_enabled=self.rag_enabled,
             rate_limit_enabled=settings.rate_limit_enabled,
             tool_calling_supported=self.provider.supports_tool_calling(),
             active_toolsets=len(self._active_toolsets),
@@ -298,6 +313,160 @@ class ResearchAgent:
             return "\n".join(formatted_results)
 
         logger.info("web_search_tool_registered")
+
+    def _init_rag_tools(self) -> None:
+        """
+        Initialize RAG tools with database connection.
+
+        Creates a connection to the LLM_BackEnd database for vector search.
+        """
+        try:
+            from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+
+            # Build connection string for LLM_BackEnd database
+            backend_host = settings.backend_db_host or settings.sql_server_host
+            backend_port = settings.backend_db_port or 1434
+            backend_db = settings.backend_db_name or "LLM_BackEnd"
+            backend_user = settings.backend_db_username or settings.sql_username
+            backend_pass = settings.backend_db_password or settings.sql_password
+
+            connection_string = (
+                f"mssql+aioodbc://{backend_user}:{backend_pass}@"
+                f"{backend_host}:{backend_port}/{backend_db}"
+                f"?driver=ODBC+Driver+18+for+SQL+Server"
+                f"&TrustServerCertificate=yes"
+            )
+
+            engine = create_async_engine(connection_string, echo=False)
+            session_factory = async_sessionmaker(engine, expire_on_commit=False)
+
+            self._rag_tools = create_rag_tools(session_factory)
+            logger.info("rag_tools_initialized", database=backend_db)
+
+        except Exception as e:
+            logger.warning("rag_tools_init_failed", error=str(e))
+            self._rag_tools = None
+
+    def _register_rag_tools(self) -> None:
+        """
+        Register RAG tools with the Pydantic AI agent.
+
+        Creates tool functions that wrap the RAGTools methods.
+        """
+        if self._rag_tools is None:
+            return
+
+        rag_tools = self._rag_tools
+
+        @self.agent.tool
+        async def search_knowledge_base(
+            query: str,
+            top_k: int = 5,
+            source_filter: str | None = None,
+        ) -> str:
+            """
+            Search the knowledge base using hybrid vector + keyword search.
+
+            Combines semantic similarity with keyword matching for accurate results.
+
+            Use this tool for:
+            - Finding information in indexed documents
+            - Searching technical documentation
+            - Retrieving context from the knowledge base
+
+            Args:
+                query: Natural language search query
+                top_k: Maximum results to return (default 5)
+                source_filter: Optional filter by source name
+
+            Returns:
+                Formatted search results with relevance scores and citations
+            """
+            try:
+                results = await rag_tools.search_knowledge_base(
+                    query=query,
+                    top_k=top_k,
+                    source_filter=source_filter,
+                )
+
+                if not results:
+                    return f"No results found for '{query}' in the knowledge base."
+
+                formatted = [f"**Knowledge Base Results for '{query}'** ({len(results)} results)\n"]
+
+                for i, r in enumerate(results, 1):
+                    formatted.append(
+                        f"{i}. **{r.source}** (Score: {r.relevance_score:.2f})\n"
+                        f"   {r.content[:300]}{'...' if len(r.content) > 300 else ''}\n"
+                        f"   [Doc: {r.document_id}, Chunk: {r.chunk_id}]\n"
+                    )
+
+                return "\n".join(formatted)
+
+            except Exception as e:
+                logger.error("rag_search_error", error=str(e))
+                return f"Error searching knowledge base: {str(e)}"
+
+        @self.agent.tool
+        async def list_knowledge_sources() -> str:
+            """
+            List all available knowledge sources/document collections.
+
+            Use this to discover what documents are available to search.
+
+            Returns:
+                List of sources with document counts and types
+            """
+            try:
+                sources = await rag_tools.list_knowledge_sources()
+
+                if not sources:
+                    return "No knowledge sources found. Upload documents to populate the knowledge base."
+
+                formatted = ["**Available Knowledge Sources:**\n"]
+
+                for s in sources:
+                    formatted.append(
+                        f"- **{s.name}** ({s.source_type})\n"
+                        f"  {s.document_count} documents, {s.chunk_count} chunks\n"
+                    )
+
+                return "\n".join(formatted)
+
+            except Exception as e:
+                logger.error("list_sources_error", error=str(e))
+                return f"Error listing sources: {str(e)}"
+
+        @self.agent.tool
+        async def get_document(document_id: str) -> str:
+            """
+            Retrieve full document content by ID.
+
+            Use this after search to get complete document text.
+
+            Args:
+                document_id: Document identifier from search results
+
+            Returns:
+                Full document content with metadata
+            """
+            try:
+                doc = await rag_tools.get_document_content(document_id)
+
+                if not doc:
+                    return f"Document {document_id} not found."
+
+                return (
+                    f"**Document: {doc.source}**\n"
+                    f"Type: {doc.source_type} | Words: {doc.word_count}\n\n"
+                    f"{doc.full_content}"
+                )
+
+            except Exception as e:
+                logger.error("get_document_error", error=str(e))
+                return f"Error retrieving document: {str(e)}"
+
+        logger.info("rag_tools_registered")
 
     @property
     def tool_warning(self) -> str | None:

@@ -13,6 +13,7 @@ from pydantic_ai import Agent
 from src.agent.cache import AgentCache
 from src.agent.prompts import get_system_prompt, format_mcp_servers_info
 from src.agent.stats import AgentStats
+from src.agent.tools import WebSearchTools, create_web_search_tools
 from src.mcp.client import MCPClientManager
 from src.models.chat import AgentResponse, ChatMessage, Conversation, ConversationTurn, TokenUsage
 from src.providers import LLMProvider, ProviderType, create_provider
@@ -60,6 +61,7 @@ class ResearchAgent:
         cache_enabled: bool | None = None,
         explain_mode: bool = False,
         thinking_mode: bool = False,
+        web_search_enabled: bool = False,
         mcp_servers: list | None = None,  # List of MCP server names to enable
         # Legacy Ollama-specific parameters (for backwards compatibility)
         ollama_host: str | None = None,
@@ -77,6 +79,7 @@ class ResearchAgent:
             cache_enabled: Enable response caching (default from settings)
             explain_mode: Enable educational query explanations
             thinking_mode: Enable step-by-step reasoning mode
+            web_search_enabled: Enable built-in web search tool
             mcp_servers: List of MCP server names to enable (e.g., ['mssql', 'brave'])
             ollama_host: (Legacy) Ollama server URL
             ollama_model: (Legacy) Ollama model name
@@ -85,7 +88,13 @@ class ResearchAgent:
         self.minimal_prompt = minimal_prompt
         self.explain_mode = explain_mode
         self.thinking_mode = thinking_mode
+        self.web_search_enabled = web_search_enabled
         self._enabled_mcp_servers = mcp_servers or ["mssql"]  # Default to MSSQL for compatibility
+
+        # Initialize web search tools if enabled
+        self._web_search_tools: WebSearchTools | None = None
+        if web_search_enabled:
+            self._web_search_tools = create_web_search_tools()
 
         # Initialize response cache
         self._cache_enabled = cache_enabled if cache_enabled is not None else settings.cache_enabled
@@ -172,11 +181,16 @@ class ResearchAgent:
 
         # Load MCP toolsets and create the Pydantic AI agent
         self._load_toolsets()
-        
+
         # Create agent with loaded toolsets
         enabled_server_names = [s.name for s in self.mcp_manager.list_servers() if s.enabled]
         mcp_info = format_mcp_servers_info(enabled_server_names)
-        
+
+        # Build tools info for system prompt
+        tools_info = mcp_info
+        if self.web_search_enabled:
+            tools_info += "\n\n**Web Search Tool:**\n- `search_web`: Search the internet using DuckDuckGo"
+
         self.agent = Agent(
             model=self.model,
             system_prompt=get_system_prompt(
@@ -184,10 +198,14 @@ class ResearchAgent:
                 minimal=self.minimal_prompt,
                 explain_mode=self.explain_mode,
                 thinking_mode=self.thinking_mode,
-                mcp_servers_info=mcp_info,
+                mcp_servers_info=tools_info,
             ),
             toolsets=self._active_toolsets,
         )
+
+        # Register web search tool if enabled
+        if self._web_search_tools is not None:
+            self._register_web_search_tool()
 
         logger.info(
             "research_agent_created",
@@ -197,6 +215,7 @@ class ResearchAgent:
             cache_enabled=self._cache_enabled,
             explain_mode=self.explain_mode,
             thinking_mode=self.thinking_mode,
+            web_search_enabled=self.web_search_enabled,
             rate_limit_enabled=settings.rate_limit_enabled,
             tool_calling_supported=self.provider.supports_tool_calling(),
             active_toolsets=len(self._active_toolsets),
@@ -231,6 +250,54 @@ class ResearchAgent:
                 "no_toolsets_loaded",
                 message="Agent will operate without MCP tools - can still answer general questions",
             )
+
+    def _register_web_search_tool(self) -> None:
+        """
+        Register web search tool with the Pydantic AI agent.
+
+        This creates a tool function that wraps the WebSearchTools.search_web method.
+        """
+        if self._web_search_tools is None:
+            return
+
+        web_tools = self._web_search_tools
+
+        @self.agent.tool
+        async def search_web(query: str, max_results: int = 5) -> str:
+            """
+            Search the web for current information using DuckDuckGo.
+
+            Use this tool for:
+            - Current events and recent news
+            - Fact-checking and verification
+            - Finding up-to-date information not in the knowledge base
+            - Researching topics requiring recent data
+
+            Args:
+                query: Search query (be specific for better results)
+                max_results: Maximum number of results to return (default 5)
+
+            Returns:
+                Formatted search results with titles, URLs, and snippets
+            """
+            response = await web_tools.search_web(query, max_results)
+
+            if not response.results:
+                return f"No results found for '{query}'. Try rephrasing your search."
+
+            # Format results as readable text for the LLM
+            formatted_results = [f"**Web Search Results for '{query}'** ({response.total_results} results)\n"]
+
+            for i, result in enumerate(response.results, 1):
+                formatted_results.append(
+                    f"{i}. **{result.title}**\n"
+                    f"   URL: {result.url}\n"
+                    f"   {result.snippet}\n"
+                )
+
+            return "\n".join(formatted_results)
+
+        logger.info("web_search_tool_registered")
 
     @property
     def tool_warning(self) -> str | None:

@@ -7,8 +7,12 @@ Supports both Ollama and Foundry Local as LLM providers.
 """
 
 import asyncio
+import sys
 
 import typer
+from prompt_toolkit import PromptSession
+from prompt_toolkit.key_binding import KeyBindings
+from prompt_toolkit.keys import Keys
 from rich.prompt import Prompt
 from rich.text import Text
 
@@ -254,6 +258,109 @@ def print_cache_stats(agent: ResearchAgent) -> None:
     console.print()
 
 
+def format_thinking_content(content: str) -> str:
+    """
+    Parse and format <think> tags from model responses.
+
+    Extracts content within <think>...</think> tags and formats it
+    with visual distinction from the main response.
+
+    Args:
+        content: Raw model response that may contain <think> tags
+
+    Returns:
+        Formatted content with thinking blocks styled differently
+    """
+    import re
+
+    # Pattern to match <think>...</think> blocks (handles multiline)
+    think_pattern = re.compile(r'<think>(.*?)</think>', re.DOTALL)
+
+    def replace_think(match: re.Match) -> str:
+        thinking_text = match.group(1).strip()
+        # Format thinking content with visual distinction
+        lines = thinking_text.split('\n')
+        formatted_lines = []
+        for line in lines:
+            formatted_lines.append(f"[{COLORS['gray_400']}]│ {line}[/]")
+        thinking_block = '\n'.join(formatted_lines)
+        return f"\n[{COLORS['accent']}]{Icons.THINKING} Reasoning:[/]\n{thinking_block}\n"
+
+    return think_pattern.sub(replace_think, content)
+
+
+class ThinkingModeInput:
+    """
+    Custom input handler with Shift+Tab keyboard shortcut support.
+
+    Uses prompt_toolkit for advanced keyboard handling while maintaining
+    Rich console integration for styled output.
+    """
+
+    def __init__(self, console, thinking_mode: bool = False):
+        """
+        Initialize input handler.
+
+        Args:
+            console: Rich console for output
+            thinking_mode: Initial thinking mode state
+        """
+        self.console = console
+        self.thinking_mode = thinking_mode
+        self._toggled_this_prompt = False
+
+        # Create key bindings
+        self.bindings = KeyBindings()
+
+        @self.bindings.add(Keys.BackTab)  # Shift+Tab
+        def handle_shift_tab(event):
+            """Toggle thinking mode on Shift+Tab."""
+            self._toggled_this_prompt = True
+            self.thinking_mode = not self.thinking_mode
+            # Display immediate feedback
+            if self.thinking_mode:
+                self.console.print(
+                    f"\n[{COLORS['success']}]{Icons.THINKING} Thinking Mode ENABLED[/]"
+                )
+            else:
+                self.console.print(
+                    f"\n[{COLORS['gray_400']}]{Icons.THINKING} Thinking Mode DISABLED[/]"
+                )
+
+        # Create prompt session with key bindings
+        self.session = PromptSession(key_bindings=self.bindings)
+
+    def get_input(self, prompt_text: str = "") -> tuple[str, bool]:
+        """
+        Get user input with Shift+Tab support.
+
+        Args:
+            prompt_text: Optional prompt text (not used, we use Rich for prompt)
+
+        Returns:
+            Tuple of (user_input, thinking_mode_changed)
+        """
+        self._toggled_this_prompt = False
+
+        # Show thinking mode hint if disabled
+        if not self.thinking_mode and sys.stdin.isatty():
+            self.console.print(
+                f"[{COLORS['gray_600']}]Press Shift+Tab to enable Thinking Mode[/]",
+                end="  "
+            )
+
+        try:
+            # Get input using prompt_toolkit
+            user_input = self.session.prompt("")
+            return user_input, self._toggled_this_prompt
+        except (EOFError, KeyboardInterrupt):
+            return "", False
+
+    def is_interactive(self) -> bool:
+        """Check if running in interactive mode."""
+        return sys.stdin.isatty()
+
+
 async def run_chat_loop(
     provider_type: str | None = None,
     model: str | None = None,
@@ -261,6 +368,8 @@ async def run_chat_loop(
     stream: bool = False,
     cache_enabled: bool = True,
     explain_mode: bool = False,
+    thinking_mode: bool = False,
+    web_search_enabled: bool = False,
 ) -> None:
     """
     Run the interactive chat loop.
@@ -272,6 +381,8 @@ async def run_chat_loop(
         stream: Enable streaming responses
         cache_enabled: Enable response caching
         explain_mode: Enable educational SQL query explanations
+        thinking_mode: Enable step-by-step reasoning with <think> tags
+        web_search_enabled: Enable built-in web search tool
     """
     # Use configured provider if not specified
     effective_provider = provider_type or settings.llm_provider
@@ -324,6 +435,8 @@ async def run_chat_loop(
             readonly=readonly,
             cache_enabled=cache_enabled,
             explain_mode=explain_mode,
+            thinking_mode=thinking_mode,
+            web_search_enabled=web_search_enabled,
             mcp_servers=enabled_servers,  # Load all enabled servers!
         )
     except Exception as e:
@@ -336,6 +449,10 @@ async def run_chat_loop(
         mode_info.append(f"[{COLORS['accent']}]cache[/] (max {settings.cache_max_size})")
     if explain_mode:
         mode_info.append(f"[{COLORS['info']}]explain mode[/]")
+    if thinking_mode:
+        mode_info.append(f"[{COLORS['primary']}]{Icons.THINKING} thinking mode[/]")
+    if web_search_enabled:
+        mode_info.append(f"[{COLORS['info']}]{Icons.SEARCH} web search[/]")
     if readonly:
         mode_info.append(f"[{COLORS['warning']}]read-only[/]")
     if mode_info:
@@ -343,6 +460,13 @@ async def run_chat_loop(
     console.print()
 
     print_help_commands()
+
+    # Create input handler with Shift+Tab support (only in interactive mode)
+    input_handler = ThinkingModeInput(console, thinking_mode=thinking_mode)
+    if input_handler.is_interactive():
+        console.print(
+            f"[{COLORS['gray_500']}]{Icons.INFO} Tip: Press Shift+Tab anytime to toggle Thinking Mode[/]"
+        )
 
     # Establish MCP sessions once for the entire chat session
     async with agent:
@@ -353,7 +477,34 @@ async def run_chat_loop(
             try:
                 # Get user input with styled prompt
                 console.print()
-                user_input = Prompt.ask(f"[{COLORS['accent_light']}]{Icons.USER} You[/]")
+                console.print(f"[{COLORS['accent_light']}]{Icons.USER} You[/]", end=" ")
+
+                # Use custom input handler in interactive mode, fallback to Rich prompt otherwise
+                if input_handler.is_interactive():
+                    user_input, mode_toggled = input_handler.get_input()
+
+                    # If thinking mode was toggled, recreate agent with new mode
+                    if mode_toggled:
+                        thinking_mode = input_handler.thinking_mode
+                        try:
+                            agent = ResearchAgent(
+                                provider_type=effective_provider,
+                                model_name=model,
+                                readonly=readonly,
+                                cache_enabled=cache_enabled,
+                                explain_mode=explain_mode,
+                                thinking_mode=thinking_mode,
+                                web_search_enabled=web_search_enabled,
+                                mcp_servers=enabled_servers,
+                            )
+                            # Re-enter the agent context since we created a new agent
+                            await agent.__aenter__()
+                        except Exception as e:
+                            console.print(error_message(f"Failed to update agent: {e}"))
+                        # Show updated prompt for new input
+                        continue
+                else:
+                    user_input = Prompt.ask("")
 
                 if not user_input.strip():
                     continue
@@ -648,6 +799,9 @@ async def run_chat_loop(
                             readonly=readonly,
                             cache_enabled=cache_enabled,
                             explain_mode=explain_mode,
+                            thinking_mode=thinking_mode,
+                            web_search_enabled=web_search_enabled,
+                            mcp_servers=enabled_servers,
                         )
                         console.print(success_message(f"Switched to {new_provider}"))
                         console.print(
@@ -717,6 +871,9 @@ async def run_chat_loop(
                             readonly=readonly,
                             cache_enabled=cache_enabled,
                             explain_mode=explain_mode,
+                            thinking_mode=thinking_mode,
+                            web_search_enabled=web_search_enabled,
+                            mcp_servers=enabled_servers,
                         )
                         model = new_model
                         console.print(success_message(f"Switched to model: {new_model}"))
@@ -736,6 +893,84 @@ async def run_chat_loop(
                     console.print(
                         f"  {Icons.BULLET} [{COLORS['gray_400']}]Use '/models' to list available models[/]"
                     )
+                    continue
+
+                # Handle /thinking command - toggle thinking mode
+                if command == "/thinking":
+                    thinking_mode = not thinking_mode
+                    # Sync input handler state
+                    input_handler.thinking_mode = thinking_mode
+                    # Recreate agent with updated thinking mode
+                    try:
+                        agent = ResearchAgent(
+                            provider_type=effective_provider,
+                            model_name=model,
+                            readonly=readonly,
+                            cache_enabled=cache_enabled,
+                            explain_mode=explain_mode,
+                            thinking_mode=thinking_mode,
+                            web_search_enabled=web_search_enabled,
+                            mcp_servers=enabled_servers,
+                        )
+                        # Re-enter the agent context
+                        await agent.__aenter__()
+                        if thinking_mode:
+                            console.print(
+                                success_message(f"{Icons.THINKING} Thinking mode enabled")
+                            )
+                            console.print(
+                                f"  {Icons.BULLET} [{COLORS['gray_400']}]Model will show step-by-step reasoning in <think> tags[/]"
+                            )
+                            console.print(
+                                f"  {Icons.BULLET} [{COLORS['gray_400']}]Best with Qwen3 or DeepSeek-R1 models[/]"
+                            )
+                        else:
+                            console.print(info_message("Thinking mode disabled"))
+                    except Exception as e:
+                        console.print(error_message(f"Failed to toggle thinking mode: {e}"))
+                    continue
+
+                # Handle /websearch command - toggle web search
+                if command == "/websearch":
+                    web_search_enabled = not web_search_enabled
+                    # Recreate agent with updated web search mode
+                    try:
+                        agent = ResearchAgent(
+                            provider_type=effective_provider,
+                            model_name=model,
+                            readonly=readonly,
+                            cache_enabled=cache_enabled,
+                            explain_mode=explain_mode,
+                            thinking_mode=thinking_mode,
+                            web_search_enabled=web_search_enabled,
+                            mcp_servers=enabled_servers,
+                        )
+                        # Re-enter the agent context
+                        await agent.__aenter__()
+                        if web_search_enabled:
+                            console.print(
+                                success_message(f"{Icons.SEARCH} Web search enabled")
+                            )
+                            console.print(
+                                f"  {Icons.BULLET} [{COLORS['gray_400']}]Built-in: DuckDuckGo (always available)[/]"
+                            )
+                            # Check if Brave MCP is enabled
+                            brave_enabled = any(
+                                s.name == "brave-search" and s.enabled
+                                for s in mcp_manager.list_servers()
+                            )
+                            if brave_enabled:
+                                console.print(
+                                    f"  {Icons.BULLET} [{COLORS['success']}]Brave Search MCP: Enabled[/]"
+                                )
+                            else:
+                                console.print(
+                                    f"  {Icons.BULLET} [{COLORS['gray_500']}]Brave Search MCP: Disabled (enable with '/mcp enable brave-search')[/]"
+                                )
+                        else:
+                            console.print(info_message("Web search disabled"))
+                    except Exception as e:
+                        console.print(error_message(f"Failed to toggle web search: {e}"))
                     continue
 
                 # Send to agent
@@ -766,7 +1001,11 @@ async def run_chat_loop(
                     # Non-streaming mode - show spinner while waiting
                     with console.status(thinking_status(), spinner="dots"):
                         detailed_response = await agent.chat_with_details(user_input)
-                    console.print(detailed_response.content)
+                    # Format thinking tags if present
+                    response_content = detailed_response.content
+                    if thinking_mode and '<think>' in response_content:
+                        response_content = format_thinking_content(response_content)
+                    console.print(response_content)
 
                     # Display token usage
                     if detailed_response.token_usage and detailed_response.token_usage.total_tokens > 0:
@@ -833,6 +1072,18 @@ def chat(
         "-e",
         help="Enable SQL explanation mode (educational, explains queries step by step)",
     ),
+    thinking: bool = typer.Option(
+        False,
+        "--thinking",
+        "-t",
+        help="Enable thinking mode (step-by-step reasoning with <think> tags)",
+    ),
+    web_search: bool = typer.Option(
+        False,
+        "--web-search",
+        "-w",
+        help="Enable web search (DuckDuckGo + Brave MCP if configured)",
+    ),
     debug: bool = typer.Option(
         False,
         "--debug",
@@ -863,6 +1114,8 @@ def chat(
                 stream=stream,
                 cache_enabled=not no_cache,
                 explain_mode=explain,
+                thinking_mode=thinking,
+                web_search_enabled=web_search,
             )
         )
     except Exception as e:

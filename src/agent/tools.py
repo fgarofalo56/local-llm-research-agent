@@ -1,12 +1,19 @@
 """
-RAG Tools for Pydantic AI Agent
+Agent Tools for Pydantic AI Agent
 
-Provides tools for knowledge base search, document retrieval, and RAG operations.
-These tools integrate with the SQL Server 2025 vector store for hybrid search.
+Provides tools for:
+- RAG: Knowledge base search, document retrieval, and RAG operations
+- Web Search: Built-in web search for current events and fact-checking
+
+These tools integrate with the SQL Server 2025 vector store for hybrid search
+and external web search APIs for real-time information.
 """
 
+import asyncio
+from datetime import datetime
 from typing import Any
 
+import httpx
 import structlog
 from pydantic import BaseModel, Field
 from sqlalchemy import text
@@ -14,6 +21,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from src.rag.embedder import OllamaEmbedder
 from src.rag.mssql_vector_store import MSSQLVectorStore
+from src.utils.config import settings
 
 logger = structlog.get_logger()
 
@@ -57,6 +65,259 @@ class DocumentContent(BaseModel):
     chunks: list[str] = Field(description="Individual text chunks")
     metadata: dict[str, Any] = Field(default_factory=dict)
     word_count: int = Field(description="Total word count")
+
+
+# =============================================================================
+# Web Search Response Models
+# =============================================================================
+
+
+class WebSearchResult(BaseModel):
+    """A single web search result."""
+
+    title: str = Field(description="Page title")
+    url: str = Field(description="URL of the result")
+    snippet: str = Field(description="Text snippet/description")
+    source: str = Field(description="Search engine source (duckduckgo, brave)")
+    published_date: str | None = Field(default=None, description="Publication date if available")
+
+
+class WebSearchResponse(BaseModel):
+    """Web search response with results and metadata."""
+
+    query: str = Field(description="Original search query")
+    results: list[WebSearchResult] = Field(description="Search results")
+    total_results: int = Field(description="Number of results returned")
+    search_engine: str = Field(description="Search engine used")
+    searched_at: str = Field(description="Timestamp of search")
+
+
+# =============================================================================
+# Web Search Tools
+# =============================================================================
+
+
+class WebSearchTools:
+    """
+    Web search tools for the Pydantic AI agent.
+
+    Provides:
+    - search_web: Search the web using DuckDuckGo (free, no API key needed)
+    - The Brave Search MCP server can be used for more comprehensive results
+
+    Rate limited to 10 requests per minute to avoid abuse.
+    """
+
+    def __init__(
+        self,
+        max_requests_per_minute: int = 10,
+        timeout_seconds: int = 30,
+    ):
+        """
+        Initialize web search tools.
+
+        Args:
+            max_requests_per_minute: Rate limit for searches
+            timeout_seconds: Request timeout in seconds
+        """
+        self._max_rpm = max_requests_per_minute
+        self._timeout = timeout_seconds
+        self._request_times: list[datetime] = []
+        self._lock = asyncio.Lock()
+
+    async def _check_rate_limit(self) -> bool:
+        """Check if we're within rate limits."""
+        async with self._lock:
+            now = datetime.now()
+            # Remove requests older than 1 minute
+            self._request_times = [
+                t for t in self._request_times
+                if (now - t).total_seconds() < 60
+            ]
+            if len(self._request_times) >= self._max_rpm:
+                return False
+            self._request_times.append(now)
+            return True
+
+    async def search_web(
+        self,
+        query: str,
+        max_results: int = 5,
+    ) -> WebSearchResponse:
+        """
+        Search the web for information using DuckDuckGo.
+
+        Use this tool for:
+        - Current events and recent news
+        - Fact-checking and verification
+        - Finding up-to-date information
+        - Researching topics not in the knowledge base
+
+        Args:
+            query: Search query (be specific for better results)
+            max_results: Maximum number of results to return (default 5)
+
+        Returns:
+            WebSearchResponse with search results
+
+        Note:
+            This uses DuckDuckGo's HTML interface which doesn't require an API key.
+            For more comprehensive results, enable the Brave Search MCP server.
+        """
+        logger.info("web_search_started", query=query[:100], max_results=max_results)
+
+        # Check rate limit
+        if not await self._check_rate_limit():
+            logger.warning("web_search_rate_limited", query=query[:50])
+            return WebSearchResponse(
+                query=query,
+                results=[],
+                total_results=0,
+                search_engine="rate_limited",
+                searched_at=datetime.now().isoformat(),
+            )
+
+        try:
+            async with httpx.AsyncClient(timeout=self._timeout) as client:
+                # Use DuckDuckGo's HTML search (no API key needed)
+                # This is a simple implementation - production should use proper API
+                params = {
+                    "q": query,
+                    "kl": "us-en",  # US English results
+                }
+                headers = {
+                    "User-Agent": "Mozilla/5.0 (compatible; ResearchAgent/1.0)"
+                }
+
+                response = await client.get(
+                    "https://html.duckduckgo.com/html/",
+                    params=params,
+                    headers=headers,
+                )
+                response.raise_for_status()
+
+                # Parse results from HTML (simple extraction)
+                results = self._parse_duckduckgo_html(response.text, max_results)
+
+            search_response = WebSearchResponse(
+                query=query,
+                results=results,
+                total_results=len(results),
+                search_engine="duckduckgo",
+                searched_at=datetime.now().isoformat(),
+            )
+
+            logger.info(
+                "web_search_completed",
+                query=query[:50],
+                results=len(results),
+            )
+
+            return search_response
+
+        except httpx.TimeoutException:
+            logger.error("web_search_timeout", query=query[:50])
+            return WebSearchResponse(
+                query=query,
+                results=[],
+                total_results=0,
+                search_engine="timeout",
+                searched_at=datetime.now().isoformat(),
+            )
+        except Exception as e:
+            logger.error("web_search_error", error=str(e), query=query[:50])
+            return WebSearchResponse(
+                query=query,
+                results=[],
+                total_results=0,
+                search_engine="error",
+                searched_at=datetime.now().isoformat(),
+            )
+
+    def _parse_duckduckgo_html(self, html: str, max_results: int) -> list[WebSearchResult]:
+        """
+        Parse DuckDuckGo HTML search results.
+
+        This is a simple parser - for production use, consider using
+        a proper HTML parser like BeautifulSoup.
+        """
+        import re
+
+        results = []
+
+        # Simple regex pattern to extract results
+        # DuckDuckGo HTML format: <a class="result__a" href="...">title</a>
+        # followed by <a class="result__snippet">snippet</a>
+        result_pattern = re.compile(
+            r'<a[^>]*class="result__a"[^>]*href="([^"]+)"[^>]*>([^<]+)</a>.*?'
+            r'<a[^>]*class="result__snippet"[^>]*>([^<]+)</a>',
+            re.DOTALL | re.IGNORECASE
+        )
+
+        matches = result_pattern.findall(html)
+
+        for url, title, snippet in matches[:max_results]:
+            # Clean up the extracted text
+            title = re.sub(r'<[^>]+>', '', title).strip()
+            snippet = re.sub(r'<[^>]+>', '', snippet).strip()
+
+            # Skip if no meaningful content
+            if not title or not url:
+                continue
+
+            results.append(
+                WebSearchResult(
+                    title=title,
+                    url=url,
+                    snippet=snippet,
+                    source="duckduckgo",
+                    published_date=None,
+                )
+            )
+
+        # If regex didn't work, try alternative pattern
+        if not results:
+            # Alternative: Look for result__url and result__title
+            alt_pattern = re.compile(
+                r'<a[^>]*class="[^"]*result__url[^"]*"[^>]*href="([^"]+)"[^>]*>.*?</a>.*?'
+                r'<a[^>]*class="[^"]*result__title[^"]*"[^>]*>([^<]+)</a>',
+                re.DOTALL | re.IGNORECASE
+            )
+            alt_matches = alt_pattern.findall(html)
+            for url, title in alt_matches[:max_results]:
+                title = re.sub(r'<[^>]+>', '', title).strip()
+                if title and url:
+                    results.append(
+                        WebSearchResult(
+                            title=title,
+                            url=url,
+                            snippet="",
+                            source="duckduckgo",
+                            published_date=None,
+                        )
+                    )
+
+        return results
+
+
+def create_web_search_tools(
+    max_requests_per_minute: int = 10,
+    timeout_seconds: int = 30,
+) -> WebSearchTools:
+    """
+    Create web search tools instance.
+
+    Args:
+        max_requests_per_minute: Rate limit (default 10)
+        timeout_seconds: Request timeout (default 30)
+
+    Returns:
+        WebSearchTools instance
+    """
+    return WebSearchTools(
+        max_requests_per_minute=max_requests_per_minute,
+        timeout_seconds=timeout_seconds,
+    )
 
 
 # =============================================================================
@@ -451,9 +712,15 @@ def create_rag_tools(
 # The actual tool registration happens in the agent module
 
 __all__ = [
+    # RAG tools
     "RAGTools",
     "SearchResult",
     "KnowledgeSource",
     "DocumentContent",
     "create_rag_tools",
+    # Web search tools
+    "WebSearchTools",
+    "WebSearchResult",
+    "WebSearchResponse",
+    "create_web_search_tools",
 ]

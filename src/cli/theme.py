@@ -96,6 +96,8 @@ class Icons:
     LIGHTNING = "\u2607"  # Lightning
     CLOCK = "\u25f4"  # White circle with upper left quadrant
     FOLDER = "\u25a1"  # White square
+    SEARCH = "\u2315"  # Telephone recorder / search icon
+    GLOBE = "\u25ce"  # Bullseye / web globe
 
     # Decorative
     DIAMOND = "\u25c6"  # Black diamond
@@ -419,6 +421,8 @@ def create_help_panel() -> Panel:
         ("/provider <name>", "Switch provider (ollama, foundry_local)"),
         ("/model <name>", "Switch model"),
         ("/models", "List available models"),
+        ("/thinking", "Toggle thinking mode (step-by-step reasoning)"),
+        ("/websearch", "Toggle web search (DuckDuckGo + Brave MCP)"),
     ]
     
     # MCP server management commands

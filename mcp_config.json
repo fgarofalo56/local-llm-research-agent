@@ -103,6 +103,23 @@
       "readonly": false,
       "timeout": 30,
       "description": "Archon Project Management and Knowledge Base MCP Server (Streamable HTTP)"
+    },
+    "brave-search": {
+      "name": "brave-search",
+      "server_type": "custom",
+      "transport": "stdio",
+      "command": "npx",
+      "args": [
+        "-y",
+        "@anthropic-ai/brave-mcp-server@latest"
+      ],
+      "env": {
+        "BRAVE_API_KEY": "${BRAVE_API_KEY}"
+      },
+      "enabled": false,
+      "readonly": true,
+      "timeout": 30,
+      "description": "Brave Search MCP Server for web search (requires BRAVE_API_KEY)"
     }
   }
 }

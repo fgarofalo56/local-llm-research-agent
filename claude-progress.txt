@@ -59,3 +59,60 @@
 ### SESSION COMPLETE - All 5 Tasks Completed!
 
 ---
+
+## Session: 2026-01-11 (Continued)
+
+### Status: IN PROGRESS
+
+### Task 6: Thinking Mode Implementation - COMPLETED
+- Added `/thinking` toggle command in src/cli/chat.py
+- Added `--thinking` / `-t` CLI flag for startup
+- Implemented `format_thinking_content()` to parse and style <think> tags
+- Added visual indicator in mode status display
+- Updated help panel with /thinking command
+- Agent recreated on toggle to update system prompt
+- Thinking blocks formatted with styled reasoning header
+
+Implementation details:
+- chat.py: Added format_thinking_content(), /thinking command handler, --thinking CLI flag
+- theme.py: Added /thinking to help panel config_commands
+
+### Task 7: Keyboard Handler Shift+Tab - COMPLETED
+- Added `ThinkingModeInput` class using prompt_toolkit for keyboard handling
+- Implemented Shift+Tab key binding (Keys.BackTab) to toggle thinking mode
+- Visual feedback on toggle: "Thinking Mode ENABLED/DISABLED"
+- Shows hint "Press Shift+Tab to enable Thinking Mode" when mode is off
+- Graceful fallback to Rich Prompt.ask() for non-interactive mode (pipes, scripts)
+- Syncs state between /thinking command and keyboard toggle
+- Agent recreated on toggle to update system prompt
+
+Implementation details:
+- chat.py: Added ThinkingModeInput class with prompt_toolkit bindings
+- Updated chat loop to use new input handler
+- Added sys import for isatty() check
+
+### Task 8: Dual Web Search - COMPLETED
+- Added `web_search_enabled` parameter to ResearchAgent constructor
+- Created WebSearchTools class with DuckDuckGo integration in src/agent/tools.py
+- Implemented `_register_web_search_tool()` method to add search_web tool to agent
+- Added `/websearch` toggle command with agent recreation
+- Added `--web-search` / `-w` CLI flag for startup
+- Added visual indicator in mode status display
+- Rate limiting: 10 requests per minute
+- Brave Search MCP server config added to mcp_config.json (disabled by default)
+
+Implementation details:
+- src/agent/core.py: Added web_search_enabled param, _register_web_search_tool()
+- src/agent/tools.py: WebSearchTools class, WebSearchResult/WebSearchResponse models
+- src/cli/chat.py: /websearch command, --web-search flag, all ResearchAgent calls updated
+- src/cli/theme.py: Added Icons.SEARCH, Icons.GLOBE, /websearch to help panel
+- mcp_config.json: Added brave-search server config
+
+### Task Queue (from Archon backlog):
+- Task 6: Thinking Mode (DONE)
+- Task 7: Keyboard handler Shift+Tab (DONE)
+- Task 8: Dual web search (DONE)
+- Task 9: Built-in web_search wrapper (DONE - merged into Task 8)
+- Task 10: Brave Search MCP config (DONE - merged into Task 8)
+
+---

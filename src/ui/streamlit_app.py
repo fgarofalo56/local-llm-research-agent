@@ -610,11 +610,13 @@ def render_chat_interface(config: dict[str, Any]) -> None:
 
                     async def stream_response():
                         nonlocal full_response
-                        async for chunk in agent.chat_stream(prompt):
-                            full_response += chunk
-                            # Clear the status message once we start receiving chunks
-                            status_placeholder.empty()
-                            response_placeholder.markdown(full_response + "▌")
+                        # Establish MCP session for this conversation
+                        async with agent:
+                            async for chunk in agent.chat_stream(prompt):
+                                full_response += chunk
+                                # Clear the status message once we start receiving chunks
+                                status_placeholder.empty()
+                                response_placeholder.markdown(full_response + "▌")
 
                     run_async(stream_response())
                     status_placeholder.empty()
@@ -628,7 +630,12 @@ def render_chat_interface(config: dict[str, Any]) -> None:
                 else:
                     # Non-streaming mode - show creative spinner message
                     with st.spinner(get_thinking_message()):
-                        detailed_response = run_async(agent.chat_with_details(prompt))
+                        async def chat_with_session():
+                            # Establish MCP session for this conversation
+                            async with agent:
+                                return await agent.chat_with_details(prompt)
+                        
+                        detailed_response = run_async(chat_with_session())
                     response = detailed_response.content
                     st.markdown(response)
 

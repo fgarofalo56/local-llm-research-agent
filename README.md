@@ -875,6 +875,31 @@ Which researchers are assigned to multiple projects?
 | Ollama connection failed | Run `curl http://localhost:11434/api/tags` |
 | MCP server not found | Verify `MCP_MSSQL_PATH` in `.env` |
 
+### 🖥️ Streamlit UI Testing
+
+For comprehensive Streamlit UI testing instructions and automated test scripts, see **[docs/STREAMLIT_TESTING.md](docs/STREAMLIT_TESTING.md)**.
+
+**Quick Test (Windows):**
+```bash
+# Check system status
+check-status.bat
+
+# Start all services
+start-all.bat
+
+# Run Streamlit UI
+test-streamlit.bat
+```
+
+The testing guide includes:
+- ✅ Automated setup scripts (Windows batch files)
+- ✅ Step-by-step manual testing procedures
+- ✅ 7 comprehensive test cases (streaming, database queries, caching, etc.)
+- ✅ Troubleshooting checklist
+- ✅ Expected behavior and performance metrics
+
+**Recent Fix:** Streamlit UI now properly manages MCP server sessions using `async with agent:` context manager, matching the CLI implementation pattern.
+
 ---
 
 ## 🔌 MCP Tools Reference

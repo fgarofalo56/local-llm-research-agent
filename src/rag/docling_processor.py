@@ -3,12 +3,13 @@ Docling Document Processor
 Phase 2.1+: Enhanced RAG Pipeline with Docling
 
 Processes documents using Docling for comprehensive document handling.
-Supports PDF, DOCX, PPTX, XLSX, HTML, images, and more with advanced
-table extraction and layout understanding.
+Supports PDF, DOCX, PPTX, XLSX, HTML, images, CSV, AsciiDoc, and more
+with advanced table extraction, layout understanding, and OCR.
 
 https://github.com/DS4SD/docling
 """
 
+import os
 import tempfile
 from pathlib import Path
 from typing import Any
@@ -25,34 +26,59 @@ class DoclingDocumentProcessor:
     Docling provides:
     - Advanced PDF processing with layout understanding
     - Table extraction and structure preservation
-    - OCR support for scanned documents
-    - Multi-format support (PDF, DOCX, PPTX, XLSX, HTML, images)
+    - OCR support for scanned documents (configurable)
+    - Multi-format support (PDF, DOCX, PPTX, XLSX, HTML, images, CSV, etc.)
     - Hierarchical and hybrid chunking for RAG
     """
 
-    # Supported formats by Docling
+    # Supported formats by Docling - comprehensive list
+    # Maps file extensions to Docling InputFormat enum values
     SUPPORTED_EXTENSIONS = {
-        ".pdf",  # PDF documents
-        ".docx",  # Microsoft Word
-        ".pptx",  # Microsoft PowerPoint
-        ".xlsx",  # Microsoft Excel
-        ".html",  # HTML pages
-        ".htm",  # HTML pages
-        ".png",  # Images
-        ".jpg",  # Images
-        ".jpeg",  # Images
-        ".tiff",  # Images
-        ".tif",  # Images
-        ".bmp",  # Images
-        ".md",  # Markdown
-        ".txt",  # Plain text
+        # PDF documents
+        ".pdf",
+        # Microsoft Office formats
+        ".docx",  # Word
+        ".pptx",  # PowerPoint
+        ".xlsx",  # Excel
+        # Web formats
+        ".html",
+        ".htm",
+        ".xhtml",
+        # Markup formats
+        ".md",
+        ".markdown",
+        ".adoc",  # AsciiDoc
+        ".asciidoc",
+        # Data formats
+        ".csv",
+        # Image formats (for OCR)
+        ".png",
+        ".jpg",
+        ".jpeg",
+        ".tiff",
+        ".tif",
+        ".bmp",
+        ".webp",
+        ".gif",
+        # Caption/subtitle formats
+        ".vtt",  # WebVTT
+        # Plain text (handled specially - processed as markdown)
+        ".txt",
+        ".text",
+        ".log",
+        ".rst",  # reStructuredText
+        ".json",  # JSON (Docling JSON format)
     }
+
+    # Extensions that need special handling (not native Docling formats)
+    # These will be converted to markdown before processing
+    PLAIN_TEXT_EXTENSIONS = {".txt", ".text", ".log", ".rst"}
 
     def __init__(
         self,
         chunk_size: int = 500,
         chunk_overlap: int = 50,
-        use_ocr: bool = True,
+        use_ocr: bool | None = None,
         max_tokens: int | None = None,
     ):
         """
@@ -61,13 +87,23 @@ class DoclingDocumentProcessor:
         Args:
             chunk_size: Target size for text chunks (in characters, used for fallback)
             chunk_overlap: Overlap between consecutive chunks (used for fallback)
-            use_ocr: Enable OCR for scanned documents (requires additional models)
+            use_ocr: Enable OCR for scanned documents. If None, reads from
+                     DOCLING_OCR_ENABLED env var (default: True)
             max_tokens: Maximum tokens per chunk for HybridChunker (None = auto)
         """
         self.chunk_size = chunk_size
         self.chunk_overlap = chunk_overlap
-        self.use_ocr = use_ocr
         self.max_tokens = max_tokens
+
+        # OCR configuration - default to enabled, can be disabled via env var
+        if use_ocr is None:
+            self.use_ocr = os.getenv("DOCLING_OCR_ENABLED", "true").lower() in (
+                "true",
+                "1",
+                "yes",
+            )
+        else:
+            self.use_ocr = use_ocr
 
         # Lazy initialization of Docling components
         self._converter = None
@@ -93,26 +129,99 @@ class DoclingDocumentProcessor:
         return self._docling_available
 
     def _get_converter(self):
-        """Get or create the Docling DocumentConverter."""
-        if self._converter is None:
-            from docling.document_converter import DocumentConverter, PdfFormatOption
-            from docling.datamodel.base_models import InputFormat
-            from docling.datamodel.pipeline_options import PdfPipelineOptions
+        """
+        Get or create the Docling DocumentConverter.
 
-            # Configure PDF pipeline to use local-only mode (no external CAS service)
-            pdf_pipeline_options = PdfPipelineOptions()
-            pdf_pipeline_options.do_ocr = False  # Disable OCR to avoid external dependencies
-            pdf_pipeline_options.do_table_structure = True  # Keep table structure detection
-            
-            # Create converter with local-only configuration
-            self._converter = DocumentConverter(
-                format_options={
-                    InputFormat.PDF: PdfFormatOption(
-                        pipeline_options=pdf_pipeline_options
-                    )
-                }
+        Configures the converter with all supported formats and optional OCR.
+        """
+        if self._converter is None:
+            from docling.document_converter import (
+                DocumentConverter,
+                ImageFormatOption,
+                PdfFormatOption,
             )
-            logger.debug("docling_converter_initialized", mode="local-only")
+            from docling.datamodel.base_models import InputFormat
+            from docling.datamodel.pipeline_options import (
+                PdfPipelineOptions,
+                EasyOcrOptions,
+            )
+
+            # Configure PDF pipeline with OCR support
+            pdf_pipeline_options = PdfPipelineOptions()
+            pdf_pipeline_options.do_table_structure = True
+
+            # Configure OCR based on settings
+            if self.use_ocr:
+                pdf_pipeline_options.do_ocr = True
+                # Configure OCR with EasyOCR engine
+                # Languages: en, fr, de, es, etc. (ISO 639-1 codes for EasyOCR)
+                ocr_langs = os.getenv("DOCLING_OCR_LANGUAGES", "en").split(",")
+                try:
+                    # EasyOcrOptions has sensible defaults and works without GPU
+                    pdf_pipeline_options.ocr_options = EasyOcrOptions(
+                        lang=ocr_langs,
+                        use_gpu=False,  # Disable GPU to avoid CUDA dependency issues
+                        download_enabled=True,  # Allow downloading OCR models
+                    )
+                    logger.info("docling_ocr_enabled", engine="easyocr", languages=ocr_langs)
+                except Exception as e:
+                    logger.warning(
+                        "docling_ocr_config_failed",
+                        error=str(e),
+                        message="OCR will be disabled",
+                    )
+                    pdf_pipeline_options.do_ocr = False
+            else:
+                pdf_pipeline_options.do_ocr = False
+                logger.debug("docling_ocr_disabled")
+
+            # Configure image pipeline (same OCR settings as PDF)
+            image_pipeline_options = PdfPipelineOptions()
+            image_pipeline_options.do_ocr = self.use_ocr
+            if self.use_ocr:
+                try:
+                    ocr_langs = os.getenv("DOCLING_OCR_LANGUAGES", "en").split(",")
+                    image_pipeline_options.ocr_options = EasyOcrOptions(
+                        lang=ocr_langs,
+                        use_gpu=False,
+                        download_enabled=True,
+                    )
+                except Exception:
+                    image_pipeline_options.do_ocr = False
+
+            # Create converter with format-specific options
+            # By specifying format_options, we enable those formats
+            format_options = {
+                InputFormat.PDF: PdfFormatOption(pipeline_options=pdf_pipeline_options),
+                InputFormat.IMAGE: ImageFormatOption(
+                    pipeline_options=image_pipeline_options
+                ),
+                # Other formats use defaults (no special options needed)
+            }
+
+            # Create the converter - it will auto-detect and handle all formats
+            self._converter = DocumentConverter(
+                allowed_formats=[
+                    InputFormat.PDF,
+                    InputFormat.DOCX,
+                    InputFormat.PPTX,
+                    InputFormat.XLSX,
+                    InputFormat.HTML,
+                    InputFormat.IMAGE,
+                    InputFormat.MD,
+                    InputFormat.ASCIIDOC,
+                    InputFormat.CSV,
+                    InputFormat.JSON_DOCLING,
+                    InputFormat.VTT,
+                ],
+                format_options=format_options,
+            )
+
+            logger.debug(
+                "docling_converter_initialized",
+                ocr_enabled=self.use_ocr,
+                formats_count=11,
+            )
 
         return self._converter
 
@@ -181,6 +290,68 @@ class DoclingDocumentProcessor:
 
         return chunks
 
+    def _is_plain_text_file(self, suffix: str) -> bool:
+        """Check if file is a plain text file that needs special handling."""
+        return suffix.lower() in self.PLAIN_TEXT_EXTENSIONS
+
+    async def _process_plain_text(self, file_path: Path) -> dict[str, Any]:
+        """
+        Process plain text files directly without Docling.
+
+        Plain text files (.txt, .log, etc.) are not natively supported by Docling,
+        so we handle them with simple text processing.
+
+        Args:
+            file_path: Path to the text file
+
+        Returns:
+            Dictionary with chunks, metadata, and full text
+        """
+        # Try multiple encodings
+        encodings = ["utf-8", "utf-8-sig", "latin-1", "cp1252"]
+
+        for encoding in encodings:
+            try:
+                full_text = file_path.read_text(encoding=encoding)
+                break
+            except UnicodeDecodeError:
+                continue
+        else:
+            raise ValueError(
+                f"Could not decode {file_path.name} with any supported encoding "
+                f"(tried: {', '.join(encodings)})"
+            )
+
+        if not full_text.strip():
+            raise ValueError(f"File {file_path.name} is empty or contains only whitespace")
+
+        # Chunk the text
+        chunks = self._fallback_chunk_text(full_text)
+
+        if not chunks:
+            raise ValueError(f"No text chunks could be generated from {file_path.name}")
+
+        metadata = {
+            "filename": file_path.name,
+            "extension": file_path.suffix.lower(),
+            "page_count": None,
+            "processor": "docling-plaintext",
+            "file_size_bytes": file_path.stat().st_size,
+        }
+
+        logger.info(
+            "plaintext_file_processed",
+            path=str(file_path),
+            chunk_count=len(chunks),
+            total_chars=len(full_text),
+        )
+
+        return {
+            "chunks": chunks,
+            "metadata": metadata,
+            "full_text": full_text,
+        }
+
     async def process_file(self, file_path: Path) -> dict[str, Any]:
         """
         Process a file using Docling and return chunks.
@@ -226,6 +397,10 @@ class DoclingDocumentProcessor:
                 f"Supported formats: {', '.join(sorted(self.SUPPORTED_EXTENSIONS))}"
             )
 
+        # Handle plain text files specially (not native Docling format)
+        if self._is_plain_text_file(suffix):
+            return await self._process_plain_text(file_path)
+
         # Check if Docling is available
         if not self._check_docling_available():
             raise ImportError(
@@ -249,7 +424,8 @@ class DoclingDocumentProcessor:
                 )
                 raise ValueError(
                     f"No text could be extracted from {file_path.name}. "
-                    "The document may be empty or contain only scanned images."
+                    "The document may be empty or contain only scanned images. "
+                    f"OCR is {'enabled' if self.use_ocr else 'disabled - enable with DOCLING_OCR_ENABLED=true'}."
                 )
 
             # Get document metadata
@@ -307,6 +483,7 @@ class DoclingDocumentProcessor:
                 "page_count": page_count,
                 "processor": "docling",
                 "file_size_bytes": file_size,
+                "ocr_enabled": self.use_ocr,
             }
 
             # Add table count if available
@@ -334,14 +511,31 @@ class DoclingDocumentProcessor:
             raise
         except Exception as e:
             error_type = type(e).__name__
+            error_msg = str(e)
+
+            # Provide helpful error messages for common issues
+            if "format not allowed" in error_msg.lower():
+                logger.error(
+                    "docling_format_not_allowed",
+                    path=str(file_path),
+                    extension=suffix,
+                    error=error_msg,
+                )
+                raise ValueError(
+                    f"Docling could not process {suffix} file. "
+                    f"This format may require additional configuration. Error: {error_msg}"
+                ) from e
+
             logger.error(
                 "docling_processing_failed",
                 path=str(file_path),
                 error_type=error_type,
-                error=str(e),
+                error=error_msg,
                 traceback=traceback.format_exc(),
             )
-            raise ValueError(f"Failed to process document with Docling ({error_type}): {e}") from e
+            raise ValueError(
+                f"Failed to process document with Docling ({error_type}): {e}"
+            ) from e
 
     async def process_bytes(
         self,
@@ -533,7 +727,9 @@ class DoclingDocumentProcessor:
                 error=str(e),
                 traceback=traceback.format_exc(),
             )
-            raise ValueError(f"Failed to process URL with Docling ({error_type}): {e}") from e
+            raise ValueError(
+                f"Failed to process URL with Docling ({error_type}): {e}"
+            ) from e
 
 
 # Factory function to get the appropriate processor

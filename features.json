@@ -1,0 +1,51 @@
+{
+  "project_id": "16394505-e6c5-4e24-8ab4-97bd6a650cfb",
+  "session_id": "2026-01-11-autonomous",
+  "total_tasks": 5,
+  "completed": 0,
+  "passing": 0,
+  "failing": 0,
+  "tasks": [
+    {
+      "id": 1,
+      "name": "Cleanup & Commit",
+      "archon_task_id": null,
+      "status": "pending",
+      "priority": "high",
+      "subtasks": [
+        "Organize untracked .bat files",
+        "Move test files to proper locations",
+        "Commit modified files",
+        "Push to remote"
+      ]
+    },
+    {
+      "id": 2,
+      "name": "Review Analytics MCP Servers",
+      "archon_task_id": "2429a69e-59a4-4fc9-bec2-0f201dbb9301",
+      "status": "pending",
+      "priority": "high"
+    },
+    {
+      "id": 3,
+      "name": "Integration Tests for CLI",
+      "archon_task_id": "2a9590ac-5357-4aaf-8b30-4fd23e92fc9c",
+      "status": "pending",
+      "priority": "medium"
+    },
+    {
+      "id": 4,
+      "name": "RAG Integration",
+      "archon_task_id": "dd2ec1a3-4581-4f2c-82dd-0e9a0e512295",
+      "status": "pending",
+      "priority": "medium"
+    },
+    {
+      "id": 5,
+      "name": "Documentation Update",
+      "archon_task_id": "be00d537-84a0-4419-9060-f0fe466e0907",
+      "status": "pending",
+      "priority": "low"
+    }
+  ]
+}

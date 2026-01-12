@@ -599,6 +599,30 @@ async def run_query(agent: Agent, message: str) -> str:
         return result.output
 ```
 
+**CRITICAL:** Always use `async with agent:` context manager to establish MCP server connections before calling agent methods.
+
+### Streamlit MCP Session Management
+
+**IMPORTANT:** Streamlit requires wrapping agent calls with the context manager for proper MCP session handling.
+
+```python
+# ❌ WRONG - Missing context manager (breaks MCP tools)
+async def stream_response():
+    async for chunk in agent.chat_stream(prompt):
+        full_response += chunk
+
+# ✅ CORRECT - Wrapped in context manager
+async def stream_response():
+    async with agent:  # Establish MCP session
+        async for chunk in agent.chat_stream(prompt):
+            full_response += chunk
+
+# ✅ CORRECT - Non-streaming mode
+async def chat_with_session():
+    async with agent:
+        return await agent.chat_with_details(prompt)
+```
+
 ### Streamlit Async Helper
 
 ```python
@@ -613,6 +637,158 @@ def run_async(coro):
     finally:
         loop.close()
 ```
+
+**Pattern Differences:**
+
+| Interface | Session Management | Pattern |
+|-----------|-------------------|---------|
+| **CLI** | Session-level (once per chat session) | `async with agent:` wraps entire while loop |
+| **Streamlit** | Message-level (per user message) | `async with agent:` wraps each chat call |
+| **FastAPI WebSocket** | Connection-level (per WebSocket) | `async with agent:` wraps connection handler |
+
+---
+
+## MCP Server Management
+
+The project supports **multiple simultaneous MCP servers** with dynamic management via CLI commands. All enabled servers provide their tools to the agent at once.
+
+### Available MCP Servers (Default Configuration)
+
+| Server Name | Type | Transport | Description |
+|-------------|------|-----------|-------------|
+| **mssql** | MSSQL | stdio | SQL Server 2022 (ResearchAnalytics database) |
+| **microsoft.docs.mcp** | Custom | streamable_http | Microsoft Learn documentation search |
+| **analytics-management** | Custom | stdio | Dashboard, widget, query management for LLM_BackEnd |
+| **data-analytics** | Custom | stdio | Advanced analytics: stats, time series, anomaly detection |
+| **archon** | Custom | streamable_http | Project management and knowledge base |
+
+### CLI MCP Commands
+
+**List all servers:**
+```bash
+/mcp list
+# or just
+/mcp
+```
+
+Shows table with: Name, Type, Transport, Status (enabled/disabled), Description
+
+**Show server details:**
+```bash
+/mcp status <server-name>
+```
+
+Displays:
+- Server type and transport
+- Command/URL configuration
+- Environment variables
+- Enabled state
+- Timeout settings
+
+**Enable/Disable servers:**
+```bash
+/mcp enable <server-name>    # Enable server (restart required)
+/mcp disable <server-name>   # Disable without removing config
+```
+
+**Note:** Changes persist to `mcp_config.json` but require **restarting the chat** to take effect. Hot-reload within a session is not yet supported.
+
+**Add new server interactively:**
+```bash
+/mcp add
+```
+
+Interactive wizard prompts for:
+1. Server type (MSSQL, PostgreSQL, MongoDB, Brave Search, Custom)
+2. Transport type (stdio, streamable_http, sse)
+3. Server name (unique identifier)
+4. Connection details:
+   - **stdio:** command, args, environment variables
+   - **HTTP/SSE:** URL, headers
+5. Read-only mode (optional)
+6. Description (optional)
+
+**Remove server:**
+```bash
+/mcp remove <server-name>
+```
+
+Prompts for confirmation before removing from config.
+
+**Reconnect failed server:**
+```bash
+/mcp reconnect <server-name>
+```
+
+Attempts to restart a server that failed to connect.
+
+**List available tools (future):**
+```bash
+/mcp tools [server-name]
+```
+
+*Note: Full tool listing requires agent hot-reload implementation.*
+
+### Multi-Server Architecture
+
+**How it works:**
+1. `MCPClientManager` loads all server configs from `mcp_config.json`
+2. Only **enabled** servers are loaded into agent toolsets
+3. Agent receives **combined toolsets** from all enabled servers
+4. Agent intelligently selects appropriate tools based on query
+5. Server failures are isolated - one failure doesn't break others
+
+**Configuration file:** `mcp_config.json`
+- JSON format with Pydantic validation
+- Supports environment variable expansion: `${VAR_NAME}` or `${VAR_NAME:-default}`
+- Nested variable expansion supported: `${VAR1:-${VAR2}}`
+
+**Transport types:**
+- **stdio:** Local subprocess (command + args) - for local MCP servers
+- **streamable_http:** HTTP endpoint - for production/remote servers
+- **sse:** Server-Sent Events - legacy support
+
+### Example: Adding a Custom MCP Server
+
+```bash
+/mcp add
+
+# Interactive prompts:
+Server type: custom
+Transport: stdio
+Name: my-custom-server
+Command: node
+Args: /path/to/server/index.js
+Environment variables (KEY=value, blank to finish):
+  MY_VAR=value
+  ANOTHER_VAR=value2
+  <blank>
+Read-only? n
+Description: My custom MCP server
+
+✓ Added stdio server: my-custom-server
+ℹ Restart chat to activate
+```
+
+### Environment Variable Examples
+
+In `mcp_config.json`:
+```json
+{
+  "mcpServers": {
+    "mssql": {
+      "env": {
+        "SERVER_NAME": "${SQL_SERVER_HOST}",
+        "DATABASE_NAME": "${SQL_DATABASE_NAME}",
+        "USERNAME": "${SQL_USERNAME}",
+        "READONLY": "${MCP_MSSQL_READONLY:-false}"
+      }
+    }
+  }
+}
+```
+
+Variables are resolved from `.env` file at startup.
 
 ---
 

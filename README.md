@@ -1,6 +1,6 @@
-# 🔍 Local LLM Research Analytics Tool
+# 🔍 Local LLM Universal Research Agent
 
-> **A 100% local smart chat agent for SQL Server data analytics. Query your database using natural language with complete privacy - all inference runs locally via Ollama or Microsoft Foundry Local.**
+> **A 100% local universal research agent combining SQL analytics, RAG-powered knowledge retrieval, and multi-MCP tool integration. Query databases, search documents, and leverage multiple tools - all with complete privacy via local Ollama inference.**
 
 ---
 
@@ -559,6 +559,62 @@ uv run python -m src.cli.chat chat --provider foundry_local
 # With read-only mode (safer for exploration)
 uv run python -m src.cli.chat --readonly
 ```
+
+### 📝 CLI Interactive Commands
+
+Once inside the CLI chat, use these commands:
+
+#### Core Commands
+
+| Command | Description |
+|---------|-------------|
+| `quit` / `exit` / `q` | Exit the chat |
+| `clear` | Clear conversation history |
+| `status` | Show connection info and provider status |
+| `cache` | Display cache statistics |
+| `cache-clear` | Clear the response cache |
+| `help` | Show available commands |
+
+#### Export & History
+
+| Command | Description |
+|---------|-------------|
+| `export [format]` | Export conversation (json, csv, md) |
+| `history` | List saved sessions |
+| `history save` | Save current session |
+| `history load <id>` | Load a previous session |
+| `history delete <id>` | Delete a saved session |
+
+#### Provider & Model Switching
+
+| Command | Description |
+|---------|-------------|
+| `/provider <name>` | Switch LLM provider (ollama, foundry_local) |
+| `/model <name>` | Switch to a different model |
+| `/models` | List all available models |
+
+#### MCP Server Management
+
+| Command | Description |
+|---------|-------------|
+| `/mcp` | List all MCP servers with status |
+| `/mcp status <name>` | Show detailed server info |
+| `/mcp add` | Add new server interactively |
+| `/mcp enable <name>` | Enable a disabled server |
+| `/mcp disable <name>` | Disable a server |
+| `/mcp remove <name>` | Remove server from config |
+| `/mcp reconnect <name>` | Reconnect a failed server |
+
+#### Database Management
+
+| Command | Description |
+|---------|-------------|
+| `db` | List configured databases |
+| `db switch <name>` | Switch active database |
+| `db add` | Add new database interactively |
+| `db remove <name>` | Remove database config |
+
+> 💡 **Tip**: MCP server changes require restarting the chat to take effect.
 
 ### 🌐 Streamlit Web UI
 

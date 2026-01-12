@@ -37,13 +37,24 @@ BEFORE doing ANYTHING else, ALWAYS perform these checks in order:
 
 ---
 
-# CLAUDE.md - Local LLM Research Analytics Tool
+# CLAUDE.md - Local LLM Universal Research Agent
 
 ## Project Overview
 
-This is a **100% local** smart chat agent for SQL Server data analytics research. The system uses Ollama for local LLM inference, Pydantic AI for agent orchestration, and integrates with MCP (Model Context Protocol) servers for extensible tool capabilities.
+This is a **100% local** universal research agent combining SQL Server analytics, RAG-powered knowledge retrieval, and multi-MCP tool integration. The system uses Ollama for local LLM inference, Pydantic AI for agent orchestration, and supports multiple MCP servers for extensible tool capabilities.
 
 **IMPORTANT:** This project prioritizes privacy and local execution. All LLM inference runs locally via Ollama. No data leaves the local environment.
+
+### Universal Agent Capabilities
+
+| Capability | Description |
+|------------|-------------|
+| **SQL Analytics** | Query SQL Server databases via MSSQL MCP |
+| **RAG Knowledge Base** | Hybrid vector + keyword search with SQL Server 2025 native vectors |
+| **Multi-MCP Tools** | Connect multiple MCP servers simultaneously (MSSQL, Analytics, Docs, custom) |
+| **Thinking Mode** | Enable detailed reasoning with `<think>` tags |
+| **Document Processing** | Index 14+ document formats via Docling |
+| **Conversation History** | Save/load sessions, export to JSON/CSV/Markdown |
 
 ---
 

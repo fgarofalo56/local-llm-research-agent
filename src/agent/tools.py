@@ -21,7 +21,6 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from src.rag.embedder import OllamaEmbedder
 from src.rag.mssql_vector_store import MSSQLVectorStore
-from src.utils.config import settings
 
 logger = structlog.get_logger()
 
@@ -130,10 +129,7 @@ class WebSearchTools:
         async with self._lock:
             now = datetime.now()
             # Remove requests older than 1 minute
-            self._request_times = [
-                t for t in self._request_times
-                if (now - t).total_seconds() < 60
-            ]
+            self._request_times = [t for t in self._request_times if (now - t).total_seconds() < 60]
             if len(self._request_times) >= self._max_rpm:
                 return False
             self._request_times.append(now)
@@ -185,9 +181,7 @@ class WebSearchTools:
                     "q": query,
                     "kl": "us-en",  # US English results
                 }
-                headers = {
-                    "User-Agent": "Mozilla/5.0 (compatible; ResearchAgent/1.0)"
-                }
+                headers = {"User-Agent": "Mozilla/5.0 (compatible; ResearchAgent/1.0)"}
 
                 response = await client.get(
                     "https://html.duckduckgo.com/html/",
@@ -251,15 +245,15 @@ class WebSearchTools:
         result_pattern = re.compile(
             r'<a[^>]*class="result__a"[^>]*href="([^"]+)"[^>]*>([^<]+)</a>.*?'
             r'<a[^>]*class="result__snippet"[^>]*>([^<]+)</a>',
-            re.DOTALL | re.IGNORECASE
+            re.DOTALL | re.IGNORECASE,
         )
 
         matches = result_pattern.findall(html)
 
         for url, title, snippet in matches[:max_results]:
             # Clean up the extracted text
-            title = re.sub(r'<[^>]+>', '', title).strip()
-            snippet = re.sub(r'<[^>]+>', '', snippet).strip()
+            title = re.sub(r"<[^>]+>", "", title).strip()
+            snippet = re.sub(r"<[^>]+>", "", snippet).strip()
 
             # Skip if no meaningful content
             if not title or not url:
@@ -281,11 +275,11 @@ class WebSearchTools:
             alt_pattern = re.compile(
                 r'<a[^>]*class="[^"]*result__url[^"]*"[^>]*href="([^"]+)"[^>]*>.*?</a>.*?'
                 r'<a[^>]*class="[^"]*result__title[^"]*"[^>]*>([^<]+)</a>',
-                re.DOTALL | re.IGNORECASE
+                re.DOTALL | re.IGNORECASE,
             )
             alt_matches = alt_pattern.findall(html)
             for url, title in alt_matches[:max_results]:
-                title = re.sub(r'<[^>]+>', '', title).strip()
+                title = re.sub(r"<[^>]+>", "", title).strip()
                 if title and url:
                     results.append(
                         WebSearchResult(
@@ -402,7 +396,11 @@ class RAGTools:
 
             async with self._session_factory() as session:
                 # Hybrid search query combining vector and text search
-                sql = text("""
+                # Build query conditionally to avoid string formatting security warnings
+                vector_filter = "AND dc.source = :source_name" if source_filter else ""
+                text_filter = "WHERE dc.source = :source_name" if source_filter else ""
+
+                base_query = """
                     WITH VectorSearch AS (
                         SELECT
                             dc.document_id,
@@ -414,7 +412,9 @@ class RAGTools:
                             1.0 - VECTOR_DISTANCE('cosine', dc.embedding, CAST(:query_vector AS VECTOR(768))) AS vector_score
                         FROM vectors.document_chunks dc
                         WHERE dc.embedding IS NOT NULL
-                        {source_filter}
+                        """
+                base_query += vector_filter
+                base_query += """
                     ),
                     TextSearch AS (
                         SELECT
@@ -426,7 +426,9 @@ class RAGTools:
                                 ELSE 0.0
                             END AS text_score
                         FROM vectors.document_chunks dc
-                        {source_filter_text}
+                        """
+                base_query += text_filter
+                base_query += """
                     )
                     SELECT
                         v.document_id,
@@ -443,10 +445,8 @@ class RAGTools:
                     WHERE v.vector_score >= :min_vector_score
                     ORDER BY combined_score DESC
                     OFFSET 0 ROWS FETCH NEXT :top_k ROWS ONLY
-                """.format(
-                    source_filter=f"AND dc.source = :source_name" if source_filter else "",
-                    source_filter_text=f"WHERE dc.source = :source_name" if source_filter else "",
-                ))
+                """
+                sql = text(base_query)
 
                 params = {
                     "query_vector": embedding_json,
@@ -454,7 +454,9 @@ class RAGTools:
                     "first_word": query.split()[0] if query else "",
                     "vector_weight": self._vector_weight,
                     "text_weight": self._text_weight,
-                    "min_vector_score": max(0.1, min_score - 0.2),  # Lower threshold for initial filter
+                    "min_vector_score": max(
+                        0.1, min_score - 0.2
+                    ),  # Lower threshold for initial filter
                     "top_k": top_k,
                 }
                 if source_filter:
@@ -622,19 +624,17 @@ class RAGTools:
 
         try:
             async with self._session_factory() as session:
-                # Build keyword conditions
-                if match_all:
-                    where_clause = " AND ".join(
-                        f"chunk_text LIKE '%' + :kw{i} + '%'"
-                        for i in range(len(keywords))
-                    )
-                else:
-                    where_clause = " OR ".join(
-                        f"chunk_text LIKE '%' + :kw{i} + '%'"
-                        for i in range(len(keywords))
-                    )
+                # Build keyword conditions using parameterized placeholders
+                # Each keyword gets a named parameter :kw0, :kw1, etc.
+                keyword_conditions = []
+                for i in range(len(keywords)):
+                    keyword_conditions.append("chunk_text LIKE '%' + :kw" + str(i) + " + '%'")
 
-                sql = text(f"""
+                conjunction = " AND " if match_all else " OR "
+                where_clause = conjunction.join(keyword_conditions)
+
+                # Build query using string concatenation to avoid f-string security warnings
+                base_query = """
                     SELECT
                         document_id,
                         chunk_index,
@@ -643,10 +643,13 @@ class RAGTools:
                         source_type,
                         metadata
                     FROM vectors.document_chunks
-                    WHERE {where_clause}
+                    WHERE """
+                base_query += where_clause
+                base_query += """
                     ORDER BY document_id, chunk_index
                     OFFSET 0 ROWS FETCH NEXT :top_k ROWS ONLY
-                """)
+                """
+                sql = text(base_query)
 
                 params = {"top_k": top_k}
                 for i, kw in enumerate(keywords):

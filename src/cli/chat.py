@@ -52,6 +52,13 @@ from src.utils.health import (
 )
 from src.utils.history import get_history_manager
 from src.utils.logger import get_logger, setup_logging
+from src.cli.command_handlers import (
+    handle_clear_command,
+    handle_cache_command,
+    handle_cache_clear_command,
+    handle_export_command,
+    handle_help_command,
+)
 
 logger = get_logger(__name__)
 
@@ -274,16 +281,16 @@ def format_thinking_content(content: str) -> str:
     import re
 
     # Pattern to match <think>...</think> blocks (handles multiline)
-    think_pattern = re.compile(r'<think>(.*?)</think>', re.DOTALL)
+    think_pattern = re.compile(r"<think>(.*?)</think>", re.DOTALL)
 
     def replace_think(match: re.Match) -> str:
         thinking_text = match.group(1).strip()
         # Format thinking content with visual distinction
-        lines = thinking_text.split('\n')
+        lines = thinking_text.split("\n")
         formatted_lines = []
         for line in lines:
             formatted_lines.append(f"[{COLORS['gray_400']}]│ {line}[/]")
-        thinking_block = '\n'.join(formatted_lines)
+        thinking_block = "\n".join(formatted_lines)
         return f"\n[{COLORS['accent']}]{Icons.THINKING} Reasoning:[/]\n{thinking_block}\n"
 
     return think_pattern.sub(replace_think, content)
@@ -345,8 +352,7 @@ class ThinkingModeInput:
         # Show thinking mode hint if disabled
         if not self.thinking_mode and sys.stdin.isatty():
             self.console.print(
-                f"[{COLORS['gray_600']}]Press Shift+Tab to enable Thinking Mode[/]",
-                end="  "
+                f"[{COLORS['gray_600']}]Press Shift+Tab to enable Thinking Mode[/]", end="  "
             )
 
         try:
@@ -422,15 +428,15 @@ async def run_chat_loop(
     # Load enabled MCP servers
     try:
         from src.mcp.client import MCPClientManager
-        
+
         mcp_manager = MCPClientManager()
         enabled_servers = [s.name for s in mcp_manager.list_servers() if s.enabled]
-        
+
         if enabled_servers:
             console.print(
                 f"[{COLORS['gray_400']}]{Icons.GEAR} Loading MCP servers: {', '.join(enabled_servers)}[/]"
             )
-        
+
         agent = ResearchAgent(
             provider_type=effective_provider,
             model_name=model,
@@ -492,6 +498,8 @@ async def run_chat_loop(
                     if mode_toggled:
                         thinking_mode = input_handler.thinking_mode
                         try:
+                            # Properly exit old agent context before creating new one
+                            await agent.__aexit__(None, None, None)
                             agent = ResearchAgent(
                                 provider_type=effective_provider,
                                 model_name=model,
@@ -524,8 +532,7 @@ async def run_chat_loop(
                     break
 
                 if command == "clear":
-                    agent.clear_history()
-                    console.print(success_message("Conversation cleared"))
+                    await handle_clear_command(agent, console)
                     continue
 
                 if command == "status":
@@ -533,44 +540,15 @@ async def run_chat_loop(
                     continue
 
                 if command == "cache":
-                    print_cache_stats(agent)
+                    await handle_cache_command(agent, console)
                     continue
 
                 if command == "cache-clear":
-                    count = agent.clear_cache()
-                    console.print(success_message(f"Cache cleared ({count} entries removed)"))
+                    await handle_cache_clear_command(agent, console)
                     continue
 
                 if command.startswith("export"):
-                    parts = command.split()
-                    if len(parts) == 1:
-                        # Prompt for format
-                        fmt = Prompt.ask(
-                            f"[{COLORS['gray_400']}]Export format[/]",
-                            choices=["json", "csv", "md"],
-                            default="json",
-                        )
-                    else:
-                        fmt = parts[1].lower()
-
-                    if agent.conversation.total_turns == 0:
-                        console.print(warning_message("No conversation to export"))
-                        continue
-
-                    try:
-                        filename = generate_export_filename("chat", fmt)
-                        if fmt == "json":
-                            export_to_json(agent.conversation, filename)
-                        elif fmt == "csv":
-                            export_conversation_to_csv(agent.conversation, filename)
-                        elif fmt in ("md", "markdown"):
-                            export_to_markdown(agent.conversation, filename)
-                        else:
-                            console.print(error_message(f"Unknown format: {fmt}"))
-                            continue
-                        console.print(success_message(f"Exported to: {filename}"))
-                    except Exception as e:
-                        console.print(error_message(f"Export failed: {e}"))
+                    await handle_export_command(command, agent, console)
                     continue
 
                 if command.startswith("history"):
@@ -600,7 +578,9 @@ async def run_chat_loop(
                         if agent.conversation.total_turns == 0:
                             console.print(warning_message("No conversation to save"))
                         else:
-                            title = Prompt.ask(f"[{COLORS['gray_400']}]Session title[/]", default="")
+                            title = Prompt.ask(
+                                f"[{COLORS['gray_400']}]Session title[/]", default=""
+                            )
                             session_id = history.save_session(
                                 agent.conversation,
                                 title=title if title else None,
@@ -616,7 +596,9 @@ async def run_chat_loop(
                         if session:
                             # Restore conversation
                             agent.conversation = session.to_conversation()
-                            console.print(success_message(f"Session loaded: {session.metadata.title}"))
+                            console.print(
+                                success_message(f"Session loaded: {session.metadata.title}")
+                            )
                             console.print(
                                 f"  {Icons.BULLET} [{COLORS['gray_400']}]{session.metadata.turn_count} turns restored[/]"
                             )
@@ -633,7 +615,9 @@ async def run_chat_loop(
                         continue
 
                     else:
-                        console.print(info_message("Usage: history [list|save|load <id>|delete <id>]"))
+                        console.print(
+                            info_message("Usage: history [list|save|load <id>|delete <id>]")
+                        )
                         continue
 
                 if command.startswith("db"):
@@ -692,7 +676,9 @@ async def run_chat_loop(
                         console.print(styled_divider())
                         console.print()
 
-                        name = Prompt.ask(f"[{COLORS['gray_400']}]Database name (unique identifier)[/]")
+                        name = Prompt.ask(
+                            f"[{COLORS['gray_400']}]Database name (unique identifier)[/]"
+                        )
                         if not name:
                             console.print(error_message("Name is required"))
                             continue
@@ -703,7 +689,8 @@ async def run_chat_loop(
                         port = int(Prompt.ask(f"[{COLORS['gray_400']}]Port[/]", default="1433"))
                         database = Prompt.ask(f"[{COLORS['gray_400']}]Database name[/]")
                         username = Prompt.ask(
-                            f"[{COLORS['gray_400']}]Username (blank for Windows Auth)[/]", default=""
+                            f"[{COLORS['gray_400']}]Username (blank for Windows Auth)[/]",
+                            default="",
                         )
                         password = ""
                         if username:
@@ -751,17 +738,19 @@ async def run_chat_loop(
                         continue
 
                     else:
-                        console.print(info_message("Usage: db [list|switch <name>|add|remove <name>]"))
+                        console.print(
+                            info_message("Usage: db [list|switch <name>|add|remove <name>]")
+                        )
                         continue
 
                 if command == "help":
-                    print_help_commands()
+                    await handle_help_command(console)
                     continue
 
                 # Handle /mcp commands
                 if command.startswith("/mcp") or command.startswith("mcp"):
                     from src.cli.mcp_commands import handle_mcp_command
-                
+
                     # Normalize command to start with /mcp
                     normalized_cmd = command if command.startswith("/mcp") else f"/{command}"
                     handle_mcp_command(console, normalized_cmd)
@@ -797,6 +786,8 @@ async def run_chat_loop(
 
                     # Create new agent with the new provider
                     try:
+                        # Properly exit old agent context before creating new one
+                        await agent.__aexit__(None, None, None)
                         effective_provider = new_provider
                         model = new_status.get("model")  # Use provider's default/available model
                         agent = ResearchAgent(
@@ -872,6 +863,8 @@ async def run_chat_loop(
 
                     # Create new agent with the new model
                     try:
+                        # Properly exit old agent context before creating new one
+                        await agent.__aexit__(None, None, None)
                         agent = ResearchAgent(
                             provider_type=effective_provider,
                             model_name=new_model,
@@ -910,6 +903,8 @@ async def run_chat_loop(
                     input_handler.thinking_mode = thinking_mode
                     # Recreate agent with updated thinking mode
                     try:
+                        # Properly exit old agent context before creating new one
+                        await agent.__aexit__(None, None, None)
                         agent = ResearchAgent(
                             provider_type=effective_provider,
                             model_name=model,
@@ -944,6 +939,8 @@ async def run_chat_loop(
                     web_search_enabled = not web_search_enabled
                     # Recreate agent with updated web search mode
                     try:
+                        # Properly exit old agent context before creating new one
+                        await agent.__aexit__(None, None, None)
                         agent = ResearchAgent(
                             provider_type=effective_provider,
                             model_name=model,
@@ -958,9 +955,7 @@ async def run_chat_loop(
                         # Re-enter the agent context
                         await agent.__aenter__()
                         if web_search_enabled:
-                            console.print(
-                                success_message(f"{Icons.SEARCH} Web search enabled")
-                            )
+                            console.print(success_message(f"{Icons.SEARCH} Web search enabled"))
                             console.print(
                                 f"  {Icons.BULLET} [{COLORS['gray_400']}]Built-in: DuckDuckGo (always available)[/]"
                             )
@@ -988,6 +983,8 @@ async def run_chat_loop(
                     rag_enabled = not rag_enabled
                     # Recreate agent with updated RAG mode
                     try:
+                        # Properly exit old agent context before creating new one
+                        await agent.__aexit__(None, None, None)
                         agent = ResearchAgent(
                             provider_type=effective_provider,
                             model_name=model,
@@ -1002,9 +999,7 @@ async def run_chat_loop(
                         # Re-enter the agent context
                         await agent.__aenter__()
                         if rag_enabled:
-                            console.print(
-                                success_message("📚 RAG knowledge base enabled")
-                            )
+                            console.print(success_message("📚 RAG knowledge base enabled"))
                             console.print(
                                 f"  {Icons.BULLET} [{COLORS['gray_400']}]Tools: search_knowledge_base, list_knowledge_sources, get_document[/]"
                             )
@@ -1047,12 +1042,15 @@ async def run_chat_loop(
                         detailed_response = await agent.chat_with_details(user_input)
                     # Format thinking tags if present
                     response_content = detailed_response.content
-                    if thinking_mode and '<think>' in response_content:
+                    if thinking_mode and "<think>" in response_content:
                         response_content = format_thinking_content(response_content)
                     console.print(response_content)
 
                     # Display token usage
-                    if detailed_response.token_usage and detailed_response.token_usage.total_tokens > 0:
+                    if (
+                        detailed_response.token_usage
+                        and detailed_response.token_usage.total_tokens > 0
+                    ):
                         console.print(
                             format_token_usage(
                                 prompt_tokens=detailed_response.token_usage.prompt_tokens,
@@ -1131,7 +1129,7 @@ def chat(
     rag: bool = typer.Option(
         False,
         "--rag",
-        "-r",
+        "-k",
         help="Enable RAG knowledge base search (SQL Server 2025 vectors)",
     ),
     debug: bool = typer.Option(

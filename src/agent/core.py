@@ -11,7 +11,7 @@ from collections.abc import AsyncIterator
 from pydantic_ai import Agent
 
 from src.agent.cache import AgentCache
-from src.agent.prompts import get_system_prompt, format_mcp_servers_info
+from src.agent.prompts import format_mcp_servers_info, get_system_prompt
 from src.agent.stats import AgentStats
 from src.agent.tools import RAGTools, WebSearchTools, create_rag_tools, create_web_search_tools
 from src.mcp.client import MCPClientManager
@@ -114,7 +114,7 @@ class ResearchAgent:
 
         # Initialize MCP components
         self.mcp_manager = MCPClientManager()
-        
+
         # Active toolsets will be loaded in initialize()
         self._active_toolsets = []
 
@@ -160,7 +160,7 @@ class ResearchAgent:
 
         # Conversation tracking
         self.conversation = Conversation()
-        
+
         # Agent will be created in initialize()
         self.agent = None
 
@@ -197,7 +197,9 @@ class ResearchAgent:
         # Build tools info for system prompt
         tools_info = mcp_info
         if self.web_search_enabled:
-            tools_info += "\n\n**Web Search Tool:**\n- `search_web`: Search the internet using DuckDuckGo"
+            tools_info += (
+                "\n\n**Web Search Tool:**\n- `search_web`: Search the internet using DuckDuckGo"
+            )
         if self.rag_enabled:
             tools_info += "\n\n**RAG Knowledge Base Tools:**\n- `search_knowledge_base`: Hybrid vector + keyword search\n- `list_knowledge_sources`: Show available document collections\n- `get_document`: Retrieve full document by ID"
 
@@ -240,7 +242,7 @@ class ResearchAgent:
     async def initialize(self) -> None:
         """
         Initialize MCP toolsets and create the agent.
-        
+
         DEPRECATED: Initialization now happens in __init__.
         This method is kept for backward compatibility and does nothing.
         """
@@ -249,17 +251,17 @@ class ResearchAgent:
     def _load_toolsets(self) -> None:
         """
         Load MCP server toolsets based on enabled servers list.
-        
+
         Gracefully handles failures - agent continues without failed tools.
         """
         # Load configuration first
         self.mcp_manager.load_config()
-        
+
         # Get active toolsets from the manager
         self._active_toolsets = self.mcp_manager.get_active_toolsets()
-        
+
         logger.info("mcp_toolsets_loaded", count=len(self._active_toolsets))
-        
+
         if not self._active_toolsets:
             logger.warning(
                 "no_toolsets_loaded",
@@ -301,13 +303,13 @@ class ResearchAgent:
                 return f"No results found for '{query}'. Try rephrasing your search."
 
             # Format results as readable text for the LLM
-            formatted_results = [f"**Web Search Results for '{query}'** ({response.total_results} results)\n"]
+            formatted_results = [
+                f"**Web Search Results for '{query}'** ({response.total_results} results)\n"
+            ]
 
             for i, result in enumerate(response.results, 1):
                 formatted_results.append(
-                    f"{i}. **{result.title}**\n"
-                    f"   URL: {result.url}\n"
-                    f"   {result.snippet}\n"
+                    f"{i}. **{result.title}**\n   URL: {result.url}\n   {result.snippet}\n"
                 )
 
             return "\n".join(formatted_results)
@@ -492,7 +494,7 @@ class ResearchAgent:
     async def __aenter__(self):
         """
         Enter the agent context.
-        
+
         This establishes MCP server connections once at the start of a session,
         rather than reconnecting on every message.
         """
@@ -502,7 +504,7 @@ class ResearchAgent:
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         """
         Exit the agent context.
-        
+
         This cleanly closes MCP server connections at the end of the session.
         """
         return await self.agent.__aexit__(exc_type, exc_val, exc_tb)

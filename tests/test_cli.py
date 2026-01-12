@@ -199,13 +199,22 @@ class TestChatLoopIntegration:
     @patch("src.cli.chat.check_provider_status")
     @patch("src.cli.chat.settings")
     @patch("src.cli.chat.ResearchAgent")
+    @patch("src.cli.chat.ThinkingModeInput")
     @patch("src.cli.chat.Prompt.ask")
-    async def test_chat_loop_quit(self, mock_ask, mock_agent_cls, mock_settings, mock_check):
+    async def test_chat_loop_quit(
+        self, mock_ask, mock_thinking_input, mock_agent_cls, mock_settings, mock_check
+    ):
         """Test chat loop exits on quit."""
         mock_check.return_value = {"available": True}
         mock_settings.mcp_mssql_path = "/path/to/mcp"
         mock_settings.llm_provider = "ollama"
         mock_ask.return_value = "quit"
+
+        # Mock ThinkingModeInput to avoid TTY requirement
+        mock_input_handler = MagicMock()
+        mock_input_handler.is_interactive.return_value = False
+        mock_input_handler.prompt.return_value = "quit"
+        mock_thinking_input.return_value = mock_input_handler
 
         mock_agent = MagicMock()
         mock_agent_cls.return_value = mock_agent
@@ -220,15 +229,22 @@ class TestChatLoopIntegration:
     @patch("src.cli.chat.check_provider_status")
     @patch("src.cli.chat.settings")
     @patch("src.cli.chat.ResearchAgent")
+    @patch("src.cli.chat.ThinkingModeInput")
     @patch("src.cli.chat.Prompt.ask")
     async def test_chat_loop_clear_command(
-        self, mock_ask, mock_agent_cls, mock_settings, mock_check
+        self, mock_ask, mock_thinking_input, mock_agent_cls, mock_settings, mock_check
     ):
         """Test chat loop clears history on clear command."""
         mock_check.return_value = {"available": True}
         mock_settings.mcp_mssql_path = "/path/to/mcp"
         mock_settings.llm_provider = "ollama"
         mock_ask.side_effect = ["clear", "quit"]
+
+        # Mock ThinkingModeInput to avoid TTY requirement
+        mock_input_handler = MagicMock()
+        mock_input_handler.is_interactive.return_value = False
+        mock_input_handler.prompt.side_effect = ["clear", "quit"]
+        mock_thinking_input.return_value = mock_input_handler
 
         mock_agent = MagicMock()
         mock_agent.clear_history = MagicMock()
@@ -244,15 +260,22 @@ class TestChatLoopIntegration:
     @patch("src.cli.chat.check_provider_status")
     @patch("src.cli.chat.settings")
     @patch("src.cli.chat.ResearchAgent")
+    @patch("src.cli.chat.ThinkingModeInput")
     @patch("src.cli.chat.Prompt.ask")
     async def test_chat_loop_streaming_mode(
-        self, mock_ask, mock_agent_cls, mock_settings, mock_check
+        self, mock_ask, mock_thinking_input, mock_agent_cls, mock_settings, mock_check
     ):
         """Test chat loop with streaming enabled."""
         mock_check.return_value = {"available": True}
         mock_settings.mcp_mssql_path = "/path/to/mcp"
         mock_settings.llm_provider = "ollama"
         mock_ask.side_effect = ["test message", "quit"]
+
+        # Mock ThinkingModeInput to avoid TTY requirement
+        mock_input_handler = MagicMock()
+        mock_input_handler.is_interactive.return_value = False
+        mock_input_handler.prompt.side_effect = ["test message", "quit"]
+        mock_thinking_input.return_value = mock_input_handler
 
         async def mock_stream():
             yield "Response "

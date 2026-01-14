@@ -289,6 +289,10 @@ temp/
 *.bak
 *.backup
 
+# Claude Code temporary files
+tmpclaude-*/
+tmpclaude-*
+
 # -------------------- Data and Models --------------------
 # Large data files
 *.csv
@@ -343,6 +347,9 @@ build/
 # Claude Code (keep skills but ignore other generated files)
 .claude/
 !.claude/skills/
+
+# Session-specific development context
+.context/
 
 # Windows null device file (sometimes created accidentally)
 nul

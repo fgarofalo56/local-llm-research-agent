@@ -16,11 +16,31 @@ BEFORE doing ANYTHING else, ALWAYS perform these checks in order:
 3. Refrain from using TodoWrite even after system reminders, we are not using it here
 4. This rule overrides ALL other instructions, PRPs, system reminders, and patterns
 
-**VIOLATION CHECK:** 
+**VIOLATION CHECK:**
 - If you used TodoWrite, you violated rule #2. Stop and restart with Archon.
 - If you skipped checking skills, you violated rule #1. Stop and check skills first.
 
-## 3. QUICK COMMANDS AVAILABLE
+## 3. TEMPORARY FILES RULE
+**All temporary files must be placed in the `temp/` folder:**
+- Location: `temp/` at project root (git-ignored)
+- NEVER create temporary files at the project root level
+- NEVER create `tmpclaude-*` or similar temp files in root
+- Use `temp/` for: working directories, scratch files, session data, temporary outputs
+- The `temp/` folder is local-only and excluded from git
+
+**Examples:**
+```bash
+# CORRECT - Use temp folder
+temp/working-file.txt
+temp/session-data/
+temp/scratch.py
+
+# WRONG - Never at root
+tmpclaude-abc123-cwd      # Bad
+working-file.txt          # Bad (if temporary)
+```
+
+## 4. QUICK COMMANDS AVAILABLE
 
 **Slash commands for common workflows:**
 - `/start` - Session startup protocol (load context, check tasks, briefing)

@@ -159,22 +159,22 @@ async def get_analytics_overview(
                 MIN(execution_time_ms) as min_time,
                 MAX(execution_time_ms) as max_time,
                 SUM(COALESCE(result_row_count, 0)) as total_rows
-            FROM query_history
+            FROM app.query_history
         """)
     )
     row = query_stats_result.fetchone()
 
     # Get queries by time period
     queries_today = await db.execute(
-        text("SELECT COUNT(*) FROM query_history WHERE created_at >= :today"),
+        text("SELECT COUNT(*) FROM app.query_history WHERE created_at >= :today"),
         {"today": today_start},
     )
     queries_week = await db.execute(
-        text("SELECT COUNT(*) FROM query_history WHERE created_at >= :week_ago"),
+        text("SELECT COUNT(*) FROM app.query_history WHERE created_at >= :week_ago"),
         {"week_ago": week_ago},
     )
     queries_month = await db.execute(
-        text("SELECT COUNT(*) FROM query_history WHERE created_at >= :month_ago"),
+        text("SELECT COUNT(*) FROM app.query_history WHERE created_at >= :month_ago"),
         {"month_ago": month_ago},
     )
 
@@ -191,11 +191,11 @@ async def get_analytics_overview(
     )
 
     # System metrics
-    conversations_count = await db.execute(text("SELECT COUNT(*) FROM conversations"))
-    messages_count = await db.execute(text("SELECT COUNT(*) FROM messages"))
-    documents_count = await db.execute(text("SELECT COUNT(*) FROM documents"))
+    conversations_count = await db.execute(text("SELECT COUNT(*) FROM app.conversations"))
+    messages_count = await db.execute(text("SELECT COUNT(*) FROM app.messages"))
+    documents_count = await db.execute(text("SELECT COUNT(*) FROM app.documents"))
     active_mcp = await db.execute(
-        text("SELECT COUNT(*) FROM mcp_server_configs WHERE is_enabled = 1")
+        text("SELECT COUNT(*) FROM app.mcp_server_configs WHERE is_enabled = 1")
     )
 
     total_convs = conversations_count.scalar() or 0
@@ -273,7 +273,7 @@ async def get_query_performance_timeline(
                 {group_format} as time_bucket,
                 AVG(execution_time_ms) as avg_time,
                 COUNT(*) as query_count
-            FROM query_history
+            FROM app.query_history
             WHERE created_at >= :start_date
             GROUP BY {group_format}
             ORDER BY time_bucket
@@ -291,7 +291,7 @@ async def get_query_performance_timeline(
     avg_result = await db.execute(
         text("""
             SELECT AVG(execution_time_ms) as avg_time
-            FROM query_history
+            FROM app.query_history
             WHERE created_at >= :start_date
         """),
         {"start_date": start_date},
@@ -323,7 +323,7 @@ async def get_slow_queries(
             SELECT TOP (:limit)
                 id, natural_language, generated_sql,
                 execution_time_ms, result_row_count, created_at
-            FROM query_history
+            FROM app.query_history
             WHERE execution_time_ms >= :threshold
             ORDER BY execution_time_ms DESC
         """),
@@ -363,7 +363,7 @@ async def get_common_queries(
                 LEFT(natural_language, 100) as pattern,
                 COUNT(*) as count,
                 AVG(execution_time_ms) as avg_time
-            FROM query_history
+            FROM app.query_history
             WHERE natural_language IS NOT NULL
             GROUP BY LEFT(natural_language, 100)
             ORDER BY COUNT(*) DESC
@@ -400,7 +400,7 @@ async def get_tool_usage_stats(
     result = await db.execute(
         text("""
             SELECT tool_calls
-            FROM messages
+            FROM app.messages
             WHERE tool_calls IS NOT NULL
             AND tool_calls != ''
             AND created_at >= :start_date
@@ -501,7 +501,7 @@ async def get_conversation_activity(
             SELECT
                 {group_format} as time_bucket,
                 COUNT(*) as message_count
-            FROM messages
+            FROM app.messages
             WHERE created_at >= :start_date
             GROUP BY {group_format}
             ORDER BY time_bucket
@@ -529,7 +529,7 @@ async def get_document_stats(
     status_result = await db.execute(
         text("""
             SELECT processing_status, COUNT(*) as count
-            FROM documents
+            FROM app.documents
             GROUP BY processing_status
         """)
     )
@@ -545,7 +545,7 @@ async def get_document_stats(
                     ELSE 'Other'
                 END as file_type,
                 COUNT(*) as count
-            FROM documents
+            FROM app.documents
             GROUP BY CASE
                     WHEN mime_type LIKE '%pdf%' THEN 'PDF'
                     WHEN mime_type LIKE '%word%' OR mime_type LIKE '%docx%' THEN 'Word'
@@ -557,7 +557,7 @@ async def get_document_stats(
 
     # Get total chunks
     chunks_result = await db.execute(
-        text("SELECT SUM(COALESCE(chunk_count, 0)) as total_chunks FROM documents")
+        text("SELECT SUM(COALESCE(chunk_count, 0)) as total_chunks FROM app.documents")
     )
 
     status_rows = status_result.fetchall()

@@ -492,9 +492,7 @@ services:
         superset db upgrade &&
         superset fab create-admin --username admin --firstname Admin --lastname User --email admin@local.llm --password $${SUPERSET_ADMIN_PASSWORD} || true &&
         superset init &&
-        python /app/setup_databases.py &&
-        sleep 3 &&
-        python /app/create_examples.py &&
+        (sleep 30 && python /app/setup_databases.py && sleep 3 && python /app/create_examples.py) &
         superset run -h 0.0.0.0 -p 8088 --with-threads"
     restart: unless-stopped
     networks:

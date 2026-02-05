@@ -372,49 +372,51 @@ async def agent_websocket(
                         await websocket.send_json(error_msg)
                     continue
 
-                # Stream response
+                # Stream response with MCP server connection
+                # CRITICAL: async with agent establishes MCP server connections
                 full_response = ""
                 try:
-                    async for chunk in agent.chat_stream(augmented_content):
-                        full_response += chunk
-                        chunk_msg = {
-                            "type": "chunk",
-                            "content": chunk,
+                    async with agent:  # Establish MCP server connections
+                        async for chunk in agent.chat_stream(augmented_content):
+                            full_response += chunk
+                            chunk_msg = {
+                                "type": "chunk",
+                                "content": chunk,
+                            }
+                            if connection:
+                                await connection.send_json(chunk_msg)
+                            else:
+                                await websocket.send_json(chunk_msg)
+
+                        # Get token usage after streaming
+                        stats = agent.get_last_response_stats()
+                        token_usage = stats.get("token_usage")
+
+                        # Send completion message
+                        complete_msg = {
+                            "type": "complete",
+                            "message": {
+                                "id": 0,  # Would be set by database in full implementation
+                                "conversation_id": conversation_id,
+                                "role": "assistant",
+                                "content": full_response,
+                                "tool_calls": None,
+                                "metadata": {"sources": rag_sources} if rag_sources else None,
+                                "tokens_used": token_usage.total_tokens if token_usage else None,
+                                "created_at": None,
+                            },
                         }
                         if connection:
-                            await connection.send_json(chunk_msg)
+                            await connection.send_json(complete_msg)
                         else:
-                            await websocket.send_json(chunk_msg)
+                            await websocket.send_json(complete_msg)
 
-                    # Get token usage after streaming
-                    stats = agent.get_last_response_stats()
-                    token_usage = stats.get("token_usage")
-
-                    # Send completion message
-                    complete_msg = {
-                        "type": "complete",
-                        "message": {
-                            "id": 0,  # Would be set by database in full implementation
-                            "conversation_id": conversation_id,
-                            "role": "assistant",
-                            "content": full_response,
-                            "tool_calls": None,
-                            "metadata": {"sources": rag_sources} if rag_sources else None,
-                            "tokens_used": token_usage.total_tokens if token_usage else None,
-                            "created_at": None,
-                        },
-                    }
-                    if connection:
-                        await connection.send_json(complete_msg)
-                    else:
-                        await websocket.send_json(complete_msg)
-
-                    logger.info(
-                        "websocket_response_sent",
-                        conversation_id=conversation_id,
-                        response_length=len(full_response),
-                        tokens=token_usage.total_tokens if token_usage else 0,
-                    )
+                        logger.info(
+                            "websocket_response_sent",
+                            conversation_id=conversation_id,
+                            response_length=len(full_response),
+                            tokens=token_usage.total_tokens if token_usage else 0,
+                        )
 
                 except ResearchAgentError as e:
                     logger.error("agent_chat_error", error=str(e))

@@ -204,7 +204,18 @@ class MCPClientManager:
             self._config = self.load_config()
 
         toolsets = []
-        for server_config in self._config.get_enabled_servers():
+        enabled_servers = self._config.get_enabled_servers()
+
+        logger.info(
+            "loading_mcp_toolsets",
+            enabled_count=len(enabled_servers),
+            enabled_servers=[s.name for s in enabled_servers],
+        )
+
+        loaded_servers = []
+        failed_servers = []
+
+        for server_config in enabled_servers:
             try:
                 if server_config.name not in self._servers:
                     # Load server on demand
@@ -212,12 +223,27 @@ class MCPClientManager:
 
                 if server_config.name in self._servers:
                     toolsets.append(self._servers[server_config.name])
+                    loaded_servers.append(server_config.name)
             except Exception as e:
+                failed_servers.append({
+                    "name": server_config.name,
+                    "transport": server_config.transport.value,
+                    "error": str(e),
+                })
                 logger.warning(
                     "failed_to_load_toolset",
                     server=server_config.name,
+                    transport=server_config.transport.value,
                     error=str(e),
                 )
+
+        logger.info(
+            "mcp_toolsets_summary",
+            loaded=loaded_servers,
+            failed=[f["name"] for f in failed_servers],
+            total_loaded=len(loaded_servers),
+            total_failed=len(failed_servers),
+        )
 
         return toolsets
 

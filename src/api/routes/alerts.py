@@ -9,7 +9,7 @@ from datetime import datetime
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -139,7 +139,9 @@ async def get_alert(
 ):
     """Get a specific data alert."""
     alert = await db.get(DataAlert, alert_id)
-            return AlertResponse.model_validate(alert)
+    if not alert:
+        raise HTTPException(status_code=404, detail="Alert not found")
+    return AlertResponse.model_validate(alert)
 
 @router.put("/{alert_id}", response_model=AlertResponse)
 async def update_alert(

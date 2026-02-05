@@ -85,6 +85,24 @@ class DynamicMCPManager:
             enabled=True,
             built_in=True,
         ),
+        "archon": MCPServerConfig(
+            id="archon",
+            name="Archon",
+            description="Project management and knowledge base via Archon MCP",
+            type="streamable_http",
+            url="${ARCHON_MCP_URL:-http://localhost:8051/mcp}",
+            enabled=True,
+            built_in=True,
+        ),
+        "microsoft.docs.mcp": MCPServerConfig(
+            id="microsoft.docs.mcp",
+            name="Microsoft Docs",
+            description="Microsoft Learn documentation search via MCP",
+            type="streamable_http",
+            url="https://learn.microsoft.com/api/mcp",
+            enabled=True,
+            built_in=True,
+        ),
     }
 
     def __init__(self, config_path: str = "mcp_config.json"):

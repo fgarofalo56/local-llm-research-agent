@@ -136,6 +136,34 @@ async def list_mcp_servers(
                     "cohort_analysis",
                     "run_analytics_query",
                 ]
+            elif s.id == "archon":
+                # Archon MCP tools (project management + RAG)
+                tools = [
+                    "find_projects",
+                    "manage_project",
+                    "find_tasks",
+                    "manage_task",
+                    "find_documents",
+                    "manage_document",
+                    "find_versions",
+                    "manage_version",
+                    "get_project_features",
+                    "rag_search_knowledge_base",
+                    "rag_search_code_examples",
+                    "rag_get_available_sources",
+                    "rag_list_pages_for_source",
+                    "rag_read_full_page",
+                    "health_check",
+                    "session_info",
+                ]
+            elif s.id == "microsoft.docs.mcp":
+                # Microsoft Docs MCP tools
+                tools = [
+                    "search",
+                    "get_page",
+                    "list_products",
+                    "get_toc",
+                ]
 
         server_responses.append(
             MCPServerResponse(
@@ -341,6 +369,30 @@ MCP_TOOL_DEFINITIONS = {
         "create_table": {"description": "Create new database tables"},
         "drop_table": {"description": "Delete tables from the database"},
         "create_index": {"description": "Create indexes for query optimization"},
+    },
+    "archon": {
+        "find_projects": {"description": "List and search projects (list + search + get combined)"},
+        "manage_project": {"description": "Create, update, delete, or move projects"},
+        "find_tasks": {"description": "Find and search tasks with filtering options"},
+        "manage_task": {"description": "Create, update, or delete tasks"},
+        "find_documents": {"description": "Find and search documents within projects"},
+        "manage_document": {"description": "Create, update, or delete documents"},
+        "find_versions": {"description": "Find version history for project fields"},
+        "manage_version": {"description": "Create or restore version snapshots"},
+        "get_project_features": {"description": "Get features from a project's features field"},
+        "rag_search_knowledge_base": {"description": "Search knowledge base using RAG"},
+        "rag_search_code_examples": {"description": "Search for code examples in knowledge base"},
+        "rag_get_available_sources": {"description": "List available sources in knowledge base"},
+        "rag_list_pages_for_source": {"description": "List all pages for a knowledge source"},
+        "rag_read_full_page": {"description": "Retrieve full page content from knowledge base"},
+        "health_check": {"description": "Check Archon MCP server health status"},
+        "session_info": {"description": "Get current session information"},
+    },
+    "microsoft.docs.mcp": {
+        "search": {"description": "Search Microsoft Learn documentation"},
+        "get_page": {"description": "Get content of a specific documentation page"},
+        "list_products": {"description": "List available Microsoft products/services"},
+        "get_toc": {"description": "Get table of contents for a documentation section"},
     },
     "analytics-management": {
         "list_dashboards": {

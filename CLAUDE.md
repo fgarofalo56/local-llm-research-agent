@@ -936,15 +936,18 @@ npm install
 
 ## Service Ports
 
-| Service | Port | URL |
-|---------|------|-----|
-| React UI | 5173 | http://localhost:5173 |
-| FastAPI | 8000 | http://localhost:8000 |
-| Streamlit | 8501 | http://localhost:8501 |
-| RedisInsight | 8001 | http://localhost:8001 |
-| Superset | 8088 | http://localhost:8088 |
-| SQL Server 2022 (Sample) | 1433 | localhost:1433 |
-| SQL Server 2025 (Backend) | 1434 | localhost:1434 |
+| Service | Port | URL | Notes |
+|---------|------|-----|-------|
+| React UI | 5173 | http://localhost:5173 | |
+| FastAPI | 8200 | http://localhost:8200 | Changed from 8000 to avoid conflicts |
+| Streamlit | 8501 | http://localhost:8501 | |
+| Redis Stack | 6390 | localhost:6390 | Changed from 6379 to avoid conflicts |
+| RedisInsight | 8008 | http://localhost:8008 | Changed from 8001 to avoid conflicts |
+| Superset | 8288 | http://localhost:8288 | Changed from 8088 to avoid conflicts |
+| SQL Server 2022 (Sample) | 1433 | localhost:1433 | |
+| SQL Server 2025 (Backend) | 1434 | localhost:1434 | |
+
+**Note:** Ports can be customized in `.env` file using `API_PORT`, `REDIS_PORT`, `REDIS_INSIGHT_PORT`, and `SUPERSET_PORT` variables.
 
 ---
 

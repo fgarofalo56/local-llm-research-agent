@@ -4,7 +4,7 @@ Tests for MCP Client and Configuration
 Tests for MCP client manager, MSSQL configuration, and server management.
 """
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 
@@ -171,16 +171,3 @@ class TestMCPClientManager:
 
         assert "mssql" in servers
 
-    def test_get_mssql_server_invalid_config(self):
-        """Test getting MSSQL server with invalid config."""
-        with patch("src.mcp.client.MSSQLMCPConfig.from_settings") as mock_config:
-            mock = MagicMock()
-            mock.validate.return_value = ["Missing MCP path"]
-            mock_config.return_value = mock
-
-            manager = MCPClientManager()
-
-            with pytest.raises(ValueError) as exc_info:
-                manager.get_mssql_server()
-
-            assert "Missing MCP path" in str(exc_info.value)

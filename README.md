@@ -1,6 +1,6 @@
 # 🔍 Local LLM Universal Research Agent
 
-> **A 100% local universal research agent combining SQL analytics, RAG-powered knowledge retrieval, and multi-MCP tool integration. Query databases, search documents, and leverage multiple tools - all with complete privacy via local Ollama inference.**
+> **A 100% local universal research agent combining SQL analytics, RAG-powered knowledge retrieval, and multi-MCP tool integration. Query databases, search documents, and leverage multiple tools - all with complete privacy via local Ollama and/or Foundry Local inference.**
 
 ---
 

@@ -18,7 +18,7 @@ class TestSystemPrompts:
     def test_get_system_prompt_default(self):
         """Test default system prompt."""
         prompt = get_system_prompt()
-        assert "SQL data analyst" in prompt
+        assert "universal research and tools assistant" in prompt
         assert "list_tables" in prompt
 
     def test_get_system_prompt_readonly(self):

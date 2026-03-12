@@ -5,6 +5,7 @@ Phase 2.1: Backend Infrastructure & RAG Pipeline
 Vector store using Redis Stack with vector similarity search.
 """
 
+import contextlib
 import hashlib
 import json
 from typing import Any
@@ -367,10 +368,8 @@ class RedisVectorStore(VectorStoreBase):
         for item in combined_scores[:top_k]:
             data = item["data"]
             metadata = {}
-            try:
+            with contextlib.suppress(json.JSONDecodeError, TypeError):
                 metadata = json.loads(data.get("metadata", "{}"))
-            except (json.JSONDecodeError, TypeError):
-                pass
 
             formatted.append(
                 {

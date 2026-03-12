@@ -238,7 +238,7 @@ class OllamaProvider(LLMProvider):
 
         # Check if it matches a known tool-capable model
         is_tool_capable = any(model.lower() in model_lower for model in OLLAMA_TOOL_CAPABLE_MODELS)
-        
+
         if is_tool_capable:
             logger.debug("ollama_model_tool_capable", model=self._model_name)
         else:
@@ -247,5 +247,5 @@ class OllamaProvider(LLMProvider):
                 model=self._model_name,
                 message="Model not in known tool-capable list",
             )
-        
+
         return is_tool_capable

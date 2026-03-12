@@ -10,10 +10,7 @@ Comprehensive tests for:
 - Error handling for non-SQL queries
 """
 
-import asyncio
 import json
-import tempfile
-from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -188,11 +185,7 @@ class TestWebSearchIntegration:
         from src.utils.rate_limiter import TokenBucketRateLimiter
 
         # Create rate limiter with 10 tokens, refill 1/sec
-        limiter = TokenBucketRateLimiter(
-            bucket_size=10,
-            refill_rate=1.0,
-            name="test-limiter"
-        )
+        limiter = TokenBucketRateLimiter(bucket_size=10, refill_rate=1.0, name="test-limiter")
 
         # Should allow first 10 requests
         for _ in range(10):
@@ -210,9 +203,7 @@ class TestWebSearchIntegration:
         ]
 
         # Simulate formatting
-        formatted = "\n".join(
-            [f"- {r['title']}: {r['url']}" for r in mock_results]
-        )
+        formatted = "\n".join([f"- {r['title']}: {r['url']}" for r in mock_results])
         assert "Result 1" in formatted
         assert "https://example.com" in formatted
 
@@ -271,7 +262,7 @@ class TestRAGSearchIntegration:
                 {"content": "Result 2", "score": 0.85, "metadata": {}},
             ]
 
-            store = MSSQLVectorStore.__new__(MSSQLVectorStore)
+            MSSQLVectorStore.__new__(MSSQLVectorStore)
             results = mock_search("test query", top_k=5)
 
             assert len(results) == 2
@@ -322,7 +313,6 @@ class TestMCPCommands:
 
     def test_mcp_list_output_format(self, temp_mcp_config):
         """Test /mcp list outputs correctly formatted table."""
-        from src.mcp.client import MCPClientManager
 
         with patch("src.mcp.client.MCPClientManager") as mock_cls:
             mock_manager = MagicMock()
@@ -352,7 +342,7 @@ class TestMCPCommands:
         from src.mcp.client import MCPClientManager
 
         manager = MCPClientManager(config_path=temp_mcp_config)
-        result = manager.enable_server("disabled-server")
+        manager.enable_server("disabled-server")
 
         # Verify server was enabled
         servers = manager.list_servers()
@@ -365,7 +355,7 @@ class TestMCPCommands:
         from src.mcp.client import MCPClientManager
 
         manager = MCPClientManager(config_path=temp_mcp_config)
-        result = manager.disable_server("mssql")
+        manager.disable_server("mssql")
 
         servers = manager.list_servers()
         server = next((s for s in servers if s.name == "mssql"), None)
@@ -422,9 +412,7 @@ class TestErrorHandling:
     @pytest.mark.asyncio
     async def test_non_sql_query_handling(self, mock_research_agent):
         """Test handling of queries that don't require SQL."""
-        mock_research_agent.chat = AsyncMock(
-            return_value="I can answer general questions too!"
-        )
+        mock_research_agent.chat = AsyncMock(return_value="I can answer general questions too!")
 
         with patch("src.agent.core.ResearchAgent", return_value=mock_research_agent):
             response = await mock_research_agent.chat("What is Python?")
@@ -437,9 +425,7 @@ class TestErrorHandling:
 
         with patch("src.mcp.client.MCPClientManager") as mock_cls:
             mock_manager = MagicMock()
-            mock_manager.get_active_toolsets.side_effect = MCPTimeoutError(
-                "Server timeout"
-            )
+            mock_manager.get_active_toolsets.side_effect = MCPTimeoutError("Server timeout")
             mock_cls.return_value = mock_manager
 
             with pytest.raises(MCPTimeoutError):
@@ -488,7 +474,7 @@ class TestErrorHandling:
         with patch("src.mcp.client.MCPClientManager") as mock_cls:
             mock_manager = MagicMock()
             mock_manager.get_active_toolsets.side_effect = [
-                socket.error("Network unreachable"),
+                OSError("Network unreachable"),
                 [MagicMock()],  # Second call succeeds
             ]
             mock_cls.return_value = mock_manager

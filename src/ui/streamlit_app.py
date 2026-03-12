@@ -630,11 +630,12 @@ def render_chat_interface(config: dict[str, Any]) -> None:
                 else:
                     # Non-streaming mode - show creative spinner message
                     with st.spinner(get_thinking_message()):
+
                         async def chat_with_session():
                             # Establish MCP session for this conversation
                             async with agent:
                                 return await agent.chat_with_details(prompt)
-                        
+
                         detailed_response = run_async(chat_with_session())
                     response = detailed_response.content
                     st.markdown(response)

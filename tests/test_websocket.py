@@ -137,7 +137,7 @@ class TestWebSocketManager:
     @pytest.mark.asyncio
     async def test_disconnect(self, websocket_manager, mock_websocket):
         """Test disconnecting a WebSocket."""
-        connection = await websocket_manager.connect(mock_websocket, "conn-1")
+        await websocket_manager.connect(mock_websocket, "conn-1")
 
         await websocket_manager.disconnect("conn-1")
 

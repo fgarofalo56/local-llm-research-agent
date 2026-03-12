@@ -89,7 +89,7 @@ async def _seed_preset_themes(session_factory) -> None:
 
     async with session_factory() as session:
         # Check if any preset themes exist
-        result = await session.execute(select(ThemeConfig).where(ThemeConfig.is_preset == True))
+        result = await session.execute(select(ThemeConfig).where(ThemeConfig.is_preset.is_(True)))
         existing_presets = {t.name for t in result.scalars().all()}
 
         # Add missing preset themes

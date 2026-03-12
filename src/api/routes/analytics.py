@@ -253,19 +253,15 @@ async def get_query_performance_timeline(
     if period == "hour":
         start_date = now - timedelta(hours=24)
         group_format = "DATEPART(HOUR, created_at)"
-        interval = "hour"
     elif period == "day":
         start_date = now - timedelta(days=7)
         group_format = "CAST(created_at AS DATE)"
-        interval = "day"
     elif period == "week":
         start_date = now - timedelta(weeks=4)
         group_format = "DATEPART(WEEK, created_at)"
-        interval = "week"
     else:  # month
         start_date = now - timedelta(days=365)
         group_format = "FORMAT(created_at, 'yyyy-MM')"
-        interval = "month"
 
     result = await db.execute(
         text(f"""
@@ -454,7 +450,7 @@ async def get_cache_stats(
 
     try:
         info = await redis.info("stats")
-        memory_info = await redis.info("memory")
+        await redis.info("memory")
 
         hits = info.get("keyspace_hits", 0)
         misses = info.get("keyspace_misses", 0)

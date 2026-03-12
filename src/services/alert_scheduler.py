@@ -109,13 +109,12 @@ class AlertScheduler:
             triggered = current_value < threshold
         elif alert.condition == "equals":
             triggered = abs(current_value - threshold) < 0.001
-        elif alert.condition == "changes":
-            if alert.last_value is not None:
-                try:
-                    last_val = float(alert.last_value)
-                    triggered = abs(current_value - last_val) > 0.001
-                except ValueError:
-                    triggered = str(current_value) != alert.last_value
+        elif alert.condition == "changes" and alert.last_value is not None:
+            try:
+                last_val = float(alert.last_value)
+                triggered = abs(current_value - last_val) > 0.001
+            except ValueError:
+                triggered = str(current_value) != alert.last_value
 
         # Update alert record
         alert.last_checked_at = datetime.utcnow()
@@ -180,12 +179,11 @@ class AlertScheduler:
                     triggered = current_value < threshold
                 elif alert.condition == "equals":
                     triggered = abs(current_value - threshold) < 0.001
-                elif alert.condition == "changes":
-                    if alert.last_value is not None:
-                        try:
-                            triggered = abs(current_value - float(alert.last_value)) > 0.001
-                        except ValueError:
-                            triggered = str(current_value) != alert.last_value
+                elif alert.condition == "changes" and alert.last_value is not None:
+                    try:
+                        triggered = abs(current_value - float(alert.last_value)) > 0.001
+                    except ValueError:
+                        triggered = str(current_value) != alert.last_value
 
                 return {
                     "alert_id": alert_id,

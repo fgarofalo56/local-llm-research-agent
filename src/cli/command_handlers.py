@@ -46,9 +46,7 @@ async def handle_cache_clear_command(agent, console: Console) -> tuple[bool, boo
     return True, True
 
 
-async def handle_export_command(
-    command: str, agent, console: Console
-) -> tuple[bool, bool]:
+async def handle_export_command(command: str, agent, console: Console) -> tuple[bool, bool]:
     """Handle the 'export' command to export conversation."""
     parts = command.split()
     if len(parts) == 1:

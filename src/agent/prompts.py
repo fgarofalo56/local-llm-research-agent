@@ -14,16 +14,16 @@ if TYPE_CHECKING:
 def format_mcp_servers_info(enabled_servers: list[str]) -> str:
     """
     Format MCP server information for inclusion in system prompt.
-    
+
     Args:
         enabled_servers: List of enabled MCP server names
-        
+
     Returns:
         Formatted string describing active MCP servers
     """
     if not enabled_servers:
         return "Currently, you do not have any MCP servers loaded. You can only respond using your base knowledge."
-    
+
     lines = [
         "You currently have access to the following MCP servers:\n",
         ", ".join(f"**{name}**" for name in enabled_servers),
@@ -31,7 +31,7 @@ def format_mcp_servers_info(enabled_servers: list[str]) -> str:
         "When asked to use a specific server or perform a specific action, examine the available tools and use the appropriate ones.",
         "You do not need tools to be explicitly listed here - you can discover and use any tool provided by the connected MCP servers.",
     ]
-    
+
     return "\n".join(lines)
 
 
@@ -234,7 +234,7 @@ def get_system_prompt(
         # No MCP servers loaded - provide default message
         base_prompt = base_prompt.replace(
             "{mcp_servers_info}",
-            "Currently, you do not have any MCP servers loaded. You can only respond using your base knowledge."
+            "Currently, you do not have any MCP servers loaded. You can only respond using your base knowledge.",
         )
 
     if explain_mode:

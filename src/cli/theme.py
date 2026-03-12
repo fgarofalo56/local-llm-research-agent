@@ -425,7 +425,7 @@ def create_help_panel() -> Panel:
         ("/websearch", "Toggle web search (DuckDuckGo + Brave MCP)"),
         ("/rag", "Toggle RAG knowledge base (SQL Server 2025 vectors)"),
     ]
-    
+
     # MCP server management commands
     mcp_commands = [
         ("/mcp", "List all MCP servers"),
@@ -453,10 +453,10 @@ def create_help_panel() -> Panel:
     for cmd, desc in config_commands:
         content.append(f"\n  {cmd}", style=f"bold {COLORS['accent']}")
         content.append(f"  {desc}", style=COLORS["gray_400"])
-    
+
     content.append("\n\n")
     content.append("MCP Servers\n", style=f"bold {COLORS['white']}")
-    
+
     for cmd, desc in mcp_commands:
         content.append(f"\n  {cmd}", style=f"bold {COLORS['primary']}")
         content.append(f"  {desc}", style=COLORS["gray_400"])

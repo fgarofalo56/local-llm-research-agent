@@ -414,7 +414,7 @@ class TestRAGPipelineEndToEnd:
     @pytest.mark.asyncio
     async def test_pipeline_with_metadata(self):
         """Test RAG pipeline with document metadata."""
-        processor = DocumentProcessor()
+        DocumentProcessor()
         chunks = ["Chunk 1", "Chunk 2", "Chunk 3"]
 
         mock_embedder = MagicMock()

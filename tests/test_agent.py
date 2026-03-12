@@ -25,7 +25,7 @@ class TestSystemPrompts:
         """Test read-only system prompt."""
         prompt = get_system_prompt(readonly=True)
         assert "READ-ONLY" in prompt
-        assert "cannot modify data" in prompt.lower()
+        assert "cannot modify any data" in prompt.lower()
 
     def test_get_system_prompt_minimal(self):
         """Test minimal system prompt."""

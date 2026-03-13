@@ -6,7 +6,6 @@ Supports multiple server types with validation and persistence.
 """
 
 from enum import Enum
-from pathlib import Path
 from typing import Any
 
 from pydantic import BaseModel, Field, field_validator, model_validator
@@ -34,18 +33,26 @@ class MCPServerConfig(BaseModel):
     """Configuration for a single MCP server supporting all MCP transport types."""
 
     name: str = Field(..., description="Unique server name/identifier")
-    server_type: MCPServerType = Field(default=MCPServerType.CUSTOM, description="Type of MCP server")
-    transport: TransportType = Field(default=TransportType.STDIO, description="MCP transport mechanism")
-    
+    server_type: MCPServerType = Field(
+        default=MCPServerType.CUSTOM, description="Type of MCP server"
+    )
+    transport: TransportType = Field(
+        default=TransportType.STDIO, description="MCP transport mechanism"
+    )
+
     # Stdio transport fields (required for stdio)
     command: str | None = Field(default=None, description="Command to execute for stdio transport")
     args: list[str] = Field(default_factory=list, description="Command line arguments for stdio")
     env: dict[str, str] = Field(default_factory=dict, description="Environment variables for stdio")
-    
+
     # HTTP/SSE transport fields (required for streamable_http/sse)
-    url: str | None = Field(default=None, description="HTTP endpoint URL for streamable_http/sse transport")
-    headers: dict[str, str] = Field(default_factory=dict, description="HTTP headers for authentication")
-    
+    url: str | None = Field(
+        default=None, description="HTTP endpoint URL for streamable_http/sse transport"
+    )
+    headers: dict[str, str] = Field(
+        default_factory=dict, description="HTTP headers for authentication"
+    )
+
     # Common fields
     enabled: bool = Field(default=True, description="Whether server is enabled")
     readonly: bool = Field(default=False, description="Read-only mode for data servers")
@@ -58,9 +65,10 @@ class MCPServerConfig(BaseModel):
         if self.transport == TransportType.STDIO:
             if not self.command:
                 raise ValueError(f"stdio transport requires 'command' field (server: {self.name})")
-        elif self.transport in (TransportType.STREAMABLE_HTTP, TransportType.SSE):
-            if not self.url:
-                raise ValueError(f"{self.transport.value} transport requires 'url' field (server: {self.name})")
+        elif self.transport in (TransportType.STREAMABLE_HTTP, TransportType.SSE) and not self.url:
+            raise ValueError(
+                f"{self.transport.value} transport requires 'url' field (server: {self.name})"
+            )
         return self
 
     @field_validator("command")
@@ -72,7 +80,7 @@ class MCPServerConfig(BaseModel):
         if not v.strip():
             raise ValueError("Command cannot be empty string")
         return v.strip()
-    
+
     @field_validator("url")
     @classmethod
     def validate_url(cls, v: str | None) -> str | None:
@@ -133,7 +141,7 @@ class MCPServerConfig(BaseModel):
             else:
                 # Default to stdio for legacy configs
                 data["transport"] = TransportType.STDIO.value
-        
+
         # Default server_type based on name if not provided
         if "server_type" not in data:
             name = data.get("name", "").lower()
@@ -147,14 +155,24 @@ class MCPServerConfig(BaseModel):
                 data["server_type"] = MCPServerType.BRAVE_SEARCH.value
             else:
                 data["server_type"] = MCPServerType.CUSTOM.value
-        
+
         # Extract only known fields for Pydantic model
         known_fields = {
-            'name', 'server_type', 'transport', 'command', 'args', 'env',
-            'url', 'headers', 'enabled', 'readonly', 'timeout', 'description'
+            "name",
+            "server_type",
+            "transport",
+            "command",
+            "args",
+            "env",
+            "url",
+            "headers",
+            "enabled",
+            "readonly",
+            "timeout",
+            "description",
         }
         filtered_data = {k: v for k, v in data.items() if k in known_fields}
-        
+
         return cls(**filtered_data)
 
 

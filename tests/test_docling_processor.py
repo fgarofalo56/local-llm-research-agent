@@ -10,9 +10,9 @@ Dedicated tests for DoclingDocumentProcessor covering:
 - Chunking behavior
 """
 
+from unittest.mock import patch
+
 import pytest
-from pathlib import Path
-from unittest.mock import patch, MagicMock
 
 from src.rag.docling_processor import DoclingDocumentProcessor, get_document_processor
 
@@ -440,9 +440,7 @@ class TestGetDocumentProcessor:
     def test_get_processor_fallback_when_disabled(self):
         """Test factory returns legacy processor when docling disabled."""
         # Mock docling as unavailable
-        with patch.object(
-            DoclingDocumentProcessor, "_check_docling_available", return_value=False
-        ):
+        with patch.object(DoclingDocumentProcessor, "_check_docling_available", return_value=False):
             processor = get_document_processor(use_docling=True)
 
             # Should fall back to legacy processor

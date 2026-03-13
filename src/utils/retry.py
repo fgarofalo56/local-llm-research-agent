@@ -186,11 +186,7 @@ def is_retriable_error(error: Exception) -> bool:
         return error.response.status_code in retriable_statuses
 
     # OSError and subclasses (BrokenPipeError, etc.)
-    if isinstance(error, OSError):
-        return True
-
-    # Default: non-retriable
-    return False
+    return isinstance(error, OSError)
 
 
 class CircuitBreaker:

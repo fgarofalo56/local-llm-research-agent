@@ -89,7 +89,7 @@ def test_query_stats_tracking(test_engine, profiler):
 
     # Execute multiple queries
     with Session(test_engine) as session:
-        for i in range(5):
+        for _i in range(5):
             session.execute(select(TestModel))
 
     stats = profiler.get_stats()
@@ -196,7 +196,7 @@ def test_max_slow_queries_limit(test_engine):
 
     # Execute 5 queries (all will be "slow")
     with Session(test_engine) as session:
-        for i in range(5):
+        for _i in range(5):
             session.execute(select(TestModel))
 
     # Should only keep last 3
@@ -213,7 +213,7 @@ def test_profiler_stats_aggregation(test_engine, profiler):
 
     # Execute multiple queries
     with Session(test_engine) as session:
-        for i in range(10):
+        for _i in range(10):
             session.execute(select(TestModel))
 
     stats = profiler.get_stats()

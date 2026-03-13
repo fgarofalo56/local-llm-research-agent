@@ -6,6 +6,7 @@ This module provides vector storage using SQL Server 2025's native vector
 capabilities, eliminating the need for Redis for vector operations.
 """
 
+import contextlib
 import json
 from typing import Any
 
@@ -184,10 +185,8 @@ class MSSQLVectorStore(VectorStoreBase):
         for row in rows:
             metadata = {}
             if row.metadata:
-                try:
+                with contextlib.suppress(json.JSONDecodeError, TypeError):
                     metadata = json.loads(row.metadata)
-                except (json.JSONDecodeError, TypeError):
-                    pass
 
             formatted.append(
                 {
@@ -274,10 +273,8 @@ class MSSQLVectorStore(VectorStoreBase):
         for row in rows:
             metadata = {}
             if row.metadata:
-                try:
+                with contextlib.suppress(json.JSONDecodeError, TypeError):
                     metadata = json.loads(row.metadata)
-                except (json.JSONDecodeError, TypeError):
-                    pass
 
             formatted.append(
                 {

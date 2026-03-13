@@ -25,7 +25,8 @@ class TestAgentWithOllamaProvider:
         """Test complete chat flow with Ollama provider."""
         # Setup MCP mock
         mock_mcp = MagicMock()
-        mock_mcp.get_mssql_server.return_value = MagicMock()
+        mock_mcp.get_active_toolsets.return_value = []
+        mock_mcp.get_enabled_server_names.return_value = []
         mock_mcp_cls.return_value = mock_mcp
 
         # Setup provider check
@@ -59,7 +60,8 @@ class TestAgentWithOllamaProvider:
         """Test streaming responses with Ollama provider."""
         # Setup MCP mock
         mock_mcp = MagicMock()
-        mock_mcp.get_mssql_server.return_value = MagicMock()
+        mock_mcp.get_active_toolsets.return_value = []
+        mock_mcp.get_enabled_server_names.return_value = []
         mock_mcp_cls.return_value = mock_mcp
 
         # Setup agent mock with run() method (chat_stream uses run() internally)
@@ -102,7 +104,8 @@ class TestAgentWithFoundryProvider:
         """Test complete chat flow with Foundry Local provider."""
         # Setup MCP mock
         mock_mcp = MagicMock()
-        mock_mcp.get_mssql_server.return_value = MagicMock()
+        mock_mcp.get_active_toolsets.return_value = []
+        mock_mcp.get_enabled_server_names.return_value = []
         mock_mcp_cls.return_value = mock_mcp
 
         # Setup provider check
@@ -137,7 +140,8 @@ class TestProviderSwitching:
     def test_create_agent_with_ollama(self, mock_agent_cls, mock_mcp_cls):
         """Test creating agent with Ollama provider."""
         mock_mcp = MagicMock()
-        mock_mcp.get_mssql_server.return_value = MagicMock()
+        mock_mcp.get_active_toolsets.return_value = []
+        mock_mcp.get_enabled_server_names.return_value = []
         mock_mcp_cls.return_value = mock_mcp
 
         agent = create_research_agent(provider_type="ollama")
@@ -149,7 +153,8 @@ class TestProviderSwitching:
     def test_create_agent_with_foundry(self, mock_agent_cls, mock_mcp_cls):
         """Test creating agent with Foundry Local provider."""
         mock_mcp = MagicMock()
-        mock_mcp.get_mssql_server.return_value = MagicMock()
+        mock_mcp.get_active_toolsets.return_value = []
+        mock_mcp.get_enabled_server_names.return_value = []
         mock_mcp_cls.return_value = mock_mcp
 
         agent = create_research_agent(provider_type="foundry_local")
@@ -161,7 +166,8 @@ class TestProviderSwitching:
     def test_legacy_ollama_parameters(self, mock_agent_cls, mock_mcp_cls):
         """Test legacy ollama_host and ollama_model parameters still work."""
         mock_mcp = MagicMock()
-        mock_mcp.get_mssql_server.return_value = MagicMock()
+        mock_mcp.get_active_toolsets.return_value = []
+        mock_mcp.get_enabled_server_names.return_value = []
         mock_mcp_cls.return_value = mock_mcp
 
         agent = ResearchAgent(
@@ -184,7 +190,8 @@ class TestConversationManagement:
     async def test_conversation_history_tracking(self, mock_agent_cls, mock_mcp_cls):
         """Test that conversation history is properly tracked."""
         mock_mcp = MagicMock()
-        mock_mcp.get_mssql_server.return_value = MagicMock()
+        mock_mcp.get_active_toolsets.return_value = []
+        mock_mcp.get_enabled_server_names.return_value = []
         mock_mcp_cls.return_value = mock_mcp
 
         # Setup responses
@@ -222,7 +229,8 @@ class TestConversationManagement:
     def test_clear_history(self, mock_agent_cls, mock_mcp_cls):
         """Test clearing conversation history."""
         mock_mcp = MagicMock()
-        mock_mcp.get_mssql_server.return_value = MagicMock()
+        mock_mcp.get_active_toolsets.return_value = []
+        mock_mcp.get_enabled_server_names.return_value = []
         mock_mcp_cls.return_value = mock_mcp
 
         agent = ResearchAgent()
@@ -242,7 +250,8 @@ class TestErrorHandling:
     async def test_mcp_connection_error(self, mock_agent_cls, mock_mcp_cls):
         """Test handling MCP server connection errors."""
         mock_mcp = MagicMock()
-        mock_mcp.get_mssql_server.return_value = MagicMock()
+        mock_mcp.get_active_toolsets.return_value = []
+        mock_mcp.get_enabled_server_names.return_value = []
         mock_mcp_cls.return_value = mock_mcp
 
         mock_agent_instance = MagicMock()
@@ -264,7 +273,8 @@ class TestErrorHandling:
     async def test_stream_error_handling(self, mock_agent_cls, mock_mcp_cls):
         """Test error handling during streaming."""
         mock_mcp = MagicMock()
-        mock_mcp.get_mssql_server.return_value = MagicMock()
+        mock_mcp.get_active_toolsets.return_value = []
+        mock_mcp.get_enabled_server_names.return_value = []
         mock_mcp_cls.return_value = mock_mcp
 
         async def mock_stream_error():
@@ -302,7 +312,8 @@ class TestReadOnlyMode:
     def test_readonly_mode_prompt(self, mock_agent_cls, mock_mcp_cls):
         """Test that read-only mode is reflected in system prompt."""
         mock_mcp = MagicMock()
-        mock_mcp.get_mssql_server.return_value = MagicMock()
+        mock_mcp.get_active_toolsets.return_value = []
+        mock_mcp.get_enabled_server_names.return_value = []
         mock_mcp_cls.return_value = mock_mcp
 
         agent = ResearchAgent(readonly=True)
@@ -315,7 +326,8 @@ class TestReadOnlyMode:
     def test_write_mode(self, mock_agent_cls, mock_mcp_cls):
         """Test write mode configuration."""
         mock_mcp = MagicMock()
-        mock_mcp.get_mssql_server.return_value = MagicMock()
+        mock_mcp.get_active_toolsets.return_value = []
+        mock_mcp.get_enabled_server_names.return_value = []
         mock_mcp_cls.return_value = mock_mcp
 
         agent = ResearchAgent(readonly=False)

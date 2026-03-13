@@ -116,7 +116,7 @@ class DoclingDocumentProcessor:
             return self._docling_available
 
         try:
-            from docling.document_converter import DocumentConverter
+            from docling.document_converter import DocumentConverter  # noqa: F401
 
             self._docling_available = True
             logger.info("docling_available", status="installed")
@@ -135,15 +135,15 @@ class DoclingDocumentProcessor:
         Configures the converter with all supported formats and optional OCR.
         """
         if self._converter is None:
+            from docling.datamodel.base_models import InputFormat
+            from docling.datamodel.pipeline_options import (
+                EasyOcrOptions,
+                PdfPipelineOptions,
+            )
             from docling.document_converter import (
                 DocumentConverter,
                 ImageFormatOption,
                 PdfFormatOption,
-            )
-            from docling.datamodel.base_models import InputFormat
-            from docling.datamodel.pipeline_options import (
-                PdfPipelineOptions,
-                EasyOcrOptions,
             )
 
             # Configure PDF pipeline with OCR support
@@ -193,9 +193,7 @@ class DoclingDocumentProcessor:
             # By specifying format_options, we enable those formats
             format_options = {
                 InputFormat.PDF: PdfFormatOption(pipeline_options=pdf_pipeline_options),
-                InputFormat.IMAGE: ImageFormatOption(
-                    pipeline_options=image_pipeline_options
-                ),
+                InputFormat.IMAGE: ImageFormatOption(pipeline_options=image_pipeline_options),
                 # Other formats use defaults (no special options needed)
             }
 
@@ -533,9 +531,7 @@ class DoclingDocumentProcessor:
                 error=error_msg,
                 traceback=traceback.format_exc(),
             )
-            raise ValueError(
-                f"Failed to process document with Docling ({error_type}): {e}"
-            ) from e
+            raise ValueError(f"Failed to process document with Docling ({error_type}): {e}") from e
 
     async def process_bytes(
         self,
@@ -727,9 +723,7 @@ class DoclingDocumentProcessor:
                 error=str(e),
                 traceback=traceback.format_exc(),
             )
-            raise ValueError(
-                f"Failed to process URL with Docling ({error_type}): {e}"
-            ) from e
+            raise ValueError(f"Failed to process URL with Docling ({error_type}): {e}") from e
 
 
 # Factory function to get the appropriate processor

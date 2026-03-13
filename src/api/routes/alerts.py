@@ -143,6 +143,7 @@ async def get_alert(
         raise HTTPException(status_code=404, detail="Alert not found")
     return AlertResponse.model_validate(alert)
 
+
 @router.put("/{alert_id}", response_model=AlertResponse)
 async def update_alert(
     alert_id: int,

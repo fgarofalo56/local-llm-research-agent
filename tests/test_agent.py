@@ -18,14 +18,14 @@ class TestSystemPrompts:
     def test_get_system_prompt_default(self):
         """Test default system prompt."""
         prompt = get_system_prompt()
-        assert "SQL data analyst" in prompt
+        assert "universal research and tools assistant" in prompt
         assert "list_tables" in prompt
 
     def test_get_system_prompt_readonly(self):
         """Test read-only system prompt."""
         prompt = get_system_prompt(readonly=True)
         assert "READ-ONLY" in prompt
-        assert "cannot modify data" in prompt.lower()
+        assert "cannot modify any data" in prompt.lower()
 
     def test_get_system_prompt_minimal(self):
         """Test minimal system prompt."""
@@ -42,7 +42,8 @@ class TestResearchAgentInit:
     def test_init_default_settings(self, mock_agent_cls, mock_create_provider, mock_mcp_cls):
         """Test agent initializes with default settings."""
         mock_mcp = MagicMock()
-        mock_mcp.get_mssql_server.return_value = MagicMock()
+        mock_mcp.get_active_toolsets.return_value = []
+        mock_mcp.get_enabled_server_names.return_value = []
         mock_mcp_cls.return_value = mock_mcp
 
         # Mock provider
@@ -58,7 +59,7 @@ class TestResearchAgentInit:
 
         assert agent.ollama_host is not None
         assert agent.ollama_model is not None
-        mock_mcp.get_mssql_server.assert_called_once()
+        mock_mcp.get_active_toolsets.assert_called_once()
 
     @patch("src.agent.core.MCPClientManager")
     @patch("src.providers.ollama.OllamaProvider")
@@ -66,7 +67,8 @@ class TestResearchAgentInit:
     def test_init_custom_settings(self, mock_agent_cls, mock_ollama_provider_cls, mock_mcp_cls):
         """Test agent initializes with custom settings."""
         mock_mcp = MagicMock()
-        mock_mcp.get_mssql_server.return_value = MagicMock()
+        mock_mcp.get_active_toolsets.return_value = []
+        mock_mcp.get_enabled_server_names.return_value = []
         mock_mcp_cls.return_value = mock_mcp
 
         # Mock provider
@@ -100,7 +102,8 @@ class TestResearchAgentChat:
         """Test successful chat response."""
         # Setup mocks
         mock_mcp = MagicMock()
-        mock_mcp.get_mssql_server.return_value = MagicMock()
+        mock_mcp.get_active_toolsets.return_value = []
+        mock_mcp.get_enabled_server_names.return_value = []
         mock_mcp_cls.return_value = mock_mcp
 
         # Mock provider
@@ -134,7 +137,8 @@ class TestResearchAgentChat:
     async def test_chat_error_handling(self, mock_agent_cls, mock_create_provider, mock_mcp_cls):
         """Test chat error handling."""
         mock_mcp = MagicMock()
-        mock_mcp.get_mssql_server.return_value = MagicMock()
+        mock_mcp.get_active_toolsets.return_value = []
+        mock_mcp.get_enabled_server_names.return_value = []
         mock_mcp_cls.return_value = mock_mcp
 
         # Mock provider
@@ -169,7 +173,8 @@ class TestConversationHistory:
     def test_clear_history(self, mock_agent_cls, mock_create_provider, mock_mcp_cls):
         """Test clearing conversation history."""
         mock_mcp = MagicMock()
-        mock_mcp.get_mssql_server.return_value = MagicMock()
+        mock_mcp.get_active_toolsets.return_value = []
+        mock_mcp.get_enabled_server_names.return_value = []
         mock_mcp_cls.return_value = mock_mcp
 
         # Mock provider
@@ -192,7 +197,8 @@ class TestConversationHistory:
     def test_get_history_empty(self, mock_agent_cls, mock_create_provider, mock_mcp_cls):
         """Test getting empty history."""
         mock_mcp = MagicMock()
-        mock_mcp.get_mssql_server.return_value = MagicMock()
+        mock_mcp.get_active_toolsets.return_value = []
+        mock_mcp.get_enabled_server_names.return_value = []
         mock_mcp_cls.return_value = mock_mcp
 
         # Mock provider

@@ -186,7 +186,7 @@ class TestCircuitBreaker:
             raise ConnectionError("connection failed")
 
         # Fail threshold times
-        for i in range(3):
+        for _i in range(3):
             with pytest.raises(ConnectionError):
                 await breaker.call(failing_func)
 

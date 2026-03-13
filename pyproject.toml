@@ -142,6 +142,14 @@ ignore = [
     "B904",  # raise from in exception handlers (typer.Exit doesn't support it)
 ]
 
+[tool.ruff.lint.per-file-ignores]
+# MCP server files use sys.path manipulation before imports
+"src/mcp/analytics_mcp_server.py" = ["E402"]
+"src/mcp/data_analytics_mcp_server.py" = ["E402"]
+"src/mcp/pyodbc_mssql_server.py" = ["E402"]
+# Streamlit pages use sys.path manipulation before imports
+"src/ui/pages/*.py" = ["E402"]
+
 [tool.ruff.lint.isort]
 known-first-party = ["src"]
 

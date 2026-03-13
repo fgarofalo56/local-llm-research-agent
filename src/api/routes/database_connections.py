@@ -7,6 +7,7 @@ Supports SQL Server, PostgreSQL, and MySQL databases.
 """
 
 import base64
+import contextlib
 import json
 import time
 from datetime import datetime
@@ -137,10 +138,8 @@ def _connection_to_response(conn: DatabaseConnection) -> DatabaseConnectionRespo
     """Convert database model to response model."""
     additional_options = None
     if conn.additional_options:
-        try:
+        with contextlib.suppress(json.JSONDecodeError):
             additional_options = json.loads(conn.additional_options)
-        except json.JSONDecodeError:
-            pass
 
     return DatabaseConnectionResponse(
         id=conn.id,
@@ -184,7 +183,7 @@ async def list_database_connections(
         query = query.where(DatabaseConnection.db_type == db_type.value)
 
     if active_only:
-        query = query.where(DatabaseConnection.is_active == True)
+        query = query.where(DatabaseConnection.is_active)
 
     result = await db.execute(query)
     connections = result.scalars().all()
@@ -213,12 +212,12 @@ async def create_database_connection(
         await db.execute(
             select(DatabaseConnection)
             .where(DatabaseConnection.db_type == data.db_type.value)
-            .where(DatabaseConnection.is_default == True)
+            .where(DatabaseConnection.is_default)
         )
         result = await db.execute(
             select(DatabaseConnection)
             .where(DatabaseConnection.db_type == data.db_type.value)
-            .where(DatabaseConnection.is_default == True)
+            .where(DatabaseConnection.is_default)
         )
         for conn in result.scalars().all():
             conn.is_default = False
@@ -315,7 +314,7 @@ async def update_database_connection(
             result = await db.execute(
                 select(DatabaseConnection)
                 .where(DatabaseConnection.db_type == connection.db_type)
-                .where(DatabaseConnection.is_default == True)
+                .where(DatabaseConnection.is_default)
                 .where(DatabaseConnection.id != connection_id)
             )
             for conn in result.scalars().all():
@@ -433,7 +432,7 @@ async def set_default_connection(
     result = await db.execute(
         select(DatabaseConnection)
         .where(DatabaseConnection.db_type == connection.db_type)
-        .where(DatabaseConnection.is_default == True)
+        .where(DatabaseConnection.is_default)
     )
     for conn in result.scalars().all():
         conn.is_default = False
@@ -464,7 +463,7 @@ async def _test_database_connection(
     trust_certificate: bool,
 ) -> DatabaseConnectionTestResult:
     """Test a database connection."""
-    start_time = time.time()
+    time.time()
 
     try:
         if db_type == DatabaseType.MSSQL:

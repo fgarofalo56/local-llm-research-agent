@@ -92,7 +92,7 @@ all-databases = [
 ]
 dev = [
     # Testing
-    "pytest>=8.0.0",
+    "pytest>=9.0.3",
     "pytest-asyncio>=0.23.0",
     "pytest-cov>=4.0.0",
     "locust>=2.0.0",
@@ -226,7 +226,7 @@ skips = ["B101"]  # Skip assert warnings in non-test code
 
 [dependency-groups]
 dev = [
-    "pytest>=8.0.0",
+    "pytest>=9.0.3",
     "pytest-asyncio>=0.23.0",
     "pytest-cov>=4.0.0",
     "locust>=2.0.0",

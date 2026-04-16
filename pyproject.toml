@@ -62,7 +62,7 @@ dependencies = [
     # Docling handles PDF, DOCX, PPTX, XLSX, HTML, images with advanced table extraction
     "docling>=2.0.0",
     # Keep pypdf as lightweight fallback for simple PDF processing
-    "pypdf>=5.0.0",
+    "pypdf>=6.10.2",
     # Scheduling
     "apscheduler>=3.10.0",
     # ===== Phase 4.5 Dependencies =====

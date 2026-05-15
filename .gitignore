@@ -344,9 +344,12 @@ build/
 # Serena AI assistant
 .serena/
 
-# Claude Code (keep skills but ignore other generated files)
-.claude/
+# Claude Code (keep skills + migration ledger but ignore other generated files)
+.claude/*
 !.claude/skills/
+# Exception: durable historical record of the Archon v1 task ledger
+# (de-Archon-v1 migration 2026-05). Keep tracked so the record survives a clone.
+!.claude/migrated-archon-tasks.md
 
 # Session-specific development context
 .context/

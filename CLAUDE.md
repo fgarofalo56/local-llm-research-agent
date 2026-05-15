@@ -1,6 +1,316 @@
 # CRITICAL: MANDATORY PRE-TASK CHECKS - READ THIS FIRST
 
+> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
+
 BEFORE doing ANYTHING else, ALWAYS perform these checks in order:
+
+---
+
+## Critical Rules (Override Everything)
+
+### Rule 0: Task Tracking — Native-First
+
+For tracking work in the current session and across sessions, use **native Claude Code tools**:
+
+| Scope | Tool | When |
+|-------|------|------|
+| Within-turn / within-session checklist | `TodoWrite` | Multi-step task you'll finish soon |
+| Cross-session work | **GitHub Issues** (`gh issue`) | Work that spans days or needs visibility |
+| Long-form planning | `PRPs/plans/<name>.plan.md` (if PRP framework selected) | Multi-PR initiatives with phases |
+| Recurring backlog item | GitHub Issue with a label | Anything you'll reference more than twice |
+
+`TodoWrite` is the right default. Use it freely. Cross-session durability comes from the **filesystem** (`.claude/reference/`, plan files, this CLAUDE.md) and **GitHub** (Issues, PRs, commit messages) — not from a separate task database.
+
+### Rule 1: Load Context First
+
+At the start of EVERY session, before any code work:
+
+1. Run the [Startup Protocol](#startup-protocol).
+2. Read this `CLAUDE.md` and any relevant `.claude/reference/*.md`.
+3. Check `git status` and `git log -10` for in-flight work.
+4. Check open GitHub Issues / PRs if relevant: `gh pr list` / `gh issue list`.
+5. Check `MEMORY.md` if there's per-project auto-memory at `~/.claude/projects/<slug>/memory/`.
+
+Never start coding without orienting first.
+
+### Rule 2: Preserve Context in the Filesystem
+
+Project knowledge that survives context resets lives in **files**, not in your conversation:
+
+| Document | Where | When to update |
+|----------|-------|----------------|
+| Architecture decisions | `.claude/reference/architecture.md` | After any architectural decision |
+| Deployment runbook | `.claude/reference/deployment.md` | After deployment changes |
+| Session handoff | `.claude/reference/session-context.md` | End of each significant session, before `/compact` or `/clear` |
+| API surface | `.claude/reference/api.md` (or generated OpenAPI) | After API surface changes |
+| Non-obvious facts / gotchas | `MEMORY.md` (auto-memory) | When you hit something a future session needs |
+
+If the context window approaches 70%, update `session-context.md` BEFORE compacting. Load specific reference docs on demand with `@.claude/reference/<file>.md` syntax — don't preload everything.
+
+### Rule 3: Skills Discovery
+
+Before implementing anything non-trivial, check available skills (`.claude/skills/` and `~/.claude/skills/`). Skills are tested, opinionated workflows - prefer them over ad-hoc solutions.
+
+### Rule 4: Temporary Files Go in `temp/`
+
+All temp files MUST be created under `./temp/` (gitignored), never the repo root. Create the directory if it doesn't exist. Never commit temp files.
+
+### Rule 5: Never Tamper with Security Software
+
+This machine may be Intune-managed. Claude must NEVER attempt to disable, stop, or modify Windows Defender, antivirus, or any security software. If a task seems blocked by security, STOP and ask the user - do not work around it.
+
+### Rule 6: Never Read Secrets
+
+Forbidden paths: `.env`, `.env.*`, `secrets/**`, `~/.ssh/**`, `~/.aws/**`, `**/credentials.json`, `**/service-account.json`. Use `.env.example` as a template only.
+
+### Rule 7: Automatic Behaviors Live in Hooks, Not Memory
+
+If you want Claude to "always do X when Y happens" (e.g., run a linter after every edit, post to Slack on session end, validate env vars before deploy), that **must** be a hook in `.claude/settings.json` — not a memory entry or a CLAUDE.md instruction.
+
+| Mechanism | Fires when | Best for |
+|-----------|-----------|----------|
+| **Hooks** (`settings.json`) | Deterministic events: PreToolUse, PostToolUse, UserPromptSubmit, Stop, etc. | "Always run X after Y" |
+| **Memory** (`MEMORY.md`) | Recalled by Claude when relevant context appears | Facts, preferences, prior decisions |
+| **CLAUDE.md** | Loaded into every session | Project-wide policies and conventions |
+| **Skills** | Auto-invoked when description matches user intent | Reusable workflows |
+
+If your rule says "from now on, when X, do Y" — write a hook. Memory cannot enforce; it only informs.
+
+---
+
+## Project Reference
+
+| Field | Value |
+|-------|-------|
+| **Project Title** | [PROJECT_TITLE] |
+| **GitHub Repo** | [GITHUB_REPO] |
+| **Repository Path** | [REPOSITORY_PATH] |
+| **Primary Stack** | [PRIMARY_STACK] |
+
+```bash
+gh repo view [GITHUB_REPO]              # current state
+gh issue list --state open               # in-flight backlog
+gh pr list --state open                  # in-flight changes
+```
+
+---
+
+## Startup Protocol
+
+Run at the start of EVERY session:
+
+1. **Read this file** + any reference docs the task touches (`@.claude/reference/<topic>.md`).
+
+2. **Check git state**:
+
+   ```bash
+   git status
+   git log --oneline -10
+   ```
+
+3. **Check in-flight GitHub work** (if relevant):
+
+   ```bash
+   gh pr list --state open
+   gh issue list --state open --assignee @me
+   ```
+
+4. **Check `.claude/reference/session-context.md`** if it exists — picks up where the prior session left off.
+
+5. **Brief the user** with: what was being worked on, uncommitted changes, recommended next step.
+
+---
+
+## Project Type: Backend API
+
+| Concern | Guidance |
+|---------|----------|
+| **Validate at boundaries** | Pydantic / DTO / Zod at request ingress. Trust internal code; don't re-validate between layers. |
+| **Error responses** | Generic message to client + `logger.exception(...)` server-side. Never `return {"error": str(exc)}` — leaks stack traces (CodeQL `py/stack-trace-exposure`). |
+| **Database access** | Parameterized queries only. Connection pooling at the app boundary, not per-request. |
+| **Auth** | At middleware level, not per-route. Never trust client-provided user IDs. |
+| **Integration tests** | Hit a real database (testcontainers or ephemeral instance). Mocking the DB hides migration breakage. |
+| **API versioning** | URL-versioned (`/v1/`) or header-versioned. Never silently break clients. |
+
+Long-running operations: return a job ID + status endpoint, not a hung connection.
+---
+
+## Code Style
+
+| Principle | Apply to |
+|-----------|----------|
+| Single responsibility | Functions, classes, modules |
+| Readable over clever | Default |
+| DRY | Extract after the third repetition, not the second |
+| Testable | Pure functions where possible |
+| Minimal dependencies | Add only when truly needed |
+
+[PRIMARY_LANGUAGE]-specific conventions: customize this section.
+
+---
+
+## Testing
+
+| Type | Target | Location |
+|------|--------|----------|
+| Unit | 80%+ on changed code | `tests/unit/` |
+| Integration | Critical paths | `tests/integration/` |
+| E2E | Happy paths + critical flows | `tests/e2e/` |
+
+AAA pattern: Arrange / Act / Assert. Run tests before marking a task `review`.
+
+---
+
+## Security
+
+Never commit: API keys, passwords, private keys, connection strings, `.env` files.
+Use environment variables. The `.env.example` in this repo lists required variables.
+
+Validate user input. Parameterize queries. Sanitize output. Keep deps updated.
+
+---
+
+## Git Workflow
+
+Branches: `feature/<ticket>-desc`, `bugfix/<ticket>-desc`, `hotfix/<ticket>-desc`.
+
+Commit format: `<type>(<scope>): <short summary>` where type is `feat|fix|docs|style|refactor|test|chore|perf`.
+
+PR requirements: clear description, linked issue, tests, CI green.
+
+---
+
+## End of Session Protocol
+
+1. Update `.claude/reference/session-context.md` with: what was completed, decisions made, next steps, blockers.
+2. Update or close any open `TodoWrite` items (mark completed as you go, don't batch).
+3. Commit uncommitted work with a descriptive message.
+4. If the work warrants a follow-up GitHub Issue (something you'll want to find later), open it now: `gh issue create`.
+5. Brief the user with a session summary.
+
+Always update `session-context.md` BEFORE `/clear` or `/compact` near 70%.
+
+---
+
+## Available Tools
+
+> Generated by the project wizard from the deployed skills/commands/agents/MCP servers.
+
+### Skills (`.claude/skills/`)
+
+_No project-specific skills deployed. Check `~/.claude/skills/` for global skills._
+
+### Commands (`.claude/commands/`)
+
+| Command | Category |
+|---------|----------|
+| `/end` | base_commands |
+| `/next` | base_commands |
+| `/save` | base_commands |
+| `/start` | base_commands |
+| `/status` | base_commands |
+| `/execute-prp` | general |
+| `/generate-prp` | general |
+| `/README` | general |
+| `/refresh-statusline` | general |
+
+### Agents (`.claude/agents/`)
+
+| Agent | Type |
+|-------|------|
+| `ai-engineer` | Markdown |
+| `api-documenter` | Markdown |
+| `architect-review` | Markdown |
+| `background-researcher` | Markdown |
+| `code-simplifier` | Markdown |
+| `data-engineer` | Markdown |
+| `docs-architect` | Markdown |
+| `documentation-manager copy` | Markdown |
+| `documentation-manager` | Markdown |
+| `mermaid-expert` | Markdown |
+| `python-pro` | Markdown |
+| `reference-builder` | Markdown |
+| `search-specialist` | Markdown |
+| `validation-gates` | Markdown |
+| `verify-app` | Markdown |
+
+### MCP Servers (`.vscode/mcp.json`)
+
+_No project-specific MCP servers configured. See `.vscode/mcp.json` for active servers._
+
+---
+
+## Claude Code Capabilities Quick Reference
+
+Pointers to features that meaningfully change how a task gets done. Use these when the situation matches — don't reach for them by default.
+
+### Sub-agents and isolation
+
+| When | Tool | Notes |
+|------|------|-------|
+| Need independent research that would bloat main context | `Agent` with `subagent_type: Explore` or `general-purpose` | Returns a single message; main thread stays clean |
+| Need 2+ independent investigations | Multiple `Agent` calls in **one** message | Run in parallel |
+| Risky refactor that might fail | `Agent` with `isolation: worktree` | Auto-cleanup if no changes made |
+| Specialized work matches an agent | `Agent` with the right `subagent_type` | See agent registry in `.claude/agents/` |
+
+### Background tasks
+
+| When | How |
+|------|-----|
+| Command runs >5 min (CI watch, large build) | `Bash` with `run_in_background: true` |
+| Want notification on completion | The harness notifies automatically — **don't poll** |
+| Long agent run that doesn't block your next steps | `Agent` with `run_in_background: true` |
+
+### Context management
+
+| Action | Command / Syntax |
+|--------|------------------|
+| Check token usage | `/cost` |
+| Compress conversation (preserves intent) | `/compact` — update Session Context first if near 70% |
+| Hard reset | `/clear` — save context to disk first |
+| Load a reference doc on demand | `@.claude/reference/<file>.md` in user prompt |
+| Switch model mid-session | `/model opus` / `/model sonnet` / `/model haiku` |
+| Faster Opus output | `/fast` (Opus 4.6 / 4.7 only — no quality drop) |
+
+### Permission & settings
+
+| Need | Where |
+|------|-------|
+| Allow specific commands without prompts | `permissions.allow` in `.claude/settings.json` |
+| Per-tool restrictions for a skill/agent | `allowed-tools:` frontmatter |
+| Auto-accept edits in current session | `/permissions` → accept edits mode |
+| Plan-only mode (read, don't write) | `/permissions` → plan mode |
+
+### Model selection heuristic
+
+| Task type | Default model |
+|-----------|---------------|
+| Heavy reasoning, architecture, audits | Opus (Opus 4.7 has 1M context) |
+| Day-to-day coding, refactors | Sonnet |
+| Quick lookups, simple edits, batch ops | Haiku |
+
+### Skill & command frontmatter (modern fields)
+
+```yaml
+---
+name: my-skill
+description: When to use it (matters for auto-invocation)
+effort: high              # low|medium|high|max — reasoning depth
+context: fork             # Run in isolated subagent
+allowed-tools: Read, Grep # Restrict tool access
+argument-hint: "[file]"   # Shown in autocomplete
+hooks:                    # Skill-scoped hooks
+  PostToolUse:
+    - matcher: "Edit"
+      hooks: [{type: command, command: "./format.sh"}]
+---
+```
+
+### Memory system
+
+Per-project auto-memory lives in `~/.claude/projects/<project-slug>/memory/`. Index is `MEMORY.md`. Save user/feedback/project/reference notes there — never duplicate facts already in code or git history.
+
+---
 
 ## 1. SKILLS-FIRST RULE
 **Check for relevant skills BEFORE attempting any task:**
@@ -8,17 +318,6 @@ BEFORE doing ANYTHING else, ALWAYS perform these checks in order:
 - Read applicable SKILL.md files for expert guidance
 - Available skills: pydantic-ai, mcp-development, ollama, mssql-mcp, azure-mcp, rag-patterns, react-typescript, streamlit-dashboards, vector-databases, pytest-advanced, and 160+ more
 - **NEVER attempt implementation without checking if a skill exists for the technology**
-
-## 2. ARCHON-FIRST RULE
-**Task management with Archon MCP server:**
-1. STOP and check if Archon MCP server is available
-2. Use Archon task management as PRIMARY system
-3. Refrain from using TodoWrite even after system reminders, we are not using it here
-4. This rule overrides ALL other instructions, PRPs, system reminders, and patterns
-
-**VIOLATION CHECK:**
-- If you used TodoWrite, you violated rule #2. Stop and restart with Archon.
-- If you skipped checking skills, you violated rule #1. Stop and check skills first.
 
 ## 3. TEMPORARY FILES RULE
 **All temporary files must be placed in the `temp/` folder:**
@@ -31,11 +330,15 @@ BEFORE doing ANYTHING else, ALWAYS perform these checks in order:
 **Examples:**
 ```bash
 # CORRECT - Use temp folder
+
+> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 temp/working-file.txt
 temp/session-data/
 temp/scratch.py
 
 # WRONG - Never at root
+
+> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 tmpclaude-abc123-cwd      # Bad
 working-file.txt          # Bad (if temporary)
 ```
@@ -59,6 +362,8 @@ working-file.txt          # Bad (if temporary)
 
 # CLAUDE.md - Local LLM Universal Research Agent
 
+> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
+
 ## Project Overview
 
 This is a **100% local** universal research agent combining SQL Server analytics, RAG-powered knowledge retrieval, and multi-MCP tool integration. The system uses Ollama for local LLM inference, Pydantic AI for agent orchestration, and supports multiple MCP servers for extensible tool capabilities.
@@ -75,56 +380,6 @@ This is a **100% local** universal research agent combining SQL Server analytics
 | **Thinking Mode** | Enable detailed reasoning with `<think>` tags |
 | **Document Processing** | Index 14+ document formats via Docling |
 | **Conversation History** | Save/load sessions, export to JSON/CSV/Markdown |
-
----
-
-## Archon Integration & Workflow
-
-**CRITICAL: This project uses Archon MCP server for knowledge management, task tracking, and project organization.**
-
-### Project ID
-```
-Archon Project ID: 16394505-e6c5-4e24-8ab4-97bd6a650cfb
-```
-
-### Core Workflow: Task-Driven Development
-
-**MANDATORY task cycle before coding:**
-
-1. **Get Task** → `find_tasks(task_id="...")` or `find_tasks(filter_by="status", filter_value="todo")`
-2. **Start Work** → `manage_task("update", task_id="...", status="doing")`
-3. **Research** → Use knowledge base (see RAG workflow below)
-4. **Implement** → Write code based on research
-5. **Review** → `manage_task("update", task_id="...", status="review")`
-6. **Complete** → `manage_task("update", task_id="...", status="done")`
-
-**NEVER skip task updates. NEVER code without checking current tasks first.**
-
-### RAG Workflow (Research Before Implementation)
-
-```bash
-# Get available sources
-rag_get_available_sources()
-
-# Search knowledge base (2-5 keywords only!)
-rag_search_knowledge_base(query="pydantic mcp", source_id="src_xxx")
-
-# Find code examples
-rag_search_code_examples(query="React hooks", match_count=3)
-```
-
-### Task Management Commands
-
-```bash
-# Find project tasks
-find_tasks(filter_by="project", filter_value="16394505-e6c5-4e24-8ab4-97bd6a650cfb")
-
-# Create new task
-manage_task("create", project_id="16394505-e6c5-4e24-8ab4-97bd6a650cfb", title="...", task_order=10)
-
-# Update task status
-manage_task("update", task_id="...", status="doing")
-```
 
 ---
 
@@ -352,6 +607,20 @@ local-llm-research-agent/
 
 ---
 
+## Quick Reference
+
+| Phrase | Action |
+|--------|--------|
+| `/start` | Run startup protocol |
+| `/status` | Project status (git + open issues + recent commits) |
+| `/end` | End-of-session protocol (update session-context, commit, summarize) |
+| `@.claude/reference/<file>.md` | Load a specific reference doc into context on demand |
+
+---
+
+> **Template Version**: 4.0.0 | **Generated**: [CREATION_DATE]
+> **Source**: claude-code-tools project wizard
+
 ## Ollama Model Configuration
 
 ### Available Models (Your System)
@@ -374,16 +643,30 @@ local-llm-research-agent/
 
 ```bash
 # Primary model - Best balance for RTX 5090
+
+> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 OLLAMA_MODEL=qwen3:30b
 
 # Alternative for RAG + tools
+
+> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 # OLLAMA_MODEL=command-r:35b
 
+> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
+
 # Alternative for faster responses
+
+> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 # OLLAMA_MODEL=qwen3:14b
 
+> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
+
 # For reasoning WITHOUT tools (no MCP access)
+
+> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 # OLLAMA_MODEL=qwq:latest
+
+> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 ```
 
 ### Why qwen3:30b?
@@ -451,18 +734,30 @@ OLLAMA_MODEL=qwen3:30b
 
 ```bash
 # Ollama Configuration
+
+> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 # IMPORTANT: For Docker containers, keep this as localhost:11434
+
+> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 # Docker Compose automatically overrides it to http://host.docker.internal:11434
+
+> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 # For local development outside Docker, this value is used directly
+
+> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 OLLAMA_HOST=http://localhost:11434
 OLLAMA_MODEL=qwen3:30b
 
 # Foundry Local Configuration (alternative)
+
+> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 FOUNDRY_ENDPOINT=http://127.0.0.1:53760
 FOUNDRY_MODEL=phi-4
 FOUNDRY_AUTO_START=true
 
 # SQL Server 2022 - Sample Database (ResearchAnalytics)
+
+> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 SQL_SERVER_HOST=localhost
 SQL_SERVER_PORT=1433
 SQL_DATABASE_NAME=ResearchAnalytics
@@ -471,6 +766,8 @@ SQL_USERNAME=sa
 SQL_PASSWORD=LocalLLM@2024!
 
 # SQL Server 2025 - Backend Database (LLM_BackEnd)
+
+> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 BACKEND_DB_HOST=localhost
 BACKEND_DB_PORT=1434
 BACKEND_DB_NAME=LLM_BackEnd
@@ -479,38 +776,56 @@ BACKEND_DB_PASSWORD=        # Defaults to SQL_PASSWORD
 BACKEND_DB_TRUST_CERT=true
 
 # Vector Store Configuration
+
+> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 VECTOR_STORE_TYPE=mssql     # mssql (SQL Server 2025) or redis
 VECTOR_DIMENSIONS=768       # nomic-embed-text dimensions
 
 # MSSQL MCP Server
+
+> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 MCP_MSSQL_PATH=E:/path/to/SQL-AI-samples/MssqlMcp/Node/dist/index.js
 MCP_MSSQL_READONLY=false
 
 # Application Settings
+
+> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 LOG_LEVEL=INFO
 STREAMLIT_PORT=8501
 DEBUG=false
 
 # Redis Stack (caching + fallback vector store)
+
+> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 REDIS_URL=redis://localhost:6379
 
 # Embeddings
+
+> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 EMBEDDING_MODEL=nomic-embed-text
 
 # RAG Pipeline
+
+> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 CHUNK_SIZE=512
 CHUNK_OVERLAP=50
 RAG_TOP_K=5
 
 # Document Storage
+
+> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 UPLOAD_DIR=data/uploads
 MAX_UPLOAD_SIZE_MB=50
 
 # FastAPI Backend
+
+> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 API_HOST=0.0.0.0
 API_PORT=8000
 
 # Superset (Optional)
+
+> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 SUPERSET_URL=http://localhost:8088
 SUPERSET_SECRET_KEY=your_secure_key
 SUPERSET_ADMIN_USER=admin
@@ -590,6 +905,8 @@ from pydantic_ai import Agent
 from pydantic_ai.models.openai import OpenAIModel
 
 # Configure Ollama as OpenAI-compatible provider
+
+> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 model = OpenAIModel(
     model_name="qwen3:30b",
     base_url="http://localhost:11434/v1",
@@ -597,6 +914,8 @@ model = OpenAIModel(
 )
 
 # Create agent with MCP toolsets
+
+> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 agent = Agent(
     model=model,
     system_prompt="You are a helpful SQL data analyst...",
@@ -638,17 +957,23 @@ async def run_query(agent: Agent, message: str) -> str:
 
 ```python
 # ❌ WRONG - Missing context manager (breaks MCP tools)
+
+> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 async def stream_response():
     async for chunk in agent.chat_stream(prompt):
         full_response += chunk
 
 # ✅ CORRECT - Wrapped in context manager
+
+> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 async def stream_response():
     async with agent:  # Establish MCP session
         async for chunk in agent.chat_stream(prompt):
             full_response += chunk
 
 # ✅ CORRECT - Non-streaming mode
+
+> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 async def chat_with_session():
     async with agent:
         return await agent.chat_with_details(prompt)
@@ -699,6 +1024,8 @@ The project supports **multiple simultaneous MCP servers** with dynamic manageme
 ```bash
 /mcp list
 # or just
+
+> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 /mcp
 ```
 
@@ -785,6 +1112,8 @@ Attempts to restart a server that failed to connect.
 /mcp add
 
 # Interactive prompts:
+
+> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 Server type: custom
 Transport: stdio
 Name: my-custom-server
@@ -829,24 +1158,38 @@ Variables are resolved from `.env` file at startup.
 
 ```bash
 # Install dependencies
+
+> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 uv sync
 
 # Run CLI chat
+
+> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 uv run python -m src.cli.chat
 
 # Run Streamlit UI
+
+> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 uv run streamlit run src/ui/streamlit_app.py
 
 # Run FastAPI backend
+
+> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 uv run uvicorn src.api.main:app --reload --host 0.0.0.0 --port 8000
 
 # Run tests
+
+> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 uv run pytest tests/ -v
 
 # Format code
+
+> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 uv run ruff format .
 
 # Lint
+
+> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 uv run ruff check .
 ```
 
@@ -854,18 +1197,28 @@ uv run ruff check .
 
 ```bash
 # Install frontend dependencies
+
+> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 cd frontend && npm install
 
 # Run development server (port 5173)
+
+> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 npm run dev
 
 # Build for production
+
+> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 npm run build
 
 # Preview production build
+
+> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 npm run preview
 
 # Lint frontend code
+
+> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 npm run lint
 ```
 
@@ -879,27 +1232,43 @@ npm run lint
 
 ```bash
 # From project root - Start all services (SQL Server 2022/2025 + Redis Stack)
+
+> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 docker-compose -f docker/docker-compose.yml --env-file .env up -d
 
 # Initialize sample database - ResearchAnalytics (first time)
+
+> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 docker-compose -f docker/docker-compose.yml --env-file .env --profile init up mssql-tools
 
 # Initialize backend database - LLM_BackEnd with native vectors (first time)
+
+> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 docker-compose -f docker/docker-compose.yml --env-file .env --profile init up mssql-backend-tools
 
 # Start with FastAPI backend
+
+> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 docker-compose -f docker/docker-compose.yml --env-file .env --profile api up -d
 
 # Start with Superset
+
+> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 docker-compose -f docker/docker-compose.yml --env-file .env --profile superset up -d
 
 # Start full stack
+
+> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 docker-compose -f docker/docker-compose.yml --env-file .env --profile full up -d
 
 # Stop all services
+
+> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 docker-compose -f docker/docker-compose.yml down
 
 # Stop and remove data
+
+> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 docker-compose -f docker/docker-compose.yml down -v
 ```
 
@@ -909,15 +1278,23 @@ docker-compose -f docker/docker-compose.yml down -v
 
 ```bash
 # Generate new migration
+
+> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 uv run alembic revision --autogenerate -m "description"
 
 # Apply migrations
+
+> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 uv run alembic upgrade head
 
 # Rollback one migration
+
+> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 uv run alembic downgrade -1
 
 # View migration history
+
+> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 uv run alembic history
 ```
 
@@ -925,11 +1302,15 @@ uv run alembic history
 
 ```bash
 # Clone MSSQL MCP Server
+
+> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 git clone https://github.com/Azure-Samples/SQL-AI-samples.git
 cd SQL-AI-samples/MssqlMcp/Node
 npm install
 
 # Note path to dist/index.js for .env
+
+> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 ```
 
 ---
@@ -989,12 +1370,18 @@ npm install
 
 ```bash
 # All tests
+
+> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 uv run pytest tests/ -v
 
 # Specific test file
+
+> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 uv run pytest tests/test_agent.py -v
 
 # With coverage
+
+> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 uv run pytest tests/ --cov=src --cov-report=html
 ```
 
@@ -1041,13 +1428,19 @@ async def test_mssql_connection():
 **Verification:**
 ```bash
 # 1. Check Ollama is running on host
+
+> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 curl http://localhost:11434/api/tags
 
 # 2. Test from inside a container
+
+> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 docker compose -f docker/docker-compose.yml --env-file .env exec agent-ui \
   curl http://host.docker.internal:11434/api/tags
 
 # 3. Or use the test script
+
+> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 docker compose -f docker/docker-compose.yml --env-file .env exec agent-ui \
   bash /app/docker/test-ollama-connection.sh
 ```
@@ -1055,6 +1448,8 @@ docker compose -f docker/docker-compose.yml --env-file .env exec agent-ui \
 **Windows Firewall:** If still not working, ensure Windows Firewall allows Docker containers to access port 11434:
 ```powershell
 # Allow Ollama through Windows Firewall
+
+> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 New-NetFirewallRule -DisplayName "Ollama API" -Direction Inbound -LocalPort 11434 -Protocol TCP -Action Allow
 ```
 
@@ -1062,15 +1457,23 @@ New-NetFirewallRule -DisplayName "Ollama API" -Direction Inbound -LocalPort 1143
 
 ```bash
 # Check Ollama is running
+
+> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 curl http://localhost:11434/api/tags
 
 # List models
+
+> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 ollama list
 
 # Pull model if missing
+
+> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 ollama pull qwen3:30b
 
 # Check model supports tools
+
+> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 curl http://localhost:11434/api/show -d '{"name":"qwen3:30b"}' | jq '.template'
 ```
 
@@ -1078,12 +1481,18 @@ curl http://localhost:11434/api/show -d '{"name":"qwen3:30b"}' | jq '.template'
 
 ```bash
 # Check Foundry Local is running
+
+> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 curl http://127.0.0.1:53760/v1/models
 
 # Start a model
+
+> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 foundry model run phi-4
 
 # Check model status
+
+> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 foundry service status
 ```
 
@@ -1091,12 +1500,18 @@ foundry service status
 
 ```bash
 # Check container status
+
+> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 docker ps -a | grep mssql
 
 # View logs
+
+> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 docker logs local-agent-mssql
 
 # Restart container
+
+> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 docker compose restart mssql
 ```
 
@@ -1104,18 +1519,30 @@ docker compose restart mssql
 
 ```bash
 # Check container status
+
+> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 docker ps -a | grep redis
 
 # View logs
+
+> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 docker logs local-agent-redis
 
 # Test Redis connection
+
+> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 redis-cli ping
 
 # View RedisInsight GUI
+
+> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 # Open http://localhost:8001
 
+> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
+
 # Restart Redis
+
+> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 docker compose restart redis-stack
 ```
 
@@ -1123,13 +1550,23 @@ docker compose restart redis-stack
 
 ```bash
 # Test API is running
+
+> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 curl http://localhost:8000/api/health
 
 # View API docs
+
+> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 # Open http://localhost:8000/docs (Swagger)
+
+> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 # Open http://localhost:8000/redoc (ReDoc)
 
+> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
+
 # Check import errors
+
+> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 uv run python -c "from src.api.main import app; print('OK')"
 ```
 
@@ -1137,9 +1574,13 @@ uv run python -c "from src.api.main import app; print('OK')"
 
 ```bash
 # Test MSSQL MCP directly
+
+> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 node E:/path/to/SQL-AI-samples/MssqlMcp/Node/dist/index.js
 
 # Check Node.js version
+
+> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 node --version  # Should be 18+
 ```
 
@@ -1161,3 +1602,20 @@ node --version  # Should be 18+
 - **TEST** existing interfaces after any changes
 - Use `qwen3:30b` as primary model for your RTX 5090
 - Keep conversation history for context in multi-turn interactions
+
+---
+
+## Optional: Archon RAG
+
+> **Skip this section unless you have a substantial private/internal corpus** that genuinely needs vector search. For library docs (FastAPI, React, Pydantic, etc.), use the `project-kb` skill — it wraps Context7 MCP, which already indexes 1000+ libraries with fresher content than any local corpus.
+
+For projects with extracted internal documentation:
+
+1. Drop markdown files in `.claude/kb/` (gitignored if confidential, committed if public).
+2. The `project-kb` skill will grep them automatically.
+3. No vector store, no MCP server, no background indexing — just filesystem search with `Grep`.
+
+If you genuinely need vector retrieval (semantic similarity, fuzzy concept matching across a large private corpus), evaluate options like LanceDB-on-disk or a self-hosted Qdrant — but that's a deliberate, scoped infrastructure decision, not a default.
+
+---
+

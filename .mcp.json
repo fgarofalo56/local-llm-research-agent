@@ -1,9 +1,6 @@
 {
   "mcpServers": {
-    "archon": {
-      "type": "http",
-      "url": "http://192.168.2.100:8051/mcp"
-    },"microsoft.docs.mcp": {
+    "microsoft.docs.mcp": {
       "type": "http",
       "url": "https://learn.microsoft.com/api/mcp"
     }

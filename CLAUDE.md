@@ -331,14 +331,12 @@ Per-project auto-memory lives in `~/.claude/projects/<project-slug>/memory/`. In
 ```bash
 # CORRECT - Use temp folder
 
-> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 temp/working-file.txt
 temp/session-data/
 temp/scratch.py
 
 # WRONG - Never at root
 
-> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 tmpclaude-abc123-cwd      # Bad
 working-file.txt          # Bad (if temporary)
 ```
@@ -361,8 +359,6 @@ working-file.txt          # Bad (if temporary)
 ---
 
 # CLAUDE.md - Local LLM Universal Research Agent
-
-> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 
 ## Project Overview
 
@@ -644,29 +640,20 @@ local-llm-research-agent/
 ```bash
 # Primary model - Best balance for RTX 5090
 
-> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 OLLAMA_MODEL=qwen3:30b
 
 # Alternative for RAG + tools
 
-> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 # OLLAMA_MODEL=command-r:35b
-
-> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 
 # Alternative for faster responses
 
-> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 # OLLAMA_MODEL=qwen3:14b
-
-> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 
 # For reasoning WITHOUT tools (no MCP access)
 
-> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 # OLLAMA_MODEL=qwq:latest
 
-> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 ```
 
 ### Why qwen3:30b?
@@ -735,29 +722,23 @@ OLLAMA_MODEL=qwen3:30b
 ```bash
 # Ollama Configuration
 
-> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 # IMPORTANT: For Docker containers, keep this as localhost:11434
 
-> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 # Docker Compose automatically overrides it to http://host.docker.internal:11434
 
-> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 # For local development outside Docker, this value is used directly
 
-> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 OLLAMA_HOST=http://localhost:11434
 OLLAMA_MODEL=qwen3:30b
 
 # Foundry Local Configuration (alternative)
 
-> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 FOUNDRY_ENDPOINT=http://127.0.0.1:53760
 FOUNDRY_MODEL=phi-4
 FOUNDRY_AUTO_START=true
 
 # SQL Server 2022 - Sample Database (ResearchAnalytics)
 
-> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 SQL_SERVER_HOST=localhost
 SQL_SERVER_PORT=1433
 SQL_DATABASE_NAME=ResearchAnalytics
@@ -767,7 +748,6 @@ SQL_PASSWORD=LocalLLM@2024!
 
 # SQL Server 2025 - Backend Database (LLM_BackEnd)
 
-> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 BACKEND_DB_HOST=localhost
 BACKEND_DB_PORT=1434
 BACKEND_DB_NAME=LLM_BackEnd
@@ -777,55 +757,46 @@ BACKEND_DB_TRUST_CERT=true
 
 # Vector Store Configuration
 
-> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 VECTOR_STORE_TYPE=mssql     # mssql (SQL Server 2025) or redis
 VECTOR_DIMENSIONS=768       # nomic-embed-text dimensions
 
 # MSSQL MCP Server
 
-> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 MCP_MSSQL_PATH=E:/path/to/SQL-AI-samples/MssqlMcp/Node/dist/index.js
 MCP_MSSQL_READONLY=false
 
 # Application Settings
 
-> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 LOG_LEVEL=INFO
 STREAMLIT_PORT=8501
 DEBUG=false
 
 # Redis Stack (caching + fallback vector store)
 
-> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 REDIS_URL=redis://localhost:6379
 
 # Embeddings
 
-> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 EMBEDDING_MODEL=nomic-embed-text
 
 # RAG Pipeline
 
-> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 CHUNK_SIZE=512
 CHUNK_OVERLAP=50
 RAG_TOP_K=5
 
 # Document Storage
 
-> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 UPLOAD_DIR=data/uploads
 MAX_UPLOAD_SIZE_MB=50
 
 # FastAPI Backend
 
-> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 API_HOST=0.0.0.0
 API_PORT=8000
 
 # Superset (Optional)
 
-> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 SUPERSET_URL=http://localhost:8088
 SUPERSET_SECRET_KEY=your_secure_key
 SUPERSET_ADMIN_USER=admin
@@ -906,7 +877,6 @@ from pydantic_ai.models.openai import OpenAIModel
 
 # Configure Ollama as OpenAI-compatible provider
 
-> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 model = OpenAIModel(
     model_name="qwen3:30b",
     base_url="http://localhost:11434/v1",
@@ -915,7 +885,6 @@ model = OpenAIModel(
 
 # Create agent with MCP toolsets
 
-> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 agent = Agent(
     model=model,
     system_prompt="You are a helpful SQL data analyst...",
@@ -958,14 +927,12 @@ async def run_query(agent: Agent, message: str) -> str:
 ```python
 # ❌ WRONG - Missing context manager (breaks MCP tools)
 
-> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 async def stream_response():
     async for chunk in agent.chat_stream(prompt):
         full_response += chunk
 
 # ✅ CORRECT - Wrapped in context manager
 
-> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 async def stream_response():
     async with agent:  # Establish MCP session
         async for chunk in agent.chat_stream(prompt):
@@ -973,7 +940,6 @@ async def stream_response():
 
 # ✅ CORRECT - Non-streaming mode
 
-> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 async def chat_with_session():
     async with agent:
         return await agent.chat_with_details(prompt)
@@ -1025,7 +991,6 @@ The project supports **multiple simultaneous MCP servers** with dynamic manageme
 /mcp list
 # or just
 
-> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 /mcp
 ```
 
@@ -1113,7 +1078,6 @@ Attempts to restart a server that failed to connect.
 
 # Interactive prompts:
 
-> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 Server type: custom
 Transport: stdio
 Name: my-custom-server
@@ -1159,37 +1123,30 @@ Variables are resolved from `.env` file at startup.
 ```bash
 # Install dependencies
 
-> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 uv sync
 
 # Run CLI chat
 
-> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 uv run python -m src.cli.chat
 
 # Run Streamlit UI
 
-> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 uv run streamlit run src/ui/streamlit_app.py
 
 # Run FastAPI backend
 
-> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 uv run uvicorn src.api.main:app --reload --host 0.0.0.0 --port 8000
 
 # Run tests
 
-> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 uv run pytest tests/ -v
 
 # Format code
 
-> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 uv run ruff format .
 
 # Lint
 
-> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 uv run ruff check .
 ```
 
@@ -1198,27 +1155,22 @@ uv run ruff check .
 ```bash
 # Install frontend dependencies
 
-> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 cd frontend && npm install
 
 # Run development server (port 5173)
 
-> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 npm run dev
 
 # Build for production
 
-> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 npm run build
 
 # Preview production build
 
-> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 npm run preview
 
 # Lint frontend code
 
-> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 npm run lint
 ```
 
@@ -1233,42 +1185,34 @@ npm run lint
 ```bash
 # From project root - Start all services (SQL Server 2022/2025 + Redis Stack)
 
-> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 docker-compose -f docker/docker-compose.yml --env-file .env up -d
 
 # Initialize sample database - ResearchAnalytics (first time)
 
-> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 docker-compose -f docker/docker-compose.yml --env-file .env --profile init up mssql-tools
 
 # Initialize backend database - LLM_BackEnd with native vectors (first time)
 
-> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 docker-compose -f docker/docker-compose.yml --env-file .env --profile init up mssql-backend-tools
 
 # Start with FastAPI backend
 
-> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 docker-compose -f docker/docker-compose.yml --env-file .env --profile api up -d
 
 # Start with Superset
 
-> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 docker-compose -f docker/docker-compose.yml --env-file .env --profile superset up -d
 
 # Start full stack
 
-> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 docker-compose -f docker/docker-compose.yml --env-file .env --profile full up -d
 
 # Stop all services
 
-> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 docker-compose -f docker/docker-compose.yml down
 
 # Stop and remove data
 
-> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 docker-compose -f docker/docker-compose.yml down -v
 ```
 
@@ -1279,22 +1223,18 @@ docker-compose -f docker/docker-compose.yml down -v
 ```bash
 # Generate new migration
 
-> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 uv run alembic revision --autogenerate -m "description"
 
 # Apply migrations
 
-> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 uv run alembic upgrade head
 
 # Rollback one migration
 
-> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 uv run alembic downgrade -1
 
 # View migration history
 
-> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 uv run alembic history
 ```
 
@@ -1303,14 +1243,12 @@ uv run alembic history
 ```bash
 # Clone MSSQL MCP Server
 
-> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 git clone https://github.com/Azure-Samples/SQL-AI-samples.git
 cd SQL-AI-samples/MssqlMcp/Node
 npm install
 
 # Note path to dist/index.js for .env
 
-> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 ```
 
 ---
@@ -1371,17 +1309,14 @@ npm install
 ```bash
 # All tests
 
-> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 uv run pytest tests/ -v
 
 # Specific test file
 
-> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 uv run pytest tests/test_agent.py -v
 
 # With coverage
 
-> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 uv run pytest tests/ --cov=src --cov-report=html
 ```
 
@@ -1429,18 +1364,15 @@ async def test_mssql_connection():
 ```bash
 # 1. Check Ollama is running on host
 
-> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 curl http://localhost:11434/api/tags
 
 # 2. Test from inside a container
 
-> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 docker compose -f docker/docker-compose.yml --env-file .env exec agent-ui \
   curl http://host.docker.internal:11434/api/tags
 
 # 3. Or use the test script
 
-> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 docker compose -f docker/docker-compose.yml --env-file .env exec agent-ui \
   bash /app/docker/test-ollama-connection.sh
 ```
@@ -1449,7 +1381,6 @@ docker compose -f docker/docker-compose.yml --env-file .env exec agent-ui \
 ```powershell
 # Allow Ollama through Windows Firewall
 
-> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 New-NetFirewallRule -DisplayName "Ollama API" -Direction Inbound -LocalPort 11434 -Protocol TCP -Action Allow
 ```
 
@@ -1458,22 +1389,18 @@ New-NetFirewallRule -DisplayName "Ollama API" -Direction Inbound -LocalPort 1143
 ```bash
 # Check Ollama is running
 
-> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 curl http://localhost:11434/api/tags
 
 # List models
 
-> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 ollama list
 
 # Pull model if missing
 
-> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 ollama pull qwen3:30b
 
 # Check model supports tools
 
-> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 curl http://localhost:11434/api/show -d '{"name":"qwen3:30b"}' | jq '.template'
 ```
 
@@ -1482,17 +1409,14 @@ curl http://localhost:11434/api/show -d '{"name":"qwen3:30b"}' | jq '.template'
 ```bash
 # Check Foundry Local is running
 
-> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 curl http://127.0.0.1:53760/v1/models
 
 # Start a model
 
-> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 foundry model run phi-4
 
 # Check model status
 
-> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 foundry service status
 ```
 
@@ -1501,17 +1425,14 @@ foundry service status
 ```bash
 # Check container status
 
-> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 docker ps -a | grep mssql
 
 # View logs
 
-> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 docker logs local-agent-mssql
 
 # Restart container
 
-> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 docker compose restart mssql
 ```
 
@@ -1520,29 +1441,22 @@ docker compose restart mssql
 ```bash
 # Check container status
 
-> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 docker ps -a | grep redis
 
 # View logs
 
-> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 docker logs local-agent-redis
 
 # Test Redis connection
 
-> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 redis-cli ping
 
 # View RedisInsight GUI
 
-> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 # Open http://localhost:8001
-
-> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 
 # Restart Redis
 
-> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 docker compose restart redis-stack
 ```
 
@@ -1551,22 +1465,16 @@ docker compose restart redis-stack
 ```bash
 # Test API is running
 
-> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 curl http://localhost:8000/api/health
 
 # View API docs
 
-> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 # Open http://localhost:8000/docs (Swagger)
 
-> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 # Open http://localhost:8000/redoc (ReDoc)
-
-> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 
 # Check import errors
 
-> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 uv run python -c "from src.api.main import app; print('OK')"
 ```
 
@@ -1575,12 +1483,10 @@ uv run python -c "from src.api.main import app; print('OK')"
 ```bash
 # Test MSSQL MCP directly
 
-> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 node E:/path/to/SQL-AI-samples/MssqlMcp/Node/dist/index.js
 
 # Check Node.js version
 
-> **Note:** This project previously used Archon v1 for task tracking. Archon v1 was archived by its author in April 2026. Historical Archon task records were exported to `.claude/migrated-archon-tasks.md` at migration time. Use TodoWrite + GitHub Issues going forward (see Rule 0).
 node --version  # Should be 18+
 ```
 

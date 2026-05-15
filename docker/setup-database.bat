@@ -31,6 +31,27 @@ if not exist "..\.env" (
     echo.
 )
 
+REM Pre-flight port conflict check
+echo Running port conflict check...
+echo.
+if exist "check-ports.bat" (
+    call check-ports.bat
+    if errorlevel 1 (
+        echo.
+        echo [WARNING] Port conflicts detected. You can:
+        echo   1. Run: docker\check-ports.bat --fix   ^(auto-assign free ports^)
+        echo   2. Edit .env manually
+        echo   3. Stop conflicting containers
+        echo.
+        set /p "confirm=Continue anyway? (y/N): "
+        if /i not "!confirm!"=="y" (
+            echo Aborted. Resolve port conflicts first.
+            exit /b 1
+        )
+        echo.
+    )
+)
+
 echo ============================================================
 echo  PHASE 1: SQL Server 2022 - Sample Database (ResearchAnalytics)
 echo ============================================================

@@ -57,19 +57,22 @@
 # SERVICES OVERVIEW
 # =============================================================================
 #
-# Service            | Container Name               | Port(s)     | Description
-# -------------------|------------------------------|-------------|------------------------
-# mssql              | local-agent-mssql            | 1433        | SQL Server 2022 (Sample DB)
-# mssql-backend      | local-agent-mssql-backend    | 1434        | SQL Server 2025 (Backend)
-# agent-ui           | local-agent-streamlit-ui     | 8501        | Streamlit Web UI
-# api                | local-agent-api              | 8000        | FastAPI Backend
-# frontend           | local-agent-frontend         | 5173*       | React Frontend
-# agent-cli          | local-agent-cli              | -           | Interactive CLI
-# mssql-tools        | local-agent-mssql-tools      | -           | Sample DB Init (runs once)
-# mssql-backend-tools| local-agent-mssql-backend-tools | -        | Backend DB Init (runs once)
-# superset           | local-agent-superset         | 8088        | Apache Superset BI
+# Service            | Container Name               | Port(s)     | Env Variable       | Description
+# -------------------|------------------------------|-------------|--------------------|-----------------------
+# mssql              | local-agent-mssql            | 1433        | MSSQL_PORT         | SQL Server 2022 (Sample DB)
+# mssql-backend      | local-agent-mssql-backend    | 1434        | BACKEND_DB_PORT    | SQL Server 2025 (Backend)
+# agent-ui           | local-agent-streamlit-ui     | 8501        | STREAMLIT_PORT     | Streamlit Web UI
+# api                | local-agent-api              | 8000        | API_PORT           | FastAPI Backend
+# frontend           | local-agent-frontend         | 5173        | FRONTEND_PORT      | React Frontend
+# redis-stack        | local-agent-redis            | 6379        | REDIS_PORT         | Redis Stack
+# redis-stack        | local-agent-redis            | 8001        | REDIS_INSIGHT_PORT | RedisInsight GUI
+# superset           | local-agent-superset         | 8088        | SUPERSET_PORT      | Apache Superset BI
+# agent-cli          | local-agent-cli              | -           | -                  | Interactive CLI
+# mssql-tools        | local-agent-mssql-tools      | -           | -                  | Sample DB Init (once)
+# mssql-backend-tools| local-agent-mssql-backend-tools | -        | -                  | Backend DB Init (once)
 #
-# * React frontend port configurable via FRONTEND_PORT
+# All host ports are configurable via .env variables to avoid conflicts.
+# Run: docker/check-ports.sh (or .bat) before starting to detect conflicts.
 #
 # =============================================================================
 # CONNECTION DETAILS
@@ -102,10 +105,15 @@
 #   MSSQL_SA_PASSWORD      - SQL Server SA password (both instances)
 #
 # Optional (with defaults):
+#   MSSQL_PORT=1433        - SQL Server 2022 sample database port
+#   BACKEND_DB_PORT=1434   - SQL Server 2025 backend port
 #   API_PORT=8000          - FastAPI backend port
 #   STREAMLIT_PORT=8501    - Streamlit UI port
+#   FRONTEND_PORT=5173     - React frontend port
+#   REDIS_PORT=6379        - Redis Stack port
+#   REDIS_INSIGHT_PORT=8001 - RedisInsight GUI port
+#   SUPERSET_PORT=8088     - Apache Superset port
 #   OLLAMA_MODEL=qwen2.5:7b-instruct - LLM model to use
-#   BACKEND_DB_PORT=1434   - SQL Server 2025 backend port
 #
 # =============================================================================
 # DATA PERSISTENCE
@@ -134,7 +142,7 @@ services:
       MSSQL_PID: "Developer"
       TZ: "America/New_York"
     ports:
-      - "1433:1433"
+      - "${MSSQL_PORT:-1433}:1433"
     volumes:
       # Persist database files
       - mssql_data:/var/opt/mssql

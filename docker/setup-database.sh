@@ -30,6 +30,26 @@ if [ ! -f "../.env" ]; then
     echo ""
 fi
 
+# Pre-flight port conflict check
+echo "Running port conflict check..."
+echo ""
+if [ -x "./check-ports.sh" ] || chmod +x "./check-ports.sh" 2>/dev/null; then
+    if ! ./check-ports.sh; then
+        echo ""
+        echo "[WARNING] Port conflicts detected. You can:"
+        echo "  1. Run: ./check-ports.sh --fix   (auto-assign free ports)"
+        echo "  2. Edit .env manually"
+        echo "  3. Stop conflicting containers"
+        echo ""
+        read -p "Continue anyway? (y/N): " confirm
+        if [ "$confirm" != "y" ] && [ "$confirm" != "Y" ]; then
+            echo "Aborted. Resolve port conflicts first."
+            exit 1
+        fi
+        echo ""
+    fi
+fi
+
 echo "============================================================"
 echo " PHASE 1: SQL Server 2022 - Sample Database (ResearchAnalytics)"
 echo "============================================================"
@@ -113,22 +133,33 @@ echo "============================================================"
 echo "  Database Setup Complete!"
 echo "============================================================"
 echo ""
+# Read configured ports (source .env if available)
+MSSQL_PORT="${MSSQL_PORT:-1433}"
+BACKEND_DB_PORT="${BACKEND_DB_PORT:-1434}"
+REDIS_PORT="${REDIS_PORT:-6379}"
+REDIS_INSIGHT_PORT="${REDIS_INSIGHT_PORT:-8001}"
+
+if [ -f "../.env" ]; then
+    # Source port overrides from .env
+    eval "$(grep -E '^(MSSQL_PORT|BACKEND_DB_PORT|REDIS_PORT|REDIS_INSIGHT_PORT)=' ../.env 2>/dev/null)" || true
+fi
+
 echo "  SQL Server 2022 (Sample Database):"
-echo "    Server:   localhost,1433"
+echo "    Server:   localhost,$MSSQL_PORT"
 echo "    Database: ResearchAnalytics"
 echo "    User:     sa"
 echo "    Password: (see MSSQL_SA_PASSWORD in .env)"
 echo ""
 echo "  SQL Server 2025 (Backend Database):"
-echo "    Server:   localhost,1434"
+echo "    Server:   localhost,$BACKEND_DB_PORT"
 echo "    Database: LLM_BackEnd"
 echo "    User:     sa"
 echo "    Password: (see MSSQL_SA_PASSWORD in .env)"
 echo "    Features: Native VECTOR type, Full-Text Search, Hybrid Search"
 echo ""
 echo "  Redis Stack:"
-echo "    Server:   localhost:6379"
-echo "    GUI:      http://localhost:8001 (RedisInsight)"
+echo "    Server:   localhost:$REDIS_PORT"
+echo "    GUI:      http://localhost:$REDIS_INSIGHT_PORT (RedisInsight)"
 echo ""
 echo "  Backend Features Initialized:"
 echo "    - app schema (conversations, messages, dashboards, settings)"
@@ -136,8 +167,8 @@ echo "    - vectors schema (document embeddings with native VECTOR type)"
 echo "    - Hybrid Search (full-text + vector combined with RRF)"
 echo ""
 echo "  To test connections:"
-echo "    sqlcmd -S localhost,1433 -U sa -P 'LocalLLM@2024!' -d ResearchAnalytics -Q 'SELECT 1'"
-echo "    sqlcmd -S localhost,1434 -U sa -P 'LocalLLM@2024!' -d LLM_BackEnd -Q 'SELECT 1'"
+echo "    sqlcmd -S localhost,$MSSQL_PORT -U sa -P 'LocalLLM@2024!' -d ResearchAnalytics -Q 'SELECT 1'"
+echo "    sqlcmd -S localhost,$BACKEND_DB_PORT -U sa -P 'LocalLLM@2024!' -d LLM_BackEnd -Q 'SELECT 1'"
 echo ""
 echo "  To stop all databases:"
 echo "    docker compose --env-file ../.env down"

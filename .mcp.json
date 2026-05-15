@@ -2,33 +2,10 @@
   "mcpServers": {
     "archon": {
       "type": "http",
-      "url": "http://localhost:8051/mcp"
-    },
-    "serena": {
-      "command": "uvx",
-      "args": [
-        "--from",
-        "git+https://github.com/oraios/serena",
-        "serena",
-        "start-mcp-server",
-        "--context",
-        "ide-assistant"
-      ]
-    },
-    "microsoft.docs.mcp": {
+      "url": "http://192.168.2.100:8051/mcp"
+    },"microsoft.docs.mcp": {
       "type": "http",
       "url": "https://learn.microsoft.com/api/mcp"
-    },
-    "brave-search": {
-      "command": "cmd",
-      "args": ["/c", "npx", "-y", "@brave/brave-search-mcp-server"],
-      "env": {
-        "BRAVE_API_KEY": "${BRAVE_API_KEY}"
-      }
-    },
-    "playwright": {
-      "command": "cmd",
-      "args": ["/c", "npx", "@playwright/mcp@latest"]
     }
   }
 }

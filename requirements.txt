@@ -3,7 +3,7 @@
 # Prefer using: uv sync (or pip install -e .)
 
 # Agent Framework
-pydantic-ai>=0.2.0
+pydantic-ai>=1.99.0
 pydantic>=2.0.0
 
 # Web UI

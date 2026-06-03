@@ -60,7 +60,7 @@ dependencies = [
     "redisvl>=0.3.0",
     # Document Processing (RAG Pipeline) - Docling for comprehensive document handling
     # Docling handles PDF, DOCX, PPTX, XLSX, HTML, images with advanced table extraction
-    "docling>=2.0.0",
+    "docling>=2.91.0",
     # Keep pypdf as lightweight fallback for simple PDF processing
     "pypdf>=5.0.0",
     # Scheduling

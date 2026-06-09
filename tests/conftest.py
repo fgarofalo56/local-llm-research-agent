@@ -30,6 +30,16 @@ def pytest_configure(config):
     config.addinivalue_line("markers", "requires_foundry: mark test as requiring Foundry Local")
 
 
+# Manual demo / smoke scripts that live under tests/ but are not pytest modules.
+# Their ``test_*`` functions take live ``agent`` arguments (or open real MCP/LLM
+# connections) and are meant to be run directly (``python tests/<file>.py``), not
+# collected. Excluding them keeps CI deterministic; run them by hand for live checks.
+collect_ignore = [
+    "test_chat_methods.py",
+    "test_individual_methods.py",
+]
+
+
 @pytest.fixture
 def mock_settings():
     """Mock application settings."""

@@ -140,6 +140,7 @@ ignore = [
     "E501",  # line too long (handled by formatter)
     "B008",  # do not perform function calls in argument defaults
     "B904",  # raise from in exception handlers (typer.Exit doesn't support it)
+    "UP042", # prefer enum.StrEnum over (str, Enum) - deferred; semantics differ, tracked separately
 ]
 
 [tool.ruff.lint.per-file-ignores]

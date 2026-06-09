@@ -11,6 +11,7 @@ Comprehensive tests for multi-MCP server management including:
 """
 
 import json
+import sys
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -382,8 +383,9 @@ class TestMCPServerValidation:
 class TestMCPAgentIntegration:
     """Test MCP integration with ResearchAgent."""
 
+    @patch("src.agent.core.Agent")
     @patch("src.agent.core.MCPClientManager")
-    def test_agent_loads_enabled_servers(self, mock_manager_class):
+    def test_agent_loads_enabled_servers(self, mock_manager_class, mock_agent_cls):
         """Test agent loads toolsets from enabled servers."""
         from src.agent.core import ResearchAgent
 
@@ -407,22 +409,23 @@ class TestMCPAgentIntegration:
         mock_manager.load_config.assert_called_once()
         mock_manager.get_active_toolsets.assert_called_once()
 
-    def test_agent_handles_missing_toolsets_gracefully(self):
+    @patch("src.agent.core.Agent")
+    @patch("src.agent.core.MCPClientManager")
+    def test_agent_handles_missing_toolsets_gracefully(self, mock_manager_class, mock_agent_cls):
         """Test agent continues when no MCP toolsets available."""
         from src.agent.core import ResearchAgent
 
-        with patch("src.mcp.client.MCPClientManager") as mock_manager_class:
-            mock_manager = MagicMock()
-            mock_manager.get_active_toolsets.return_value = []  # No toolsets
-            mock_manager.list_servers.return_value = []
-            mock_manager_class.return_value = mock_manager
+        mock_manager = MagicMock()
+        mock_manager.get_active_toolsets.return_value = []  # No toolsets
+        mock_manager.list_servers.return_value = []
+        mock_manager_class.return_value = mock_manager
 
-            with patch("src.agent.core.create_provider"):
-                agent = ResearchAgent()
+        with patch("src.agent.core.create_provider"):
+            agent = ResearchAgent()
 
-                # Agent should still be created
-                assert agent is not None
-                assert agent._active_toolsets == []
+            # Agent should still be created
+            assert agent is not None
+            assert agent._active_toolsets == []
 
 
 @pytest.mark.integration
@@ -453,6 +456,10 @@ class TestMCPCLICommands:
         result = handle_mcp_command(console, "/mcp status")
         assert result is True  # Returns true but prints error
 
+    @pytest.mark.skipif(
+        not sys.stdin.isatty(),
+        reason="'/mcp add' is interactive and reads stdin; requires a real terminal",
+    )
     def test_mcp_command_routing(self):
         """Test command routing to correct handlers."""
         from rich.console import Console

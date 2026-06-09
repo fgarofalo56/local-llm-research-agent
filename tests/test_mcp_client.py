@@ -6,8 +6,6 @@ Tests for MCP client manager, MSSQL configuration, and server management.
 
 from unittest.mock import patch
 
-import pytest
-
 from src.mcp.client import MCPClientManager
 from src.mcp.mssql_config import (
     MSSQL_TOOLS,
@@ -135,19 +133,19 @@ class TestMCPClientManager:
         assert manager.config_path is not None
 
     def test_load_config_not_found(self):
-        """Test loading missing config file."""
+        """Missing config file falls back to an empty default configuration."""
         manager = MCPClientManager(config_path="/nonexistent/config.json")
 
-        with pytest.raises(FileNotFoundError):
-            manager.load_config()
+        config = manager.load_config()
+
+        assert config.mcpServers == {}
 
     def test_load_config_success(self, temp_mcp_config):
         """Test successful config loading."""
         manager = MCPClientManager(config_path=temp_mcp_config)
         config = manager.load_config()
 
-        assert "mcpServers" in config
-        assert "mssql" in config["mcpServers"]
+        assert "mssql" in config.mcpServers
 
     def test_resolve_env_vars(self):
         """Test environment variable resolution."""
@@ -170,4 +168,3 @@ class TestMCPClientManager:
         servers = manager.list_configured_servers()
 
         assert "mssql" in servers
-

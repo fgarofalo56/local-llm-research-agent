@@ -137,27 +137,27 @@ class TestProviderSwitching:
 
     @patch("src.agent.core.MCPClientManager")
     @patch("src.agent.core.Agent")
-    def test_create_agent_with_ollama(self, mock_agent_cls, mock_mcp_cls):
+    async def test_create_agent_with_ollama(self, mock_agent_cls, mock_mcp_cls):
         """Test creating agent with Ollama provider."""
         mock_mcp = MagicMock()
         mock_mcp.get_active_toolsets.return_value = []
         mock_mcp.get_enabled_server_names.return_value = []
         mock_mcp_cls.return_value = mock_mcp
 
-        agent = create_research_agent(provider_type="ollama")
+        agent = await create_research_agent(provider_type="ollama")
 
         assert agent.provider.provider_type == ProviderType.OLLAMA
 
     @patch("src.agent.core.MCPClientManager")
     @patch("src.agent.core.Agent")
-    def test_create_agent_with_foundry(self, mock_agent_cls, mock_mcp_cls):
+    async def test_create_agent_with_foundry(self, mock_agent_cls, mock_mcp_cls):
         """Test creating agent with Foundry Local provider."""
         mock_mcp = MagicMock()
         mock_mcp.get_active_toolsets.return_value = []
         mock_mcp.get_enabled_server_names.return_value = []
         mock_mcp_cls.return_value = mock_mcp
 
-        agent = create_research_agent(provider_type="foundry_local")
+        agent = await create_research_agent(provider_type="foundry_local")
 
         assert agent.provider.provider_type == ProviderType.FOUNDRY_LOCAL
 

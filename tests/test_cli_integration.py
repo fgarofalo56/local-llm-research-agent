@@ -11,6 +11,7 @@ Comprehensive tests for:
 """
 
 import json
+import sys
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -184,8 +185,9 @@ class TestWebSearchIntegration:
         """Test web search respects rate limits."""
         from src.utils.rate_limiter import TokenBucketRateLimiter
 
-        # Create rate limiter with 10 tokens, refill 1/sec
-        limiter = TokenBucketRateLimiter(bucket_size=10, refill_rate=1.0, name="test-limiter")
+        # Bucket holds 10 tokens; slow refill (60/min = 1/sec) so the burst is
+        # exhausted within this tight loop before any meaningful refill occurs.
+        limiter = TokenBucketRateLimiter(requests_per_minute=60, burst_capacity=10)
 
         # Should allow first 10 requests
         for _ in range(10):
@@ -210,7 +212,7 @@ class TestWebSearchIntegration:
     @pytest.mark.asyncio
     async def test_web_search_error_handling(self):
         """Test graceful handling of web search errors."""
-        with patch("src.agent.tools.search_web") as mock_search:
+        with patch("src.agent.tools.WebSearchTools.search_web") as mock_search:
             mock_search.side_effect = Exception("API rate limit exceeded")
 
             with pytest.raises(Exception) as exc_info:
@@ -263,7 +265,7 @@ class TestRAGSearchIntegration:
             ]
 
             MSSQLVectorStore.__new__(MSSQLVectorStore)
-            results = mock_search("test query", top_k=5)
+            results = await mock_search("test query", top_k=5)
 
             assert len(results) == 2
             assert results[0]["score"] > results[1]["score"]
@@ -498,6 +500,10 @@ class TestFullChatFlowIntegration:
     """End-to-end integration tests for chat flow."""
 
     @pytest.mark.asyncio
+    @pytest.mark.skipif(
+        not sys.stdin.isatty(),
+        reason="drives the full prompt_toolkit chat loop; requires an interactive terminal",
+    )
     @patch("src.cli.chat.check_provider_status")
     @patch("src.cli.chat.settings")
     @patch("src.cli.chat.ResearchAgent")
@@ -527,6 +533,10 @@ class TestFullChatFlowIntegration:
         mock_agent.chat_with_details.assert_called()
 
     @pytest.mark.asyncio
+    @pytest.mark.skipif(
+        not sys.stdin.isatty(),
+        reason="drives the full prompt_toolkit chat loop; requires an interactive terminal",
+    )
     @patch("src.cli.chat.check_provider_status")
     @patch("src.cli.chat.settings")
     @patch("src.cli.chat.ResearchAgent")

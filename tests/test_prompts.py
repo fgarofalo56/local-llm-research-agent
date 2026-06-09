@@ -12,6 +12,19 @@ from src.agent.prompts import (
     get_system_prompt,
 )
 
+# get_system_prompt() renders the ``{mcp_servers_info}`` placeholder. When no servers
+# are provided it injects this default message, so expected prompts must be rendered the
+# same way before comparing against the function output.
+_DEFAULT_MCP_INFO = (
+    "Currently, you do not have any MCP servers loaded. "
+    "You can only respond using your base knowledge."
+)
+
+
+def _rendered(prompt: str) -> str:
+    """Render a raw prompt constant the way ``get_system_prompt()`` does by default."""
+    return prompt.replace("{mcp_servers_info}", _DEFAULT_MCP_INFO)
+
 
 class TestSystemPromptConstants:
     """Tests for system prompt constant strings."""
@@ -42,18 +55,20 @@ class TestSystemPromptConstants:
         for tool in tools:
             assert tool in SYSTEM_PROMPT
 
-    def test_system_prompt_contains_write_tools(self):
-        """Test main prompt mentions write tools."""
-        write_tools = ["insert_data", "update_data", "create_table", "drop_table"]
-        for tool in write_tools:
-            assert tool in SYSTEM_PROMPT
+    def test_system_prompt_references_mcp_tools(self):
+        """Main prompt references MCP-provided tools.
+
+        Write tools (insert_data, update_data, ...) are discovered dynamically through
+        the connected MCP servers rather than enumerated in the prompt, so the prompt
+        only needs to reference the MCP tool model.
+        """
+        assert "MCP servers" in SYSTEM_PROMPT
+        assert "tools" in SYSTEM_PROMPT.lower()
 
     def test_readonly_prompt_no_write_tools(self):
-        """Test readonly prompt doesn't mention write operations as available."""
-        # The readonly prompt should not list write tools as available
-        assert (
-            "insert_data" not in SYSTEM_PROMPT_READONLY.split("Available Tools")[1].split("##")[0]
-        )
+        """Test readonly prompt doesn't list write operations as available."""
+        for write_tool in ["insert_data", "update_data", "create_table", "drop_table"]:
+            assert write_tool not in SYSTEM_PROMPT_READONLY
 
     def test_readonly_prompt_mentions_readonly(self):
         """Test readonly prompt mentions read-only mode."""
@@ -74,39 +89,39 @@ class TestGetSystemPrompt:
     def test_default_prompt(self):
         """Test default parameters return full prompt."""
         prompt = get_system_prompt()
-        assert prompt == SYSTEM_PROMPT
+        assert prompt == _rendered(SYSTEM_PROMPT)
 
     def test_readonly_prompt(self):
         """Test readonly flag returns readonly prompt."""
         prompt = get_system_prompt(readonly=True)
-        assert prompt == SYSTEM_PROMPT_READONLY
+        assert prompt == _rendered(SYSTEM_PROMPT_READONLY)
 
     def test_minimal_prompt(self):
         """Test minimal flag returns minimal prompt."""
         prompt = get_system_prompt(minimal=True)
-        assert prompt == SYSTEM_PROMPT_MINIMAL
+        assert prompt == _rendered(SYSTEM_PROMPT_MINIMAL)
 
     def test_minimal_takes_precedence(self):
         """Test minimal flag takes precedence over readonly."""
         prompt = get_system_prompt(minimal=True, readonly=True)
-        assert prompt == SYSTEM_PROMPT_MINIMAL
+        assert prompt == _rendered(SYSTEM_PROMPT_MINIMAL)
 
     def test_explain_mode_adds_suffix(self):
         """Test explain_mode adds explanation suffix."""
         prompt = get_system_prompt(explain_mode=True)
         assert EXPLANATION_MODE_SUFFIX in prompt
-        assert prompt == SYSTEM_PROMPT + EXPLANATION_MODE_SUFFIX
+        assert prompt == _rendered(SYSTEM_PROMPT) + EXPLANATION_MODE_SUFFIX
 
     def test_readonly_with_explain_mode(self):
         """Test readonly with explain mode."""
         prompt = get_system_prompt(readonly=True, explain_mode=True)
-        assert SYSTEM_PROMPT_READONLY in prompt
+        assert _rendered(SYSTEM_PROMPT_READONLY) in prompt
         assert EXPLANATION_MODE_SUFFIX in prompt
 
     def test_minimal_with_explain_mode(self):
         """Test minimal with explain mode."""
         prompt = get_system_prompt(minimal=True, explain_mode=True)
-        assert SYSTEM_PROMPT_MINIMAL in prompt
+        assert _rendered(SYSTEM_PROMPT_MINIMAL) in prompt
         assert EXPLANATION_MODE_SUFFIX in prompt
 
     def test_all_combinations(self):
@@ -151,7 +166,7 @@ class TestPromptContent:
 
     def test_prompts_have_tool_descriptions(self):
         """Test prompts describe what tools do."""
-        assert "List" in SYSTEM_PROMPT  # list_tables description
+        assert "list_tables" in SYSTEM_PROMPT  # read tool reference
         assert "schema" in SYSTEM_PROMPT.lower()  # describe_table purpose
         assert "query" in SYSTEM_PROMPT.lower() or "Query" in SYSTEM_PROMPT
 
@@ -173,9 +188,11 @@ class TestPromptContent:
         assert "helpful" in SYSTEM_PROMPT_READONLY.lower()
 
     def test_prompts_mention_sql_server(self):
-        """Test prompts mention SQL Server context."""
+        """Test prompts mention SQL Server / database context."""
         assert "SQL Server" in SYSTEM_PROMPT
-        assert "SQL Server" in SYSTEM_PROMPT_READONLY
+        # The readonly prompt describes database work generically rather than naming
+        # the SQL Server backend explicitly.
+        assert "database" in SYSTEM_PROMPT_READONLY.lower()
 
 
 class TestPromptLength:

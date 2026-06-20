@@ -15,7 +15,7 @@ rich>=13.0.0
 
 # Configuration & Environment
 python-dotenv>=1.0.0
-pydantic-settings>=2.0.0
+pydantic-settings>=2.14.2
 
 # Logging
 structlog>=24.0.0
